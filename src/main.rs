@@ -1,3 +1,5 @@
+extern crate rust_chibicc;
+use rust_chibicc::{strtol};
 use std::env;
 
 fn main() {
@@ -7,20 +9,34 @@ fn main() {
         return
     }
 
-    let arg1 = args.get(1)
-        .and_then(|item| item.parse::<i64>().ok())
-        .ok_or("第1引数は数字を与えてください");
+    let chars = &mut args.get(1)
+        .expect("第一引数が取得できませんでした")
+        .chars()
+        .peekable();
 
-    match arg1 {
-        Ok(num) => {
-            println!(".intel_syntax noprefix");
-            println!(".globl main");
-            println!("main:");
-            println!("  mov rax, {}", num);
-            println!("  ret");
-        }
-        Err(e) => {
-            eprintln!("{}", e);
+    println!(".intel_syntax noprefix");
+    println!(".globl main");
+    println!("main:");
+
+    let first_num = strtol::<usize>(chars).expect("最初のトークンが数字ではないです");
+    println!("  mov rax {}", first_num);
+
+    while let Some(ch) = chars.next() {
+        match ch {
+            '+' => {
+                let num = strtol::<usize>(chars).expect("parseできませんでした");
+                println!("  add rax {}", num);
+            },
+            '-' => {
+                let num = strtol::<usize>(chars).expect("parseできませんでした");
+                println!("  sub rax {}", num);
+            },
+            _ => {
+                eprintln!("予期しない文字です: {}", ch);
+                return
+            }
         }
     }
+
+    println!("  ret");
 }
