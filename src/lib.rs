@@ -1,3 +1,6 @@
+pub mod token;
+pub mod lexer;
+
 use std::str::{Chars, FromStr};
 use std::iter::{Peekable};
 
