@@ -16,7 +16,7 @@ fn main() {
         .chars()
         .peekable();
 
-    let token = tokenize(chars);
+    let _token = tokenize(chars);
 
     println!(".intel_syntax noprefix");
     println!(".globl main");
