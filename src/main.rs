@@ -24,8 +24,6 @@ fn main() {
     let tokens = tokenize(&mut arg1.chars().peekable());
     let mut peekable_tokens = tokens.iter().peekable();
 
-    println!("{:?}", tokens);
-
     println!(".intel_syntax noprefix");
     println!(".globl main");
     println!("main:");
@@ -52,7 +50,7 @@ fn main() {
                 } else if *op == '-' {
                     match peekable_tokens.next().unwrap() {
                         Token::Num { val, .. } => {
-                            println!("  add rax, {}", *val);
+                            println!("  sub rax, {}", *val);
                         },
                         tk @ _ => {
                             eprintln!("数字ではありません: {:?}", tk);

@@ -49,8 +49,18 @@ pub fn tokenize(chars: &mut Peekable<Chars>) -> Vec<Token> {
 
 #[test]
 fn tokenize_test() {
-    let input = &mut "' 1 + 2 + 3 -2 '".chars().peekable();
+    let input = &mut " 1 + 2 + 3 -20 ".chars().peekable();
     let result = tokenize(input);
+    let expected = vec![
+        Token::Num { val: 1, t_str: "1".to_string() },
+        Token::Reserved { op: '+', t_str: "+".to_string() },
+        Token::Num { val: 2, t_str: "2".to_string() },
+        Token::Reserved { op: '+', t_str: "+".to_string() },
+        Token::Num { val: 3, t_str: "3".to_string() },
+        Token::Reserved { op: '-', t_str: "-".to_string() },
+        Token::Num { val: 20, t_str: "20".to_string() },
+        Token::Eof
+    ];
 
-    println!("{:?}", result);
+    assert_eq!(result, expected);
 }
