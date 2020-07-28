@@ -3,9 +3,11 @@ use crate::token::Token;
 use std::str::{Chars, FromStr};
 use std::iter::{Peekable, Enumerate};
 
+// TODO: LexerErrorの定義
+
 // 本当はimpl Iter<Item=Token>を返したい
 // pub fn tokenize(chars: &mut Peekable<Chars>) -> impl Iter<Item=Token>
-pub fn tokenize(line: String) -> Vec<Token> {
+pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
     let mut tokens: Vec<Token> = Vec::new();
     let chars_with_index = &mut line.chars().enumerate().peekable();
 
@@ -26,31 +28,45 @@ pub fn tokenize(line: String) -> Vec<Token> {
                 chars_with_index.next();
             },
             '0'..='9' => {
-                // strtolで既に数字の次まで進んでいるのでchars.next()はしない
-                let num = strtol::<usize>(chars_with_index).expect("数字ではありません");
+                // chars_with_index.peek()で可変な参照をしてるのでここでiの参照外しをする.
+                // そうしないとstrtol::<usize>(chars_with_index)ができない(あんまりわかってない)
+                let idx = *i;
+                let num_result = strtol::<usize>(chars_with_index);
+                match num_result {
+                    Ok(num) => {
+                        let token = Token::Num{
+                            val: num,
+                            t_str: num.to_string(),
+                        };
 
-                let token = Token::Num{
-                    val: num,
-                    t_str: num.to_string(),
-                };
-
-                tokens.push(token);
+                        // strtolで既に数字の次まで進んでいるのでchars.next()はしない
+                        tokens.push(token);
+                    },
+                    Err(_) => {
+                        let space = (0..idx).fold(String::new(), |a, _| a + " " ) + "^";
+                        eprintln!("{}", line);
+                        eprintln!("{} 数ではありません", space);
+                        return Err("not num error".to_string());
+                    }
+                }
             }
             _ => {
-                // 本当はエラーにするべき
+                let space = (0..*i).fold(String::new(), |a, _| a + " " ) + "^";
+                eprintln!("{}", line);
+                eprintln!("{} tokenizeできません", space);
                 chars_with_index.next();
-                continue;
+                return Err("not assumption character error".to_string());
             }
         };
     };
     tokens.push(Token::Eof);
 
-    tokens
+    Ok(tokens)
 }
 
 fn strtol<T: FromStr>(chars: &mut Peekable<Enumerate<Chars>>) -> Result<T, String> {
     let mut num = String::new();
-    while let Some((i, ch)) = chars.peek() {
+    while let Some((_, ch)) = chars.peek() {
         match ch {
             '0'..='9' => {
                 num.push(*ch);
@@ -67,7 +83,7 @@ fn strtol<T: FromStr>(chars: &mut Peekable<Enumerate<Chars>>) -> Result<T, Strin
 
 #[test]
 fn tokenize_test() {
-    let input = " 1 + 2 + 3 -20 ".to_string();
+    let input = " 1_ + 2 + 3 -20 ".to_string();
     let result = tokenize(input);
     let expected = vec![
         Token::Num { val: 1, t_str: "1".to_string() },
