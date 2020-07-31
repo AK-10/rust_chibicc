@@ -35,13 +35,14 @@ fn main() {
     while let Some(tk) = peekable_tokens.peek() {
         match tk {
             Token::Reserved{ op, ..} => {
+                let tk = *tk;
                 peekable_tokens.next();
                 if *op == '+' {
                     match peekable_tokens.next().unwrap() {
                         Token::Num { val, .. } => {
                             println!("  add rax, {}", *val);
                         },
-                        tk @ _ => {
+                        _ => {
                             eprintln!("数ではありません: {:?}", tk);
                             return
                         }
@@ -51,7 +52,7 @@ fn main() {
                         Token::Num { val, .. } => {
                             println!("  sub rax, {}", *val);
                         },
-                        tk @ _ => {
+                        _ => {
                             eprintln!("数ではありません: {:?}", tk);
                             return
                         }
@@ -65,5 +66,4 @@ fn main() {
     }
 
     println!("  ret");
-    return
 }
