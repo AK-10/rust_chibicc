@@ -27,9 +27,19 @@ fn main() {
     println!(".globl main");
     println!("main:");
 
-    if let Some(Token::Num { val, .. }) = peekable_tokens.peek() {
-        println!("  mov rax, {}", *val);
-        peekable_tokens.next();
+    match peekable_tokens.peek() {
+        Some(Token::Num { val, .. }) => {
+            println!("  mov rax, {}", *val);
+            peekable_tokens.next();
+        },
+        Some(tk) => {
+            eprintln!("数ではありません: {:?}", tk);
+            return
+        }
+        _ => {
+            eprintln!("最初のトークンの処理に失敗しました");
+            return
+        }
     }
 
     while let Some(tk) = peekable_tokens.peek() {
