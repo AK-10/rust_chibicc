@@ -18,7 +18,7 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
         }
 
         match ch {
-            '+' | '-' | '(' | ')' => {
+            '+' | '-' | '*' | '/' | '(' | ')' => {
                 let token = Token::Reserved {
                     op: *ch,
                     t_str: ch.to_string(),

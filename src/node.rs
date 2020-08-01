@@ -3,7 +3,7 @@
 // mul := primary ("+" primary | "-" primary)*
 // primary := num | "(" expr ")"
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum Node {
     Add {
         lhs: Box<Node>,

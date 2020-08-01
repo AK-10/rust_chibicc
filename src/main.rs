@@ -1,6 +1,7 @@
 extern crate rust_chibicc;
 use rust_chibicc::lexer::tokenize;
-use rust_chibicc::token::Token;
+use rust_chibicc::parser;
+use rust_chibicc::gen;
 use std::env;
 
 fn main() {
@@ -21,59 +22,18 @@ fn main() {
     // https://doc.rust-jp.rs/book/second-edition/ch04-02-references-and-borrowing.html#a%E5%AE%99%E3%81%AB%E6%B5%AE%E3%81%84%E3%81%9F%E5%8F%82%E7%85%A7
     // let tokens = tokenize(&mut arg1.chars().peekable()).iter().peekable();
     let tokens = tokenize(arg1.to_string()).expect("compile failed");
-    let mut peekable_tokens = tokens.iter().peekable();
+    let parsed = parser::parse(tokens);
 
-    println!(".intel_syntax noprefix");
-    println!(".globl main");
-    println!("main:");
+    match parsed {
+        Err(msg) => { eprintln!("{}", msg); },
+        Ok(ast) => {
+            println!(".intel_syntax noprefix");
+            println!(".globl main");
+            println!("main:");
 
-    match peekable_tokens.peek() {
-        Some(Token::Num { val, .. }) => {
-            println!("  mov rax, {}", *val);
-            peekable_tokens.next();
-        },
-        Some(tk) => {
-            eprintln!("数ではありません: {:?}", tk);
-            return
+            gen(ast);
+
+            println!("  ret");
         }
-        _ => {
-            eprintln!("最初のトークンの処理に失敗しました");
-            return
-        }
-    }
-
-    while let Some(tk) = peekable_tokens.peek() {
-        match tk {
-            Token::Reserved{ op, ..} => {
-                let tk = *tk;
-                peekable_tokens.next();
-                if *op == '+' {
-                    match peekable_tokens.next().unwrap() {
-                        Token::Num { val, .. } => {
-                            println!("  add rax, {}", *val);
-                        },
-                        _ => {
-                            eprintln!("数ではありません: {:?}", tk);
-                            return
-                        }
-                    };
-                } else if *op == '-' {
-                    match peekable_tokens.next().unwrap() {
-                        Token::Num { val, .. } => {
-                            println!("  sub rax, {}", *val);
-                        },
-                        _ => {
-                            eprintln!("数ではありません: {:?}", tk);
-                            return
-                        }
-                    };
-                }
-            },
-            _ => {
-                break;
-            }
-        }
-    }
-
-    println!("  ret");
+    };
 }
