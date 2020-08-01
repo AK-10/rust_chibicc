@@ -31,7 +31,7 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
                 // chars_with_index.peek()で可変な参照をしてるのでここでiの参照外しをする.
                 // そうしないとstrtol::<usize>(chars_with_index)ができない(あんまりわかってない)
                 let idx = *i;
-                let num_result = strtol::<usize>(chars_with_index);
+                let num_result = strtol::<isize>(chars_with_index);
                 match num_result {
                     Ok(num) => {
                         let token = Token::Num{
