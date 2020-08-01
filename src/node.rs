@@ -1,3 +1,7 @@
+// expr := mul ("+" mul | "-" mul)*
+// mul := primary ("+" primary | "-" primary)*
+// primary := num | "(" expr ")"
+
 pub enum Node {
     Add {
         lhs: Box<Node>,
