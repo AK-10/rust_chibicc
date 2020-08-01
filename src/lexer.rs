@@ -18,7 +18,7 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
         }
 
         match ch {
-            '+' | '-' => {
+            '+' | '-' | '(' | ')' => {
                 let token = Token::Reserved {
                     op: *ch,
                     t_str: ch.to_string(),
@@ -29,7 +29,7 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
             },
             '0'..='9' => {
                 // chars_with_index.peek()で可変な参照をしてるのでここでiの参照外しをする.
-                // そうしないとstrtol::<usize>(chars_with_index)ができない(あんまりわかってない)
+                // そうしないとstrtol::<usize>(chars_with_index)ができない?(あんまりわかってない)
                 let idx = *i;
                 let num_result = strtol::<isize>(chars_with_index);
                 match num_result {
@@ -83,9 +83,9 @@ fn strtol<T: FromStr>(chars: &mut Peekable<Enumerate<Chars>>) -> Result<T, Strin
 
 #[test]
 fn tokenize_test() {
-    let input = " 1_ + 2 + 3 -20 ".to_string();
+    let input = " 1 + 2 + 3 -20 ".to_string();
     let result = tokenize(input);
-    let expected = vec![
+    let expected: Result<Vec<Token>, String> = Ok(vec![
         Token::Num { val: 1, t_str: "1".to_string() },
         Token::Reserved { op: '+', t_str: "+".to_string() },
         Token::Num { val: 2, t_str: "2".to_string() },
@@ -94,7 +94,7 @@ fn tokenize_test() {
         Token::Reserved { op: '-', t_str: "-".to_string() },
         Token::Num { val: 20, t_str: "20".to_string() },
         Token::Eof
-    ];
+    ]);
 
     assert_eq!(result, expected);
 }

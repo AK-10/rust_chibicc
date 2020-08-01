@@ -1,7 +1,9 @@
+// EBNF
 // expr := mul ("+" mul | "-" mul)*
 // mul := primary ("+" primary | "-" primary)*
 // primary := num | "(" expr ")"
 
+#[derive(PartialEq, Clone)]
 pub enum Node {
     Add {
         lhs: Box<Node>,

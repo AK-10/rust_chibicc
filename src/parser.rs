@@ -3,17 +3,13 @@ use crate::token::Token;
 use std::{iter::Peekable, slice::Iter};
 
 pub fn parse(tokens: Vec<Token>) -> Result<Node, String> {
-    let mut peekable_tokens = tokens.iter().peekable();
-    
-    while let Some(token) = peekable_tokens.peek() {
-        match token {
+    let peekable_tokens = &mut tokens.iter().peekable();
 
-        }
-    }
+    expr(peekable_tokens)
 }
 
 fn expr(peekables: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
-    let lhs = mul(&mut peekables)?;
+    let lhs = mul(peekables)?;
 
     while let Some(token) = peekables.next() {
         let rhs = mul(peekables)?;
@@ -30,7 +26,7 @@ fn expr(peekables: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
 }
 
 fn mul(peekables: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
-    let lhs = primary(&mut peekables)?;
+    let lhs = primary(peekables)?;
 
     while let Some(token) = peekables.next() {
         let rhs = primary(peekables)?;
@@ -46,10 +42,26 @@ fn mul(peekables: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
     return Err("fail mul".to_string())
 }
 
-fn primary(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
+fn primary(peekables: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
     while let Some(token) = peekables.next() {
-        
+        if let Token::Reserved { op: '(', .. } = token {
+            let expr = expr(peekables);
+            if let Some(Token::Reserved { op: ')', .. }) = peekables.peek() {
+                return expr;
+            } else {
+                return Err("fail primary".to_string());
+            }
+        } else if let Token::Num { val, .. } = token {
+            return Ok(Node::Num { val: *val })
+        } else {
+            return Err("fail primary".to_string());
+        }
     }
 
-    return Err("fail mul".to_string())
+    return Err("fail primary".to_string())
+}
+
+#[test]
+fn parse_test() {
+    unimplemented!();
 }
