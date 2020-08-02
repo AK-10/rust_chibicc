@@ -5,24 +5,30 @@ use std::iter::Peekable;
 
 pub fn parse(tokens: Vec<Token>) -> Result<Node, String> {
     let peekable_tokens = &mut tokens.iter().peekable();
-    // println!("{:?}", tokens);
 
     expr(peekable_tokens)
 }
 
-fn expr(peekables: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
-    let mut node = mul(peekables)?;
+fn expr(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
+    let mut node = mul(peekable)?;
 
-    while let Some(token) = peekables.next() {
+    while let Some(token) = peekable.peek() {
         match token {
+            // "+" mul
             Token::Reserved { op: '+', .. } => {
-                let rhs = mul(peekables)?;
+                peekable.next();
+
+                let rhs = mul(peekable)?;
                 node = Node::Add { lhs: Box::new(node), rhs: Box::new(rhs) };
             },
+            // "-" mul
             Token::Reserved { op: '-', .. } => {
-                let rhs = mul(peekables)?;
+                peekable.next();
+
+                let rhs = mul(peekable)?;
                 node = Node::Sub { lhs: Box::new(node), rhs: Box::new(rhs) };
             },
+            // mul
             _ => { return Ok(node); }
         };
     }
@@ -30,24 +36,26 @@ fn expr(peekables: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
     Ok(node)
 }
 
-fn mul(peekables: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
-    let mut node = primary(peekables)?;
+fn mul(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
+    let mut node = primary(peekable)?;
 
-    while let Some(token) = peekables.peek() {
+    while let Some(token) = peekable.peek() {
         let token = *token;
 
+        // "*" primary
         if let Token::Reserved { op: '*', .. } = token {
-            peekables.next();
+            peekable.next();
 
-            let rhs = primary(peekables)?;
+            let rhs = primary(peekable)?;
             node = Node::Mul { lhs: Box::new(node), rhs: Box::new(rhs) };
 
-            peekables.next();
+        // "/" primary
         } else if let Token::Reserved { op: '/', .. } = token {
-            let rhs = primary(peekables)?;
-            node = Node::Mul { lhs: Box::new(node), rhs: Box::new(rhs) };
+            peekable.next();
 
-            peekables.next();
+            let rhs = primary(peekable)?;
+            node = Node::Div { lhs: Box::new(node), rhs: Box::new(rhs) };
+        // primary
         } else {
             return Ok(node);
         }
@@ -56,21 +64,23 @@ fn mul(peekables: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
     Ok(node)
 }
 
-fn primary(peekables: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
-    let token = peekables.next();
+fn primary(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
+    let token = peekable.next();
 
+    // ( expr ): not work :(
     if let Some(Token::Reserved { op: '(', .. }) = token {
-        let expr = expr(peekables);
-        println!("expr at primary: {:?}", expr);
-        match peekables.next() {
+        let expr = expr(peekable);
+        match peekable.next() {
             Some(Token::Reserved { op: ')', .. }) =>  { return expr; },
-            Some(x) => { println!("x: {:?}", x); return Err("fail primary".to_string()); },
             _ => { return Err("fail primary".to_string()); }
         };
+    // num
     } else if let Some(Token::Num { val, .. }) = token {
         return Ok(Node::Num { val: *val })
+
+    // unexpected
     } else {
-        return Err("fail primary".to_string());
+        return Err("unexpected token at primary".to_string());
     }
 }
 

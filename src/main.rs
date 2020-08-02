@@ -33,6 +33,7 @@ fn main() {
 
             gen(ast);
 
+            println!("  pop rax");
             println!("  ret");
         }
     };

@@ -32,6 +32,7 @@ pub fn gen(node: Node) {
         },
         Node::Num { val } => {
             println!("  push {}", val);
+            return
         }
     };
 
