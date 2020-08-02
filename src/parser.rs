@@ -90,14 +90,29 @@ fn parse_test() {
         Token::Num { val: 1, t_str: "1".to_string() },
         Token::Reserved { op: '+', t_str: "+".to_string() },
         Token::Num { val: 2, t_str: "2".to_string() },
-        Token::Reserved { op: '*', t_str: "+".to_string() },
+        Token::Reserved { op: '*', t_str: "*".to_string() },
         Token::Num { val: 3, t_str: "3".to_string() },
         Token::Reserved { op: '-', t_str: "-".to_string() },
         Token::Num { val: 20, t_str: "20".to_string() },
         Token::Eof
     ];
 
-    let result = parse(input);
+    let result = parse(input).unwrap();
 
-    println!("{:?}", result);
+    let expect = Node::Sub {
+        lhs: Box::new(
+            Node::Add {
+                lhs: Box::new(Node::Num { val: 1 }),
+                rhs: Box::new(
+                    Node::Mul {
+                        lhs: Box::new(Node::Num { val: 2 }),
+                        rhs: Box::new(Node::Num { val: 3 })
+                    }
+                )
+            }
+        ),
+        rhs: Box::new(Node::Num {val: 20 })
+    };
+
+    assert_eq!(result, expect);
 }
