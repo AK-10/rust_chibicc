@@ -1,6 +1,7 @@
-// EBNF
+// 四則演算のEBNF
 // expr := mul ("+" mul | "-" mul)*
-// mul := primary ("+" primary | "-" primary)*
+// mul := primary ("*" primary | "/" primary)*
+// unary := ("+" | "-")? primary
 // primary := num | "(" expr ")"
 
 #[derive(PartialEq, Clone, Debug)]

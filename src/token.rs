@@ -1,8 +1,3 @@
-// 四則演算のEBNF
-// expr := mul ("+" mul | "-" mul)*
-// mul := primary ("*" primary | "/" primary)*
-// primary := num | "(" expr ")"
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Reserved {

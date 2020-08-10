@@ -40,28 +40,59 @@ fn mul(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
     let mut node = primary(peekable)?;
 
     while let Some(token) = peekable.peek() {
-        let token = *token;
+        // shadowing and move?
+        // let token = *token;
+        let tk = *token;
+        match tk {
+            // "*" primary
+            Token::Reserved { op: '*', .. } => {
+                peekable.next();
 
-        // "*" primary
-        if let Token::Reserved { op: '*', .. } = token {
-            peekable.next();
+                let rhs = unary(peekable)?;
+                node = Node::Mul { lhs: Box::new(node), rhs: Box::new(rhs) };
+            },
 
-            let rhs = primary(peekable)?;
-            node = Node::Mul { lhs: Box::new(node), rhs: Box::new(rhs) };
+            // "/" primary
+            Token::Reserved { op: '/', .. } => {
+                peekable.next();
 
-        // "/" primary
-        } else if let Token::Reserved { op: '/', .. } = token {
-            peekable.next();
-
-            let rhs = primary(peekable)?;
-            node = Node::Div { lhs: Box::new(node), rhs: Box::new(rhs) };
-        // primary
-        } else {
-            return Ok(node);
+                let rhs = unary(peekable)?;
+                node = Node::Div { lhs: Box::new(node), rhs: Box::new(rhs) };
+            },
+            _ => {
+                return Ok(node);
+            }
         }
     }
 
     Ok(node)
+}
+
+fn unary(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
+    if let Some(token) = peekable.peek() {
+
+        match token {
+            Token::Reserved { op: '+', .. } => {
+                peekable.next();
+
+                primary(peekable)
+            },
+            Token::Reserved { op: '-', .. } => {
+                peekable.next();
+
+                let rhs = primary(peekable)?;
+                Ok(Node::Sub {
+                    lhs: Box::new(Node::Num{ val: 0 }),
+                    rhs: Box::new(rhs)
+                })
+            },
+            _ => {
+                primary(peekable)
+            }
+        }
+    } else {
+        Err("expect token, but token not found".to_string())
+    }
 }
 
 fn primary(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
