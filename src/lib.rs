@@ -54,6 +54,7 @@ pub fn gen(node: Node) {
             println!("  movzb rax, al");
         }
         Node::Gt { lhs, rhs } => {
+            // setl を使うため，rhs, lhsを逆にする
             gen_both_side(*rhs, *lhs);
 
             println!("  cmp rax, rdi");
@@ -61,6 +62,7 @@ pub fn gen(node: Node) {
             println!("  movzb rax, al");
         }
         Node::Ge { lhs, rhs } => {
+            // setle を使うため，rhs, lhsを逆にする
             gen_both_side(*rhs, *lhs);
 
             println!("  cmp rax, rdi");
@@ -71,14 +73,14 @@ pub fn gen(node: Node) {
             gen_both_side(*lhs, *rhs);
 
             println!("  cmp rax, rdi");
-            println!("  setne al");
+            println!("  setl al");
             println!("  movzb rax, al");
         }
         Node::Le { lhs, rhs } => {
             gen_both_side(*lhs, *rhs);
 
             println!("  cmp rax, rdi");
-            println!("  setne al");
+            println!("  setle al");
             println!("  movzb rax, al");
         }
     };
