@@ -14,6 +14,8 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
     while let Some((i, ch)) = chars_with_index.peek() {
         match ch {
             '=' => {
+                // iを束縛しないとブロック内部のchars_with_index.next()でi, chはfreeされるのでdangling pointerになりうる
+                let i = *i;
                 chars_with_index.next();
 
                 match chars_with_index.peek() {
@@ -29,7 +31,6 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
                         return Err("eq tokenization failed error".to_string());
                     }
                     None => {
-                        let i = *i;
                         let space = (0..i).fold(String::new(), |a, _| a + " " ) + "^";
                         eprintln!("{}", line);
                         eprintln!("{} can not parse", space);
@@ -38,6 +39,7 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
                 }
             },
             '!' => {
+                let i = *i;
                 chars_with_index.next();
 
                 match chars_with_index.peek() {
@@ -53,10 +55,10 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
                         return Err("neq tokenization failed error".to_string());
                     }
                     None => {
-                        let space = (0..*i).fold(String::new(), |a, _| a + " " ) + "^";
+                        let space = (0..i).fold(String::new(), |a, _| a + " " ) + "^";
                         eprintln!("{}", line);
                         eprintln!("{} can not parse", space);
-                        return Err("eq tokenization failed error".to_string());
+                        return Err("neq tokenization failed error".to_string());
                     }
                 }
             },
