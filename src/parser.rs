@@ -263,14 +263,14 @@ fn parse_cmp_test() {
 
     let expect = Node::Eq {
         lhs: Box::new(
-            Node::Ge {
-                lhs: Box::new(Node::Num { val: 1 }),
-                rhs: Box::new(
-                    Node::Lt {
+            Node::Lt {
+                lhs: Box::new(
+                    Node::Ge {
                         lhs: Box::new(Node::Num { val: 1 }),
                         rhs: Box::new(Node::Num { val: 1 })
                     }
-                )
+                ),
+                rhs: Box::new(Node::Num { val: 1 }),
             }
         ),
         rhs: Box::new(Node::Num {val: 2 })

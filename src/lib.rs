@@ -34,6 +34,53 @@ pub fn gen(node: Node) {
             println!("  push {}", val);
             return
         }
+        Node::Eq { lhs, rhs } => {
+            gen_both_side(*lhs, *rhs);
+
+            // cmp命令: 二つの引数のレジスタを比較して, フラグレジスタに結果を格納
+            // sete命令: 指定のレジスタにフラグレジスタの値を格納. seteであれば==の時1になる
+            //           8bitしか書き込めないのでalを指定している
+            // movzb命令: movzb dist, srcでsrcをdistに書き込む．またsrcで指定されたbitより上の桁は0埋めする
+            // al: raxの下位8bitのエイリアス. alを変更するとraxも変更される
+            println!("  cmp rax, rdi");
+            println!("  sete al");
+            println!("  movzb rax, al");
+        }
+        Node::Neq { lhs, rhs } => {
+            gen_both_side(*lhs, *rhs);
+
+            println!("  cmp rax, rdi");
+            println!("  setne al");
+            println!("  movzb rax, al");
+        }
+        Node::Gt { lhs, rhs } => {
+            gen_both_side(*rhs, *lhs);
+
+            println!("  cmp rax, rdi");
+            println!("  setl al");
+            println!("  movzb rax, al");
+        }
+        Node::Ge { lhs, rhs } => {
+            gen_both_side(*rhs, *lhs);
+
+            println!("  cmp rax, rdi");
+            println!("  setle al");
+            println!("  movzb rax, al");
+        }
+        Node::Lt { lhs, rhs } => {
+            gen_both_side(*lhs, *rhs);
+
+            println!("  cmp rax, rdi");
+            println!("  setne al");
+            println!("  movzb rax, al");
+        }
+        Node::Le { lhs, rhs } => {
+            gen_both_side(*lhs, *rhs);
+
+            println!("  cmp rax, rdi");
+            println!("  setne al");
+            println!("  movzb rax, al");
+        }
     };
 
     println!("  push rax");
