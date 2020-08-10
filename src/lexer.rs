@@ -12,18 +12,64 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
     let chars_with_index = &mut line.chars().enumerate().peekable();
 
     while let Some((i, ch)) = chars_with_index.peek() {
-        if ch.is_ascii_whitespace() {
-            chars_with_index.next();
-            continue;
-        }
-
         match ch {
-            '+' | '-' | '*' | '/' | '(' | ')' => {
-                let token = Token::Reserved {
-                    op: *ch,
-                    t_str: ch.to_string(),
-                };
+            '=' => {
+                chars_with_index.next();
 
+                match chars_with_index.peek() {
+                    Some((_, op)) if *op == '=' => {
+                        let token = Token::Reserved { op: "==".to_string() };
+                        chars_with_index.next();
+                        tokens.push(token);
+                    }
+                    Some((idx, _)) => {
+                        let space = (0..*idx).fold(String::new(), |a, _| a + " " ) + "^";
+                        eprintln!("{}", line);
+                        eprintln!("{} can not parse", space);
+                        return Err("eq tokenization failed error".to_string());
+                    }
+                    None => {
+                        let i = *i;
+                        let space = (0..i).fold(String::new(), |a, _| a + " " ) + "^";
+                        eprintln!("{}", line);
+                        eprintln!("{} can not parse", space);
+                        return Err("eq tokenization failed error".to_string());
+                    }
+                }
+            },
+            '!' => {
+                chars_with_index.next();
+
+                match chars_with_index.peek() {
+                    Some((_, '=')) => {
+                        chars_with_index.next();
+                        let token = Token::Reserved { op: "!=".to_string() };
+                        tokens.push(token);
+                    }
+                    Some((idx, _)) => {
+                        let space = (0..*idx).fold(String::new(), |a, _| a + " " ) + "^";
+                        eprintln!("{}", line);
+                        eprintln!("{} can not parse", space);
+                        return Err("neq tokenization failed error".to_string());
+                    }
+                    None => {
+                        let space = (0..*i).fold(String::new(), |a, _| a + " " ) + "^";
+                        eprintln!("{}", line);
+                        eprintln!("{} can not parse", space);
+                        return Err("eq tokenization failed error".to_string());
+                    }
+                }
+            },
+            '<'=> {
+                chars_with_index.next();
+                tokens.push(tokenize_lt(chars_with_index));
+            },
+            '>' => {
+                chars_with_index.next();
+                tokens.push(tokenize_gt(chars_with_index));
+            },
+            '+' | '-' | '*' | '/' | '(' | ')' => {
+                let token = Token::Reserved { op: ch.to_string() };
                 tokens.push(token);
                 chars_with_index.next();
             },
@@ -45,10 +91,14 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
                     Err(_) => {
                         let space = (0..idx).fold(String::new(), |a, _| a + " " ) + "^";
                         eprintln!("{}", line);
-                        eprintln!("{} 数ではありません", space);
+                        eprintln!("{} not a number", space);
                         return Err("not num error".to_string());
                     }
                 }
+            }
+            ws if ws.is_whitespace() => {
+                chars_with_index.next();
+                continue;
             }
             _ => {
                 let space = (0..*i).fold(String::new(), |a, _| a + " " ) + "^";
@@ -81,18 +131,133 @@ fn strtol<T: FromStr>(chars: &mut Peekable<Enumerate<Chars>>) -> Result<T, Strin
     num.parse::<T>().or(Err("parse failed".to_string()))
 }
 
+fn tokenize_lt(chars_with_index: &mut Peekable<Enumerate<Chars>>) -> Token {
+    match chars_with_index.peek() {
+        Some((_, '=')) => {
+            chars_with_index.next();
+            Token::Reserved { op: "<=".to_string() }
+        }
+        _ => Token::Reserved { op: "<".to_string() }
+    }
+}
+
+fn tokenize_gt(chars_with_index: &mut Peekable<Enumerate<Chars>>) -> Token {
+    // map がself(chars_with_index)へのimmutable borrowを持っているのでダメ
+    // closure内部でchars_with_index.next()ができない
+    // chars_with_index.peek().map(|(_, ch)| {
+    //     match ch {
+    //         '=' => {
+    //             chars_with_index.next();
+    //             Token::Reserved { op: ">=".to_string() }
+    //         }
+    //         _ => Token::Reserved { op: ">".to_string() },
+    //     }
+    // })
+    match chars_with_index.peek() {
+        Some((_, '=')) => {
+            chars_with_index.next();
+            Token::Reserved { op: ">=".to_string() }
+        }
+        _ => Token::Reserved { op: ">".to_string() }
+    }
+}
+
 #[test]
-fn tokenize_test() {
+fn tokenize_arithmetic_test() {
     let input = " 1 + 2 + 3 -20 ".to_string();
     let result = tokenize(input);
     let expected: Result<Vec<Token>, String> = Ok(vec![
         Token::Num { val: 1, t_str: "1".to_string() },
-        Token::Reserved { op: '+', t_str: "+".to_string() },
+        Token::Reserved { op: "+".to_string() },
         Token::Num { val: 2, t_str: "2".to_string() },
-        Token::Reserved { op: '+', t_str: "+".to_string() },
+        Token::Reserved { op: "+".to_string() },
         Token::Num { val: 3, t_str: "3".to_string() },
-        Token::Reserved { op: '-', t_str: "-".to_string() },
+        Token::Reserved { op: "-".to_string() },
         Token::Num { val: 20, t_str: "20".to_string() },
+        Token::Eof
+    ]);
+
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn tokenize_gt_test() {
+    let input = "1 > 2".to_string();
+    let result = tokenize(input);
+    let expected: Result<Vec<Token>, String> = Ok(vec![
+        Token::Num { val: 1, t_str: "1".to_string() },
+        Token::Reserved { op: ">".to_string() },
+        Token::Num { val: 2, t_str: "2".to_string() },
+        Token::Eof
+    ]);
+
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn tokenize_ge_test() {
+    let input = "1 >= 2".to_string();
+    let result = tokenize(input);
+    let expected: Result<Vec<Token>, String> = Ok(vec![
+        Token::Num { val: 1, t_str: "1".to_string() },
+        Token::Reserved { op: ">=".to_string() },
+        Token::Num { val: 2, t_str: "2".to_string() },
+        Token::Eof
+    ]);
+
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn tokenize_lt_test() {
+    let input = "1 < 2".to_string();
+    let result = tokenize(input);
+    let expected: Result<Vec<Token>, String> = Ok(vec![
+        Token::Num { val: 1, t_str: "1".to_string() },
+        Token::Reserved { op: "<".to_string() },
+        Token::Num { val: 2, t_str: "2".to_string() },
+        Token::Eof
+    ]);
+
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn tokenize_le_test() {
+    let input = "1 <= 2".to_string();
+    let result = tokenize(input);
+    let expected: Result<Vec<Token>, String> = Ok(vec![
+        Token::Num { val: 1, t_str: "1".to_string() },
+        Token::Reserved { op: "<=".to_string() },
+        Token::Num { val: 2, t_str: "2".to_string() },
+        Token::Eof
+    ]);
+
+    assert_eq!(result, expected);
+}
+#[test]
+
+fn tokenize_eq_test() {
+    let input = "1 == 2".to_string();
+    let result = tokenize(input);
+    let expected: Result<Vec<Token>, String> = Ok(vec![
+        Token::Num { val: 1, t_str: "1".to_string() },
+        Token::Reserved { op: "==".to_string() },
+        Token::Num { val: 2, t_str: "2".to_string() },
+        Token::Eof
+    ]);
+
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn tokenize_neq_test() {
+    let input = "1 != 2".to_string();
+    let result = tokenize(input);
+    let expected: Result<Vec<Token>, String> = Ok(vec![
+        Token::Num { val: 1, t_str: "1".to_string() },
+        Token::Reserved { op: "!=".to_string() },
+        Token::Num { val: 2, t_str: "2".to_string() },
         Token::Eof
     ]);
 

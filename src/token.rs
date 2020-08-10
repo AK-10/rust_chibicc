@@ -1,8 +1,7 @@
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Reserved {
-        op: char,
-        t_str: String,
+        op: String,
     },
     Num {
         val: isize,
