@@ -9,6 +9,30 @@
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum Node {
+    Eq {
+        lhs: Box<Node>,
+        rhs: Box<Node>
+    },
+    Neq {
+        lhs: Box<Node>,
+        rhs: Box<Node>
+    },
+    Gt {
+        lhs: Box<Node>,
+        rhs: Box<Node>
+    },
+    Ge {
+        lhs: Box<Node>,
+        rhs: Box<Node>
+    },
+    Lt {
+        lhs: Box<Node>,
+        rhs: Box<Node>
+    },
+    Le {
+        lhs: Box<Node>,
+        rhs: Box<Node>
+    },
     Add {
         lhs: Box<Node>,
         rhs: Box<Node>

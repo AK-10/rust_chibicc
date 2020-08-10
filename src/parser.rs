@@ -18,6 +18,70 @@ pub fn parse(tokens: Vec<Token>) -> Result<Node, String> {
 }
 
 fn expr(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
+    equality(peekable)
+}
+
+fn equality(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
+    let mut node = relational(peekable)?;
+
+    while let Some(token) = peekable.peek() {
+        match token {
+            Token::Reserved { op } if *op == "==" => {
+                peekable.next();
+
+                let rhs = relational(peekable)?;
+                node = Node::Eq { lhs: Box::new(node), rhs: Box::new(rhs) };
+            }
+            Token::Reserved { op } if *op == "!=" => {
+                peekable.next();
+
+                let rhs = relational(peekable)?;
+                node = Node::Neq { lhs: Box::new(node), rhs: Box::new(rhs) };
+            }
+            _ => { return Ok(node); }
+        }
+    }
+
+    Ok(node)
+}
+
+fn relational(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
+    let mut node = add(peekable)?;
+
+    while let Some(token) = peekable.peek() {
+        match token {
+            Token::Reserved { op } if *op == "<" => {
+                peekable.next();
+
+                let rhs = add(peekable)?;
+                node = Node::Lt { lhs: Box::new(node), rhs: Box::new(rhs) };
+            }
+            Token::Reserved { op } if *op == "<=" => {
+                peekable.next();
+
+                let rhs = add(peekable)?;
+                node = Node::Le { lhs: Box::new(node), rhs: Box::new(rhs) };
+            }
+            Token::Reserved { op } if *op == ">" => {
+                peekable.next();
+
+                let rhs = add(peekable)?;
+                node = Node::Gt { lhs: Box::new(node), rhs: Box::new(rhs) };
+            }
+            Token::Reserved { op } if *op == ">=" => {
+                peekable.next();
+
+                let rhs = add(peekable)?;
+                node = Node::Ge { lhs: Box::new(node), rhs: Box::new(rhs) };
+            }
+            _ => { return Ok(node); }
+        }
+    }
+
+    Ok(node)
+}
+
+fn add(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
     let mut node = mul(peekable)?;
 
     while let Some(token) = peekable.peek() {
@@ -150,7 +214,7 @@ fn primary(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
 }
 
 #[test]
-fn parse_test() {
+fn parse_arithmetic_test() {
     let input = vec![
         Token::Num { val: 1, t_str: "1".to_string() },
         Token::Reserved { op: "+".to_string() },
@@ -177,6 +241,39 @@ fn parse_test() {
             }
         ),
         rhs: Box::new(Node::Num {val: 20 })
+    };
+
+    assert_eq!(result, expect);
+}
+
+#[test]
+fn parse_cmp_test() {
+    let input = vec![
+        Token::Num { val: 1, t_str: "1".to_string() },
+        Token::Reserved { op: ">=".to_string() },
+        Token::Num { val: 1, t_str: "1".to_string() },
+        Token::Reserved { op: "<".to_string() },
+        Token::Num { val: 1, t_str: "1".to_string() },
+        Token::Reserved { op: "==".to_string() },
+        Token::Num { val: 2, t_str: "2".to_string() },
+        Token::Eof
+    ];
+
+    let result = parse(input).unwrap();
+
+    let expect = Node::Eq {
+        lhs: Box::new(
+            Node::Ge {
+                lhs: Box::new(Node::Num { val: 1 }),
+                rhs: Box::new(
+                    Node::Lt {
+                        lhs: Box::new(Node::Num { val: 1 }),
+                        rhs: Box::new(Node::Num { val: 1 })
+                    }
+                )
+            }
+        ),
+        rhs: Box::new(Node::Num {val: 2 })
     };
 
     assert_eq!(result, expect);
