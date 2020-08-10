@@ -37,12 +37,11 @@ fn expr(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
 }
 
 fn mul(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
-    let mut node = primary(peekable)?;
+    let mut node = unary(peekable)?;
 
     while let Some(token) = peekable.peek() {
         // shadowing and move?
-        // let token = *token;
-        let tk = *token;
+        let tk = token;
         match tk {
             // "*" primary
             Token::Reserved { op: '*', .. } => {
@@ -80,7 +79,7 @@ fn unary(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
             Token::Reserved { op: '-', .. } => {
                 peekable.next();
 
-                let rhs = primary(peekable)?;
+                let rhs = unary(peekable)?;
                 Ok(Node::Sub {
                     lhs: Box::new(Node::Num{ val: 0 }),
                     rhs: Box::new(rhs)
@@ -98,7 +97,6 @@ fn unary(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
 fn primary(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
     let token = peekable.next();
 
-    // ( expr ): not work :(
     if let Some(Token::Reserved { op: '(', .. }) = token {
         let expr = expr(peekable);
         match peekable.next() {
