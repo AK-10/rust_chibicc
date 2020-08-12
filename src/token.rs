@@ -1,11 +1,14 @@
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Reserved {
-        op: String,
+        op: String, // lenはop.len()で代用
     },
     Num {
         val: isize,
         t_str: String,
+    },
+    Ident {
+        name: String,
     },
     Eof
 }

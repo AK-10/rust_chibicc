@@ -11,14 +11,48 @@ use std::iter::Peekable;
 // 単項+ 単項-
 // ()
 
-pub fn parse(tokens: Vec<Token>) -> Result<Node, String> {
+// struct Parser {
+//     codes: Vec<Node>,
+//     input: Vec<Token>
+// }
+
+// impl Parser {
+
+// }
+
+pub fn parse(tokens: Vec<Token>) -> Result<Vec<Node>, String> {
     let peekable_tokens = &mut tokens.iter().peekable();
 
-    expr(peekable_tokens)
+    program(peekable_tokens)
+}
+
+fn program(peekable: &mut Peekable<Iter<Token>>) -> Result<Vec<Node>, String> {
+    let mut nodes: Vec<Node> = Vec::new();
+    while let Some(_) = peekable.peek() {
+        nodes.push(stmt(peekable)?);
+    };
+
+    Ok(nodes)
+}
+
+fn stmt(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
+    let expr = expr(peekable);
+    match peekable.next() {
+        Some(Token::Reserved { op }) if *op == String::from(";") => expr,
+        _ => Err("delemiter not found".to_string())
+    }
 }
 
 fn expr(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
-    equality(peekable)
+    assign(peekable)
+}
+
+// TODO: impl
+fn assign(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
+    let mut node = equality(peekable);
+    if let Some(token) = peekable.peek() {
+        match
+    }
 }
 
 fn equality(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {

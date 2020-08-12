@@ -14,29 +14,8 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
     while let Some((i, ch)) = chars_with_index.peek() {
         match ch {
             '=' => {
-                // iを束縛しないとブロック内部のchars_with_index.next()でi, chはfreeされるのでdangling pointerになりうる
-                let i = *i;
                 chars_with_index.next();
-
-                match chars_with_index.peek() {
-                    Some((_, op)) if *op == '=' => {
-                        let token = Token::Reserved { op: "==".to_string() };
-                        chars_with_index.next();
-                        tokens.push(token);
-                    }
-                    Some((idx, _)) => {
-                        let space = (0..*idx).fold(String::new(), |a, _| a + " " ) + "^";
-                        eprintln!("{}", line);
-                        eprintln!("{} can not parse", space);
-                        return Err("eq tokenization failed error".to_string());
-                    }
-                    None => {
-                        let space = (0..i).fold(String::new(), |a, _| a + " " ) + "^";
-                        eprintln!("{}", line);
-                        eprintln!("{} can not parse", space);
-                        return Err("eq tokenization failed error".to_string());
-                    }
-                }
+                tokens.push(tokenize_eq(chars_with_index));
             },
             '!' => {
                 let i = *i;
@@ -70,7 +49,7 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
                 chars_with_index.next();
                 tokens.push(tokenize_gt(chars_with_index));
             },
-            '+' | '-' | '*' | '/' | '(' | ')' => {
+            '+' | '-' | '*' | '/' | '(' | ')' | ';' => {
                 let token = Token::Reserved { op: ch.to_string() };
                 tokens.push(token);
                 chars_with_index.next();
@@ -101,6 +80,11 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
             ws if ws.is_whitespace() => {
                 chars_with_index.next();
                 continue;
+            },
+            'a'..='z' => {
+                let token = Token::Ident { name: ch.to_string() };
+                tokens.push(token);
+                chars_with_index.next();
             }
             _ => {
                 let space = (0..*i).fold(String::new(), |a, _| a + " " ) + "^";
@@ -131,6 +115,16 @@ fn strtol<T: FromStr>(chars: &mut Peekable<Enumerate<Chars>>) -> Result<T, Strin
     }
 
     num.parse::<T>().or(Err("parse failed".to_string()))
+}
+
+fn tokenize_eq(chars_with_index: &mut Peekable<Enumerate<Chars>>) -> Token {
+    match chars_with_index.peek() {
+        Some((_, '=')) => {
+            chars_with_index.next();
+            Token::Reserved { op: "==".to_string() }
+        }
+        _ => Token::Reserved { op: "=".to_string() }
+    }
 }
 
 fn tokenize_lt(chars_with_index: &mut Peekable<Enumerate<Chars>>) -> Token {
@@ -260,6 +254,21 @@ fn tokenize_neq_test() {
         Token::Num { val: 1, t_str: "1".to_string() },
         Token::Reserved { op: "!=".to_string() },
         Token::Num { val: 2, t_str: "2".to_string() },
+        Token::Eof
+    ]);
+
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn tokenize_assign_test() {
+    let input = "a = 2;".to_string();
+    let result = tokenize(input);
+    let expected: Result<Vec<Token>, String> = Ok(vec![
+        Token::Ident { name: "a".to_string() },
+        Token::Reserved { op: "=".to_string() },
+        Token::Num { val: 2, t_str: "2".to_string() },
+        Token::Reserved { op: ";".to_string() },
         Token::Eof
     ]);
 

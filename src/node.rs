@@ -1,5 +1,8 @@
-// 四則演算のEBNF
-// expr := equality
+// EBNF
+// program := stmt*
+// stmt := expr ";"
+// expr := assign
+// assign := equality ("=" assign)?  a=b=1のようなものを許す
 // equality := relational ("==" relational | "!=" relational)*
 // relational := add ("<" add | "<=" add | ">" add | ">=" add)*
 // add := mul ("+" mul | "-" mul)*
@@ -51,5 +54,13 @@ pub enum Node {
     },
     Num {
         val: isize
+    },
+    Assign {
+        var: Box<Node>, // Lvarしか入れたくない
+        val: Box<Node> // Exprしか入れたくない
+    },
+    Lvar {
+        name: String,
+        offset: i64
     }
 }
