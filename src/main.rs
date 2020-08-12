@@ -1,7 +1,7 @@
 extern crate rust_chibicc;
 use rust_chibicc::lexer::tokenize;
 use rust_chibicc::parser;
-use rust_chibicc::gen;
+use rust_chibicc::codegen::gen;
 use std::env;
 
 fn main() {
