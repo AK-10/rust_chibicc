@@ -7,6 +7,9 @@ use std::iter::{Peekable, Enumerate};
 
 // 本当はimpl Iter<Item=Token>を返したい
 // pub fn tokenize(chars: &mut Peekable<Chars>) -> impl Iter<Item=Token>
+
+const KEYWORDS: [&str; 1] = ["return"];
+
 pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
     let mut tokens: Vec<Token> = Vec::new();
     let chars_with_index = &mut line.chars().enumerate().peekable();
@@ -82,9 +85,16 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
                 continue;
             },
             'a'..='z' => {
-                let token = Token::Ident { name: ch.to_string() };
-                tokens.push(token);
-                chars_with_index.next();
+                let _i = *i;
+                let ch = *ch;
+                let letter = get_letter(chars_with_index);
+                if KEYWORDS.contains(&&*letter) {
+                    tokens.push(Token::Reserved { op: letter })
+                } else {
+                    let token = Token::Ident { name: ch.to_string() };
+                    tokens.push(token);
+                    chars_with_index.next();
+                }
             }
             _ => {
                 let space = (0..*i).fold(String::new(), |a, _| a + " " ) + "^";
@@ -115,6 +125,21 @@ fn strtol<T: FromStr>(chars: &mut Peekable<Enumerate<Chars>>) -> Result<T, Strin
     }
 
     num.parse::<T>().or(Err("parse failed".to_string()))
+}
+
+fn get_letter(chars: &mut Peekable<Enumerate<Chars>>) -> String {
+    let mut letter = String::new();
+    while let Some((_, ch)) = chars.peek() {
+        match ch {
+            'a'..='z' | 'A'..='Z' => {
+                letter.push(*ch);
+                chars.next();
+            },
+            _ => { break; }
+        }
+    };
+
+    letter
 }
 
 fn tokenize_eq(chars_with_index: &mut Peekable<Enumerate<Chars>>) -> Token {

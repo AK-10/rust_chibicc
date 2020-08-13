@@ -40,13 +40,26 @@ fn program(peekable: &mut Peekable<Iter<Token>>) -> Result<Vec<Node>, String> {
     Ok(nodes)
 }
 
-// stmt := expr ";"
+// stmt := expr ";" | "return" expr ";"
 fn stmt(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
-    let expr = expr(peekable);
+    match peekable.peek() {
+        Some(Token::Reserved { op }) if *op == "return" => {
+            peekable.next();
 
-    match peekable.next() {
-        Some(Token::Reserved { op }) if *op == String::from(";") => expr,
-        _ => Err("delemiter not found".to_string())
+            let expr = expr(peekable)?;
+            match peekable.next() {
+                Some(Token::Reserved { op }) if *op == String::from(";") => Ok(Node::Return{ val: Box::new(expr) }),
+                _ => Err("delemiter not found".to_string())
+            }
+        },
+        _ => {
+            let expr = expr(peekable);
+
+            match peekable.next() {
+                Some(Token::Reserved { op }) if *op == String::from(";") => expr,
+                _ => Err("delemiter not found".to_string())
+            }
+        }
     }
 }
 

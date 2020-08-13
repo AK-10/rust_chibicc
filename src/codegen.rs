@@ -1,12 +1,18 @@
 use crate::node::Node;
 
-pub fn gen(nodes: Vec<Node>) {
+pub fn codegen(nodes: Vec<Node>) {
     let mut node_iter = nodes.iter();
+    println!(".intel_syntax noprefix");
+    println!(".globl main");
+    println!("main:");
 
     while let Some(node) = node_iter.next() {
         gen_single(node);
         println!("  pop rax");
     };
+
+    println!("  ret");
+
 }
 
 fn gen_single(node: &Node) {
@@ -86,6 +92,13 @@ fn gen_single(node: &Node) {
             println!("  cmp rax, rdi");
             println!("  setle al");
             println!("  movzb rax, al");
+        }
+        Node::Return { val } => {
+            gen_single(val);
+
+            println!("  pop rax");
+            println!("  ret");
+            return;
         }
     };
 

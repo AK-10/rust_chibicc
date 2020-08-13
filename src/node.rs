@@ -1,6 +1,6 @@
 // EBNF
 // program := stmt*
-// stmt := expr ";"
+// stmt := expr ";" | "return" expr ";"
 // expr := assign
 // assign := equality ("=" assign)?  a=b=1のようなものを許す
 // equality := relational ("==" relational | "!=" relational)*
@@ -55,6 +55,9 @@ pub enum Node {
     Num {
         val: isize
     },
+    Return {
+        val: Box<Node>
+    }
     // Assign {
     //     var: Box<Node>, // Lvarしか入れたくない
     //     val: Box<Node> // Exprしか入れたくない
