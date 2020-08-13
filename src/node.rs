@@ -55,12 +55,12 @@ pub enum Node {
     Num {
         val: isize
     },
-    Assign {
-        var: Box<Node>, // Lvarしか入れたくない
-        val: Box<Node> // Exprしか入れたくない
-    },
-    Lvar {
-        name: String,
-        offset: i64
-    }
+    // Assign {
+    //     var: Box<Node>, // Lvarしか入れたくない
+    //     val: Box<Node> // Exprしか入れたくない
+    // },
+    // Lvar {
+    //     name: String,
+    //     offset: i64
+    // }
 }

@@ -26,17 +26,24 @@ pub fn parse(tokens: Vec<Token>) -> Result<Vec<Node>, String> {
     program(peekable_tokens)
 }
 
+// program := stmt*
 fn program(peekable: &mut Peekable<Iter<Token>>) -> Result<Vec<Node>, String> {
     let mut nodes: Vec<Node> = Vec::new();
-    while let Some(_) = peekable.peek() {
+    while let Some(token) = peekable.peek() {
+        if let Token::Eof = token {
+            break;
+        }
+
         nodes.push(stmt(peekable)?);
     };
 
     Ok(nodes)
 }
 
+// stmt := expr ";"
 fn stmt(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
     let expr = expr(peekable);
+
     match peekable.next() {
         Some(Token::Reserved { op }) if *op == String::from(";") => expr,
         _ => Err("delemiter not found".to_string())
@@ -44,16 +51,17 @@ fn stmt(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
 }
 
 fn expr(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
-    assign(peekable)
+    // assign(peekable)
+    equality(peekable)
 }
 
 // TODO: impl
-fn assign(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
-    let mut node = equality(peekable);
-    if let Some(token) = peekable.peek() {
-        match
-    }
-}
+// fn assign(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
+//     let mut node = equality(peekable);
+//     if let Some(token) = peekable.peek() {
+//         match
+//     }
+// }
 
 fn equality(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
     let mut node = relational(peekable)?;
@@ -257,25 +265,28 @@ fn parse_arithmetic_test() {
         Token::Num { val: 3, t_str: "3".to_string() },
         Token::Reserved { op: "-".to_string() },
         Token::Num { val: 20, t_str: "20".to_string() },
+        Token::Reserved { op: ";".to_string() },
         Token::Eof
     ];
 
     let result = parse(input).unwrap();
 
-    let expect = Node::Sub {
-        lhs: Box::new(
-            Node::Add {
-                lhs: Box::new(Node::Num { val: 1 }),
-                rhs: Box::new(
-                    Node::Mul {
-                        lhs: Box::new(Node::Num { val: 2 }),
-                        rhs: Box::new(Node::Num { val: 3 })
-                    }
-                )
-            }
-        ),
-        rhs: Box::new(Node::Num {val: 20 })
-    };
+    let expect = vec![
+        Node::Sub {
+            lhs: Box::new(
+                Node::Add {
+                    lhs: Box::new(Node::Num { val: 1 }),
+                    rhs: Box::new(
+                        Node::Mul {
+                            lhs: Box::new(Node::Num { val: 2 }),
+                            rhs: Box::new(Node::Num { val: 3 })
+                        }
+                    )
+                }
+            ),
+            rhs: Box::new(Node::Num {val: 20 })
+        }
+    ];
 
     assert_eq!(result, expect);
 }
@@ -290,25 +301,28 @@ fn parse_cmp_test() {
         Token::Num { val: 1, t_str: "1".to_string() },
         Token::Reserved { op: "==".to_string() },
         Token::Num { val: 2, t_str: "2".to_string() },
+        Token::Reserved { op: ";".to_string() },
         Token::Eof
     ];
 
     let result = parse(input).unwrap();
 
-    let expect = Node::Eq {
-        lhs: Box::new(
-            Node::Lt {
-                lhs: Box::new(
-                    Node::Ge {
-                        lhs: Box::new(Node::Num { val: 1 }),
-                        rhs: Box::new(Node::Num { val: 1 })
-                    }
-                ),
-                rhs: Box::new(Node::Num { val: 1 }),
-            }
-        ),
-        rhs: Box::new(Node::Num {val: 2 })
-    };
+    let expect = vec![
+        Node::Eq {
+            lhs: Box::new(
+                Node::Lt {
+                    lhs: Box::new(
+                        Node::Ge {
+                            lhs: Box::new(Node::Num { val: 1 }),
+                            rhs: Box::new(Node::Num { val: 1 })
+                        }
+                    ),
+                    rhs: Box::new(Node::Num { val: 1 }),
+                }
+            ),
+            rhs: Box::new(Node::Num {val: 2 })
+        }
+    ];
 
     assert_eq!(result, expect);
 }
