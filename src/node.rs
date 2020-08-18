@@ -57,13 +57,16 @@ pub enum Node {
     },
     Return {
         val: Box<Node>
+    },
+    ExprStmt {
+        val: Box<Node>
+    },
+    Assign {
+        var: Box<Node>, // Lvarしか入れたくない
+        val: Box<Node> // Exprしか入れたくない
+    },
+    Var {
+        name: String,
+        offset: i64
     }
-    // Assign {
-    //     var: Box<Node>, // Lvarしか入れたくない
-    //     val: Box<Node> // Exprしか入れたくない
-    // },
-    // Lvar {
-    //     name: String,
-    //     offset: i64
-    // }
 }

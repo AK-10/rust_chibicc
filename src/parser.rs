@@ -53,10 +53,10 @@ fn stmt(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
             }
         },
         _ => {
-            let expr = expr(peekable);
+            let expr = expr(peekable)?;
 
             match peekable.next() {
-                Some(Token::Reserved { op }) if *op == String::from(";") => expr,
+                Some(Token::Reserved { op }) if *op == String::from(";") => Ok(Node::ExprStmt { val: Box::new(expr) }),
                 _ => Err("delemiter not found".to_string())
             }
         }

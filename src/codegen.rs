@@ -6,16 +6,24 @@ pub fn codegen(nodes: Vec<Node>) {
     println!(".globl main");
     println!("main:");
 
+    // Prologue
+    println!("  push rbp");
+    println!("  mov rbp, rsp");
+    println!("  sub rsp, 208"); // 208
+
     while let Some(node) = node_iter.next() {
-        gen_single(node);
-        println!("  pop rax");
+        gen(node);
     };
 
+    // Epilogue
+    println!(".L.return:");
+    println!("  mov rsp, rbp");
+    println!("  pop rbp");
     println!("  ret");
 
 }
 
-fn gen_single(node: &Node) {
+fn gen(node: &Node) {
     match node {
         Node::Add { lhs, rhs } => {
             gen_both_side(lhs, rhs);
@@ -94,21 +102,54 @@ fn gen_single(node: &Node) {
             println!("  movzb rax, al");
         }
         Node::Return { val } => {
-            gen_single(val);
+            gen(val);
 
             println!("  pop rax");
-            println!("  ret");
-            return;
+            println!("  jmp .L.return");
         }
+        Node::ExprStmt { val } => {
+            gen(val);
+            println!("  add rsp, 8");
+        }
+        Node::Var { offset, .. } => {
+            gen_addr(*offset);
+            load();
+        }
+        Node::Assign { var, val } => {
+            gen(var);
+            gen(val);
+
+            store();
+        }
+
     };
 
     println!("  push rax");
 }
 
 fn gen_both_side(lhs: &Node, rhs: &Node) {
-    gen_single(lhs);
-    gen_single(rhs);
+    gen(lhs);
+    gen(rhs);
 
     println!("  pop rdi");
     println!("  pop rax");
+}
+
+fn gen_addr(offset: i64) {
+    // lea: アドレスのロード
+    println!("  lea rax, [rbp-{}]", offset);
+    println!("  push rax");
+}
+
+fn load() {
+    println!("  pop rax");
+    println!("  mov rax, [rax]");
+    println!("  push rax");
+}
+
+fn store() {
+    println!("  pop rdi");
+    println!("  pop rax");
+    println!("  mov [rax], rdi");
+    println!("  push rdi");
 }
