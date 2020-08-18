@@ -64,17 +64,25 @@ fn stmt(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
 }
 
 fn expr(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
-    // assign(peekable)
-    equality(peekable)
+    assign(peekable)
 }
 
-// TODO: impl
-// fn assign(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
-//     let mut node = equality(peekable);
-//     if let Some(token) = peekable.peek() {
-//         match
-//     }
-// }
+fn assign(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
+    let mut node = equality(peekable)?;
+    if let Some(token) = peekable.peek() {
+        match token {
+            Token::Reserved { op } if *op == "=" => {
+                node = Node::Assign {
+                    var: Box::new(node),
+                    val: Box::new(assign(peekable)?)
+                }
+            }
+            _ => { return Err("".to_string()) }
+        }
+    };
+
+    Ok(node)
+}
 
 fn equality(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
     let mut node = relational(peekable)?;
@@ -244,6 +252,7 @@ fn unary(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
 //     }
 // }
 
+// primary = "(" expr ")" | ident | num
 fn primary(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
     let token = peekable.next();
     match token {
@@ -260,6 +269,14 @@ fn primary(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
         // num
         Some(Token::Num { val, .. }) => {
             Ok(Node::Num { val: *val })
+        }
+        Some(Token::Ident { name }) => {
+            let var_name = name.clone();
+            let var_char_code = var_name.chars().nth(0).ok_or("variable string is empty".to_string())? as i64;
+            let offset = var_char_code - ('a' as i64) * 8;
+            // cannot move out of `*name` which is behind a shared reference
+            // なのでcloneする
+            Ok(Node::Var { name: var_name, offset: offset })
         }
         // unexpected
         _ => {
