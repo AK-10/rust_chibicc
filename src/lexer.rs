@@ -93,7 +93,7 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
                 } else {
                     let token = Token::Ident { name: ch.to_string() };
                     tokens.push(token);
-                    chars_with_index.next();
+                    // chars_with_index.next();
                 }
             }
             _ => {
@@ -256,8 +256,8 @@ fn tokenize_le_test() {
 
     assert_eq!(result, expected);
 }
-#[test]
 
+#[test]
 fn tokenize_eq_test() {
     let input = "1 == 2".to_string();
     let result = tokenize(input);
