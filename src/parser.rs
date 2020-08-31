@@ -22,13 +22,13 @@ use std::iter::Peekable;
 
 pub fn parse(tokens: Vec<Token>) -> Result<Vec<Node>, String> {
     let peekable_tokens = &mut tokens.iter().peekable();
-
     program(peekable_tokens)
 }
 
 // program := stmt*
 fn program(peekable: &mut Peekable<Iter<Token>>) -> Result<Vec<Node>, String> {
     let mut nodes: Vec<Node> = Vec::new();
+
     while let Some(token) = peekable.peek() {
         if let Token::Eof = token {
             break;
@@ -48,7 +48,7 @@ fn stmt(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
 
             let expr = expr(peekable)?;
             match peekable.next() {
-                Some(Token::Reserved { op }) if *op == String::from(";") => Ok(Node::Return{ val: Box::new(expr) }),
+                Some(Token::Reserved { op }) if *op == ";" => Ok(Node::Return { val: Box::new(expr) }),
                 _ => Err("delemiter not found".to_string())
             }
         },
@@ -56,34 +56,38 @@ fn stmt(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
             let expr = expr(peekable)?;
 
             match peekable.next() {
-                Some(Token::Reserved { op }) if *op == String::from(";") => Ok(Node::ExprStmt { val: Box::new(expr) }),
+                Some(Token::Reserved { op }) if *op == ";" => Ok(Node::ExprStmt { val: Box::new(expr) }),
                 _ => Err("delemiter not found".to_string())
             }
         }
     }
 }
 
+// expr := assign
 fn expr(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
     assign(peekable)
 }
 
+// assign := equality ("=" assign)?
 fn assign(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
     let mut node = equality(peekable)?;
     if let Some(token) = peekable.peek() {
         match token {
             Token::Reserved { op } if *op == "=" => {
+                peekable.next();
                 node = Node::Assign {
                     var: Box::new(node),
                     val: Box::new(assign(peekable)?)
                 }
             }
-            _ => { return Err("".to_string()) }
+            _ => {}
         }
     };
 
     Ok(node)
 }
 
+// equality := relational ("==" relational | "!=" relational)*
 fn equality(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
     let mut node = relational(peekable)?;
 
@@ -108,6 +112,7 @@ fn equality(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
     Ok(node)
 }
 
+// relational := add ("<" add | "<=" add | ">" add | ">=" add)*
 fn relational(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
     let mut node = add(peekable)?;
 
@@ -255,6 +260,7 @@ fn unary(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
 // primary = "(" expr ")" | ident | num
 fn primary(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
     let token = peekable.next();
+
     match token {
         // ERR: compile error
         // expected tuple struct or tuple variant, found associated function `String::from`
@@ -273,7 +279,7 @@ fn primary(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
         Some(Token::Ident { name }) => {
             let var_name = name.clone();
             let var_char_code = var_name.chars().nth(0).ok_or("variable string is empty".to_string())? as i64;
-            let offset = var_char_code - ('a' as i64) * 8;
+            let offset = (var_char_code - ('a' as i64) + 1) * 8;
             // cannot move out of `*name` which is behind a shared reference
             // なのでcloneする
             Ok(Node::Var { name: var_name, offset: offset })
@@ -299,7 +305,8 @@ fn parse_arithmetic_test() {
         Token::Eof
     ];
 
-    let result = parse(input).unwrap();
+    let result_vec = parse(input);
+    let result = result_vec.unwrap();
 
     let expect = vec![
         Node::Sub {
@@ -319,6 +326,20 @@ fn parse_arithmetic_test() {
     ];
 
     assert_eq!(result, expect);
+}
+
+#[test]
+fn parse_return_test() {
+    let input = vec![
+        Token::Ident { name: "a".to_string() },
+        Token::Reserved { op: "=".to_string() },
+        Token::Num { val: 1, t_str: "1".to_string() },
+        Token::Reserved { op: ";".to_string() },
+        Token::Reserved { op: "return".to_string() },
+        Token::Num { val: 2, t_str: "a".to_string() },
+        Token::Reserved { op: ";".to_string() },
+        Token::Eof
+    ];
 }
 
 #[test]

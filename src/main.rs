@@ -1,4 +1,4 @@
-extern crate rust_chibicc;
+// extern crate rust_chibicc;
 use rust_chibicc::lexer::tokenize;
 use rust_chibicc::parser::parse;
 use rust_chibicc::codegen::codegen;
