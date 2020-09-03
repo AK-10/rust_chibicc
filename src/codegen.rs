@@ -119,7 +119,12 @@ fn gen(node: &Node) {
             return
         }
         Node::Assign { var, val } => {
-            // なんとかしたい
+            // なんとかしたい, 以下ができれば完璧
+            // #[derive(Node)]
+            // enum Assign { var: Var, val: Expr }
+            // #[derive(Node)]
+            // enum Var { name: String, offset: i64 }
+
             if let Node::Var { offset, .. } = **var {
                 gen_addr(offset);
                 gen(val);
