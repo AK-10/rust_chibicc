@@ -106,22 +106,28 @@ fn gen(node: &Node) {
 
             println!("  pop rax");
             println!("  jmp .L.return");
+            return
         }
         Node::ExprStmt { val } => {
             gen(val);
             println!("  add rsp, 8");
+            return
         }
         Node::Var { offset, .. } => {
             gen_addr(*offset);
             load();
+            return
         }
         Node::Assign { var, val } => {
-            gen(var);
-            gen(val);
+            // なんとかしたい
+            if let Node::Var { offset, .. } = **var {
+                gen_addr(offset);
+                gen(val);
 
-            store();
+                store();
+            }
+            return
         }
-
     };
 
     println!("  push rax");

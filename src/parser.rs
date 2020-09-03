@@ -279,7 +279,7 @@ fn primary(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
         Some(Token::Ident { name }) => {
             let var_name = name.clone();
             let var_char_code = var_name.chars().nth(0).ok_or("variable string is empty".to_string())? as i64;
-            let offset = (var_char_code - ('a' as i64) + 1) * 8;
+            let offset = (var_char_code - 'a' as i64 + 1) * 8;
             // cannot move out of `*name` which is behind a shared reference
             // なのでcloneする
             Ok(Node::Var { name: var_name, offset: offset })
