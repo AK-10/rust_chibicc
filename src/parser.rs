@@ -23,7 +23,6 @@ use std::iter::Peekable;
 
 pub struct Parser<'a> {
     pub input: &'a Vec<Token>,
-    // boxで包む理由
     peekable: Peekable<Iter<'a, Token>>,
     pub locals: Vec<Var>
 }
