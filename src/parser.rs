@@ -356,10 +356,36 @@ fn parse_return_test() {
         Token::Num { val: 1, t_str: "1".to_string() },
         Token::Reserved { op: ";".to_string() },
         Token::Reserved { op: "return".to_string() },
-        Token::Num { val: 2, t_str: "a".to_string() },
+        Token::Ident { name: "a".to_string() },
         Token::Reserved { op: ";".to_string() },
         Token::Eof
     ];
+
+    let mut parser = Parser::new(&input);
+    let result = parser.parse().unwrap();
+    let expect = vec![
+        Node::ExprStmt { val: Box::new(
+            Node::Assign {
+                var: Box::new(
+                    Node::Var {
+                        name: "a".to_string(),
+                        offset: 8
+                    }
+                ),
+                val: Box::new(Node::Num {val: 1 })
+            }
+        )},
+        Node::Return {
+            val: Box::new(
+                Node::Var {
+                    name: "a".to_string(),
+                    offset: 8
+                }
+            )
+        }
+    ];
+
+    assert_eq!(result, expect);
 }
 
 #[test]
