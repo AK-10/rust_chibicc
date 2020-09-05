@@ -9,13 +9,14 @@ pub fn codegen(nodes: Vec<Node>) {
     // Prologue
     println!("  push rbp");
     println!("  mov rbp, rsp");
-    println!("  sub rsp, 208"); // 208
+    println!("  sub rsp, 208"); // 208: 変数26個分(a-z)の領域を確保する 領域の単位は8byte
 
     while let Some(node) = node_iter.next() {
         gen(node);
     };
 
     // Epilogue
+    // 最後の式の結果がRAXに残っているのでそれが返り値になる
     println!(".L.return:");
     println!("  mov rsp, rbp");
     println!("  pop rbp");

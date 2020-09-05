@@ -1,6 +1,6 @@
 // extern crate rust_chibicc;
 use rust_chibicc::lexer::tokenize;
-use rust_chibicc::parser::parse;
+use rust_chibicc::parser::Parser;
 use rust_chibicc::codegen::codegen;
 use std::env;
 
@@ -22,7 +22,8 @@ fn main() {
     // https://doc.rust-jp.rs/book/second-edition/ch04-02-references-and-borrowing.html#a%E5%AE%99%E3%81%AB%E6%B5%AE%E3%81%84%E3%81%9F%E5%8F%82%E7%85%A7
     // let tokens = tokenize(&mut arg1.chars().peekable()).iter().peekable();
     let tokens = tokenize(arg1.to_string()).expect("compile failed");
-    let parsed = parse(tokens);
+    let mut parser = Parser::new(&tokens);
+    let parsed = parser.parse();
 
     match parsed {
         Err(msg) => { eprintln!("{}", msg); },

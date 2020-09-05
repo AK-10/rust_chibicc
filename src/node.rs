@@ -10,6 +10,79 @@
 // unary := ("+" | "-")? primary
 // primary := num | "(" expr ")"
 
+// trait Nodable {
+//     // fn gen(self);
+// }
+
+// pub struct Variable {
+//     pub name: String,
+//     pub offset: i64
+// }
+
+// pub enum Stmt {
+//     Return {
+//         val: Expr
+//     },
+//     ExprStmt {
+//         val: Expr
+//     },
+//     Assign {
+//         var: Variable,
+//         val: Expr
+//     },
+// }
+// impl Nodable for Stmt {}
+
+// pub enum Expr {
+//     Eq {
+//         lhs: Box<Expr>,
+//         rhs: Box<Expr>
+//     },
+//     Neq {
+//         lhs: Box<Node>,
+//         rhs: Box<Node>
+//     },
+//     Gt {
+//         lhs: Box<Node>,
+//         rhs: Box<Node>
+//     },
+//     Ge {
+//         lhs: Box<Node>,
+//         rhs: Box<Node>
+//     },
+//     Lt {
+//         lhs: Box<Node>,
+//         rhs: Box<Node>
+//     },
+//     Le {
+//         lhs: Box<Node>,
+//         rhs: Box<Node>
+//     },
+//     Add {
+//         lhs: Box<Node>,
+//         rhs: Box<Node>
+//     },
+//     Sub {
+//         lhs: Box<Node>,
+//         rhs: Box<Node>
+//     },
+//     Mul {
+//         lhs: Box<Node>,
+//         rhs: Box<Node>
+//     },
+//     Div {
+//         lhs: Box<Node>,
+//         rhs: Box<Node>
+//     },
+//     Num {
+//         val: isize
+//     },
+//     Var {
+//         val: Variable
+//     }
+// }
+// impl Nodable for Expr {}
+
 #[derive(PartialEq, Clone, Debug)]
 pub enum Node {
     Eq {
@@ -67,6 +140,6 @@ pub enum Node {
     },
     Var {
         name: String,
-        offset: i64
+        offset: i64 // offset from RBP
     }
 }
