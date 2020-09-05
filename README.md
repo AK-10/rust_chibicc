@@ -5,7 +5,6 @@ $ docker build -t compilerbook ${dockerfileのあるdir}
 
 # Dockerに入って確認したいとき
 ```bash
-$ cargo run ${適当な数字} > tmp.s
 $ docker run -it -v `pwd`/:/home/user/ compilerbook /bin/bash
 ```
 
