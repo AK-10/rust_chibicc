@@ -37,8 +37,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Node>, String> {
-        self.program()
+    pub fn parse(&mut self) -> Result<Function, String> {
+        let node = self.program()?;
+
+        Ok(Function::new(node, self.locals.to_vec()))
     }
 
     // program := stmt*
@@ -292,19 +294,27 @@ impl<'a> Parser<'a> {
             Some(Token::Num { val, .. }) => {
                 Ok(Node::Num { val: *val })
             }
+            // local var
             Some(Token::Ident { name }) => {
-                let var_name = name.clone();
-                let var_char_code = var_name.chars().nth(0).ok_or("variable string is empty".to_string())? as i64;
-                let offset = (var_char_code - 'a' as i64 + 1) * 8;
-                // cannot move out of `*name` which is behind a shared reference
-                // なのでcloneする
-                Ok(Node::Var { name: var_name, offset: offset })
+                if let Some(var) = self.find_lvar(name) {
+                    Ok(Node::Var { name: name.clone(), offset: var.offset })
+                } else {
+                    let offset = (self.locals.len() + 1) * 8;
+                    let var = Var { name: name.clone(), offset: offset };
+                    self.locals.push(var);
+
+                    Ok(Node::Var { name: name.clone(), offset: offset })
+                }
             }
             // unexpected
             _ => {
                 Err("unexpected token at primary".to_string())
             }
         }
+    }
+
+    fn find_lvar(&self, name: &String) -> Option<&Var> {
+        self.locals.iter().find(|item| { item.name == *name })
     }
 }
 

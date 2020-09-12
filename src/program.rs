@@ -2,9 +2,19 @@ use crate::node::Node;
 
 #[derive(Debug)]
 pub struct Function {
-    nodes: Vec<Node>,
-    locals: Vec<Var>,
-    stack_size: u64
+    pub nodes: Vec<Node>,
+    pub locals: Vec<Var>,
+    pub stack_size: usize
+}
+
+impl Function {
+    pub fn new(nodes: Vec<Node>, locals: Vec<Var>) -> Self {
+        Self {
+            nodes: nodes,
+            stack_size: locals.last().map_or(0, |var| var.offset),
+            locals: locals,
+        }
+    }
 }
 
 // 元のコードは以下, lenはname.lenで代用
@@ -14,8 +24,8 @@ pub struct Function {
 //   int len;    // 名前の長さ
 //   int offset; // RBPからのオフセット
 // };
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Var {
-    name: String,
-    offset: i64
+    pub name: String,
+    pub offset: usize
 }

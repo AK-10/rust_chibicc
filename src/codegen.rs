@@ -1,7 +1,8 @@
 use crate::node::Node;
+use crate::program::Function;
 
-pub fn codegen(nodes: Vec<Node>) {
-    let mut node_iter = nodes.iter();
+pub fn codegen(func: Function) {
+    let mut node_iter = func.nodes.iter();
     println!(".intel_syntax noprefix");
     println!(".globl main");
     println!("main:");
@@ -9,7 +10,7 @@ pub fn codegen(nodes: Vec<Node>) {
     // Prologue
     println!("  push rbp");
     println!("  mov rbp, rsp");
-    println!("  sub rsp, 208"); // 208: 変数26個分(a-z)の領域を確保する 領域の単位は8byte
+    println!("  sub rsp, {}", func.stack_size); // 208: 変数26個分(a-z)の領域を確保する 領域の単位は8byte
 
     while let Some(node) = node_iter.next() {
         gen(node);
@@ -147,7 +148,7 @@ fn gen_both_side(lhs: &Node, rhs: &Node) {
     println!("  pop rax");
 }
 
-fn gen_addr(offset: i64) {
+fn gen_addr(offset: usize) {
     // lea: アドレスのロード
     println!("  lea rax, [rbp-{}]", offset);
     println!("  push rax");

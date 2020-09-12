@@ -140,6 +140,6 @@ pub enum Node {
     },
     Var {
         name: String,
-        offset: i64 // offset from RBP
+        offset: usize // offset from RBP
     }
 }
