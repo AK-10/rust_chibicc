@@ -1,6 +1,6 @@
 use crate::node::Node;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Function {
     pub nodes: Vec<Node>,
     pub locals: Vec<Var>,
@@ -24,7 +24,7 @@ impl Function {
 //   int len;    // 名前の長さ
 //   int offset; // RBPからのオフセット
 // };
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Var {
     pub name: String,
     pub offset: usize

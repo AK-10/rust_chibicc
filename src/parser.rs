@@ -354,18 +354,18 @@ fn parse_arithmetic_test() {
         )}
     ];
 
-    assert_eq!(result, expect);
+    assert_eq!(result.nodes, expect);
 }
 
 #[test]
 fn parse_return_test() {
     let input = vec![
-        Token::Ident { name: "a".to_string() },
+        Token::Ident { name: "foo".to_string() },
         Token::Reserved { op: "=".to_string() },
         Token::Num { val: 1, t_str: "1".to_string() },
         Token::Reserved { op: ";".to_string() },
         Token::Reserved { op: "return".to_string() },
-        Token::Ident { name: "a".to_string() },
+        Token::Ident { name: "foo".to_string() },
         Token::Reserved { op: ";".to_string() },
         Token::Eof
     ];
@@ -377,7 +377,7 @@ fn parse_return_test() {
             Node::Assign {
                 var: Box::new(
                     Node::Var {
-                        name: "a".to_string(),
+                        name: "foo".to_string(),
                         offset: 8
                     }
                 ),
@@ -387,14 +387,14 @@ fn parse_return_test() {
         Node::Return {
             val: Box::new(
                 Node::Var {
-                    name: "a".to_string(),
+                    name: "foo".to_string(),
                     offset: 8
                 }
             )
         }
     ];
 
-    assert_eq!(result, expect);
+    assert_eq!(result.nodes, expect);
 }
 
 #[test]
@@ -432,5 +432,5 @@ fn parse_cmp_test() {
         )}
     ];
 
-    assert_eq!(result, expect);
+    assert_eq!(result.nodes, expect);
 }
