@@ -12,15 +12,6 @@ use std::iter::Peekable;
 // 単項+ 単項-
 // ()
 
-// struct Parser {
-//     codes: Vec<Node>,
-//     input: Vec<Token>
-// }
-
-// impl Parser {
-
-// }
-
 pub struct Parser<'a> {
     pub input: &'a Vec<Token>,
     peekable: Peekable<Iter<'a, Token>>,
@@ -58,7 +49,11 @@ impl<'a> Parser<'a> {
         Ok(nodes)
     }
 
-    // stmt := expr ";" | "return" expr ";"
+    // stmt := expr ";"
+    //       | "return" expr ";"
+    //       | "if" "(" expr ")" stmt ("else" stmt)?
+    //       | "while" "(" expr ")" stmt
+    //       | "for" "(" expr? ";" expr? ";" expr? ")" stmt
     fn stmt(&mut self) -> Result<Node, String> {
         match self.peekable.peek() {
             Some(Token::Reserved { op }) if *op == "return" => {
@@ -69,7 +64,10 @@ impl<'a> Parser<'a> {
                     Some(Token::Reserved { op }) if *op == ";" => Ok(Node::Return { val: Box::new(expr) }),
                     _ => Err("delemiter not found".to_string())
                 }
-            },
+            }
+            Some(Token::Reserved { op }) if *op == "if" => {
+                self.if_stmt()
+            }
             _ => {
                 let expr = self.expr()?;
 
@@ -315,6 +313,40 @@ impl<'a> Parser<'a> {
 
     fn find_lvar(&self, name: &String) -> Option<&Var> {
         self.locals.iter().find(|item| { item.name == *name })
+    }
+
+    fn if_stmt(&mut self) -> Result<Node, String> {
+        self.peekable.next();
+
+        match self.peekable.peek() {
+            Some(Token::Reserved { op }) if *op == "(" => {
+                self.peekable.next();
+
+                let cond = self.expr()?;
+                match self.peekable.next() {
+                    Some(Token::Reserved { op }) if *op == ")" => {
+                        let then = self.stmt()?;
+                        let els = match self.peekable.peek() {
+                            Some(Token::Reserved { op }) if *op == "else" => {
+                                self.peekable.next();
+
+                                Some(self.stmt()?)
+                            },
+                            _ => None
+                        };
+
+                        Ok(Node::If {
+                            cond: Box::new(cond),
+                            then: Box::new(then),
+                            els: els.map(|x| Box::new(x)),
+                        })
+
+                    },
+                    _ => { Err("err".to_string()) }
+                }
+            },
+            _ => { Err("err".to_string()) }
+        }
     }
 }
 

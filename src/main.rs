@@ -1,7 +1,7 @@
 // extern crate rust_chibicc;
 use rust_chibicc::lexer::tokenize;
 use rust_chibicc::parser::Parser;
-use rust_chibicc::codegen::codegen;
+use rust_chibicc::codegen::CodeGenerator;
 use std::env;
 
 fn main() {
@@ -25,8 +25,10 @@ fn main() {
     let mut parser = Parser::new(&tokens);
     let parsed = parser.parse();
 
+    let code_gen = CodeGenerator::new();
+
     match parsed {
         Err(msg) => { eprintln!("{}", msg); },
-        Ok(ast) => { codegen(ast) }
+        Ok(ast) => { code_gen.codegen(ast) }
     };
 }

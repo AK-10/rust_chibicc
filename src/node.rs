@@ -1,6 +1,9 @@
 // EBNF
 // program := stmt*
 // stmt := expr ";" | "return" expr ";"
+//       | "if" "(" expr ")" stmt ("else" stmt)?
+//       | "while" "(" expr ")" stmt
+//       | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 // expr := assign
 // assign := equality ("=" assign)?  a=b=1のようなものを許す
 // equality := relational ("==" relational | "!=" relational)*
@@ -30,6 +33,12 @@
 //         var: Variable,
 //         val: Expr
 //     },
+//     If {
+//     }
+//     While {
+//     }
+//     For {
+//     }
 // }
 // impl Nodable for Stmt {}
 
@@ -140,6 +149,11 @@ pub enum Node {
     },
     Var {
         name: String,
-        offset: usize // offset from RBP
+        offset: usize // offset from RBP(ベースポインタ)
+    },
+    If {
+        cond: Box<Node>,
+        then: Box<Node>,
+        els: Option<Box<Node>>,
     }
 }
