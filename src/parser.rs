@@ -321,6 +321,7 @@ impl<'a> Parser<'a> {
     fn if_stmt(&mut self) -> Result<Node, String> {
         self.peekable.next();
 
+        // primaryだと()なしでも動くようになるが, Cコンパイラではなくなる
         let cond = self.primary()?;
         let then = self.stmt()?;
         let els = match self.peekable.peek() {
