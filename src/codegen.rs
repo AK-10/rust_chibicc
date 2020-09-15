@@ -146,7 +146,7 @@ impl CodeGenerator {
             }
             Node::If { cond, then, els } => {
                 // if (A) B else Cのアセンブリ疑似コード
-                //   Aをコンパイルしたコード
+                //   Aをコンパイルしたコード(この式の結果はstackにpushされているはず)
                 //   pop rax
                 //   cmp rax, 0
                 //   je .L.else.XXX (rax == 0 出なければjumpしない(Bが実行される))
@@ -179,6 +179,22 @@ impl CodeGenerator {
                     self.gen(then);
                     println!(".L.end.{}:", seq);
                 }
+
+                return
+            }
+            Node::While { cond, then } => {
+                self.labelseq.set(self.labelseq.get() + 1);
+                let seq = self.labelseq.get();
+
+                println!(".L.begin.{}:", seq);
+                self.gen(cond);
+                println!("  pop rax");
+                println!("  cmp rax, 0");
+                println!("  je .L.end.{}", seq);
+
+                self.gen(then);
+                println!("  jmp .L.begin.{}", seq);
+                println!(".L.end.{}:", seq);
 
                 return
             }

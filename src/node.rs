@@ -155,5 +155,9 @@ pub enum Node {
         cond: Box<Node>,
         then: Box<Node>,
         els: Option<Box<Node>>,
+    },
+    While {
+        cond: Box<Node>,
+        then: Box<Node>
     }
 }

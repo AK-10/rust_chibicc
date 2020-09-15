@@ -68,6 +68,9 @@ impl<'a> Parser<'a> {
             Some(Token::Reserved { op }) if *op == "if" => {
                 self.if_stmt()
             }
+            Some(Token::Reserved { op }) if *op == "while" => {
+                self.while_stmt()
+            }
             _ => {
                 let expr = self.expr()?;
 
@@ -347,6 +350,18 @@ impl<'a> Parser<'a> {
             },
             _ => { Err("err".to_string()) }
         }
+    }
+
+    fn while_stmt(&mut self) -> Result<Node, String> {
+        self.peekable.next();
+
+        let cond = self.primary()?;
+        let then = self.stmt()?;
+
+        Ok(Node::While {
+            cond: Box::new(cond),
+            then: Box::new(then)
+        })
     }
 }
 
