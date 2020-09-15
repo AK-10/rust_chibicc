@@ -321,35 +321,22 @@ impl<'a> Parser<'a> {
     fn if_stmt(&mut self) -> Result<Node, String> {
         self.peekable.next();
 
-        match self.peekable.peek() {
-            Some(Token::Reserved { op }) if *op == "(" => {
+        let cond = self.primary()?;
+        let then = self.stmt()?;
+        let els = match self.peekable.peek() {
+            Some(Token::Reserved { op }) if *op == "else" => {
                 self.peekable.next();
 
-                let cond = self.expr()?;
-                match self.peekable.next() {
-                    Some(Token::Reserved { op }) if *op == ")" => {
-                        let then = self.stmt()?;
-                        let els = match self.peekable.peek() {
-                            Some(Token::Reserved { op }) if *op == "else" => {
-                                self.peekable.next();
-
-                                Some(self.stmt()?)
-                            },
-                            _ => None
-                        };
-
-                        Ok(Node::If {
-                            cond: Box::new(cond),
-                            then: Box::new(then),
-                            els: els.map(|x| Box::new(x)),
-                        })
-
-                    },
-                    _ => { Err("err".to_string()) }
-                }
+                Some(self.stmt()?)
             },
-            _ => { Err("err".to_string()) }
-        }
+            _ => None
+        };
+
+        Ok(Node::If {
+            cond: Box::new(cond),
+            then: Box::new(then),
+            els: els.map(|x| Box::new(x)),
+        })
     }
 
     fn while_stmt(&mut self) -> Result<Node, String> {
