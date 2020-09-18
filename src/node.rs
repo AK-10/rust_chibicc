@@ -159,5 +159,11 @@ pub enum Node {
     While {
         cond: Box<Node>,
         then: Box<Node>
+    },
+    For {
+        init: Box<Option<Node>>,
+        cond: Box<Option<Node>>,
+        inc: Box<Option<Node>>,
+        then: Box<Node>,
     }
 }

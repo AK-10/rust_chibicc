@@ -198,6 +198,28 @@ impl CodeGenerator {
 
                 return
             }
+            Node::For { init, cond, inc, then } => {
+                self.labelseq.set(self.labelseq.get() + 1);
+                let seq = self.labelseq.get();
+
+                init.as_ref().as_ref().map(|x| self.gen(x));
+                println!(".L.begin.{}:", seq);
+
+                cond.as_ref().as_ref().map(|x| {
+                    self.gen(x);
+                    println!("  pop rax");
+                    println!("  cmp rax, 0");
+                    println!("  je .L.end.{}", seq);
+                });
+
+                self.gen(then);
+
+                inc.as_ref().as_ref().map(|x| self.gen(x));
+                println!("  jmp .L.begin.{}", seq);
+                println!(".L.end.{}:", seq);
+
+                return
+            }
         };
 
         println!("  push rax");

@@ -55,7 +55,8 @@ impl<'a> Parser<'a> {
     //       | "while" "(" expr ")" stmt
     //       | "for" "(" expr? ";" expr? ";" expr? ")" stmt
     fn stmt(&mut self) -> Result<Node, String> {
-        match self.peekable.peek() {
+        let tk = self.peekable.peek();
+        match tk {
             Some(Token::Reserved { op }) if *op == "return" => {
                 self.peekable.next();
 
@@ -71,13 +72,14 @@ impl<'a> Parser<'a> {
             Some(Token::Reserved { op }) if *op == "while" => {
                 self.while_stmt()
             }
+            Some(Token::Reserved { op }) if *op == "for" => {
+                self.for_stmt()
+            }
             _ => {
-                let expr = self.expr()?;
+                let expr_stmt = self.expr_stmt();
+                self.expect(";".to_string())?;
 
-                match self.peekable.next() {
-                    Some(Token::Reserved { op }) if *op == ";" => Ok(Node::ExprStmt { val: Box::new(expr) }),
-                    _ => Err("delemiter not found".to_string())
-                }
+                expr_stmt
             }
         }
     }
@@ -278,25 +280,27 @@ impl<'a> Parser<'a> {
 
     // primary = "(" expr ")" | ident | num
     fn primary(&mut self) -> Result<Node, String> {
-        let token = self.peekable.next();
+        let token = self.peekable.peek();
 
         match token {
             // ERR: compile error
             // expected tuple struct or tuple variant, found associated function `String::from`
             // Some(Token::Reserved { op: String::from("(") }) => {}
             Some(Token::Reserved { op }) if *op == "(" => {
+                self.peekable.next();
                 let expr = self.expr();
-                match self.peekable.next() {
-                    Some(Token::Reserved { op }) if *op == ")" => expr,
-                    _ => Err("fail primary".to_string())
-                }
+                self.expect(")".to_string())?;
+
+                expr
             }
             // num
             Some(Token::Num { val, .. }) => {
+                self.peekable.next();
                 Ok(Node::Num { val: *val })
             }
             // local var
             Some(Token::Ident { name }) => {
+                self.peekable.next();
                 if let Some(var) = self.find_lvar(name) {
                     Ok(Node::Var { name: name.clone(), offset: var.offset })
                 } else {
@@ -350,6 +354,50 @@ impl<'a> Parser<'a> {
             cond: Box::new(cond),
             then: Box::new(then)
         })
+    }
+
+    fn for_stmt(&mut self) -> Result<Node, String> {
+        self.peekable.next();
+
+        self.expect("(".to_string())?;
+
+        // 初期化，条件，処理後はない場合がある
+        let init = self.expr_stmt().ok();
+        self.expect(";".to_string())?;
+
+        let cond = self.expr().ok();
+        self.expect(";".to_string())?;
+
+        let inc = self.expr_stmt().ok();
+        self.expect(")".to_string())?;
+
+        let then = self.stmt()?;
+
+        Ok(Node::For {
+            init: Box::new(init),
+            cond: Box::new(cond),
+            inc: Box::new(inc),
+            then: Box::new(then)
+        })
+    }
+
+    fn expr_stmt(&mut self) -> Result<Node, String> {
+        Ok(Node::ExprStmt{ val: Box::new(self.expr()?) })
+    }
+
+    fn expect(&mut self, word: String) -> Result<(), String> {
+        let tk = self.peekable.peek();
+        match tk {
+            Some(Token::Reserved { op }) if *op == word => {
+                self.peekable.next();
+                Ok(())
+            },
+            _ => {
+                println!("tk: {:?}", tk);
+                let msg = format!("expect {}, but different found", word);
+                Err(msg)
+            }
+        }
     }
 }
 
