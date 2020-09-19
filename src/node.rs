@@ -1,6 +1,8 @@
 // EBNF
 // program := stmt*
-// stmt := expr ";" | "return" expr ";"
+// stmt := expr ";"
+//       | "return" expr ";"
+//       | "{" stmt* "}"
 //       | "if" "(" expr ")" stmt ("else" stmt)? /* ( expr ) is primary. */
 //       | "while" "(" expr ")" stmt
 //       | "for" "(" expr? ";" expr? ";" expr? ")" stmt
@@ -165,5 +167,8 @@ pub enum Node {
         cond: Box<Option<Node>>,
         inc: Box<Option<Node>>,
         then: Box<Node>,
+    },
+    Block {
+        stmts: Vec<Node>,
     }
 }

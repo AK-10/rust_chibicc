@@ -61,10 +61,20 @@ impl<'a> Parser<'a> {
                 self.peekable.next();
 
                 let expr = self.expr()?;
-                match self.peekable.next() {
-                    Some(Token::Reserved { op }) if *op == ";" => Ok(Node::Return { val: Box::new(expr) }),
-                    _ => Err("delemiter not found".to_string())
+                self.expect_next(";".to_string())?;
+
+                Ok(Node::Return { val: Box::new(expr) })
+            }
+            Some(Token::Reserved { op }) if *op == "{" => {
+                self.peekable.next();
+                let mut stmts: Vec<Node> = Vec::new();
+
+                while let Err(_) = self.expect_next("}".to_string()) {
+                    let stmt = self.stmt()?;
+                    stmts.push(stmt);
                 }
+
+                Ok(Node::Block { stmts })
             }
             Some(Token::Reserved { op }) if *op == "if" => {
                 self.if_stmt()
@@ -77,7 +87,7 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 let expr_stmt = self.expr_stmt();
-                self.expect(";".to_string())?;
+                self.expect_next(";".to_string())?;
 
                 expr_stmt
             }
@@ -289,7 +299,7 @@ impl<'a> Parser<'a> {
             Some(Token::Reserved { op }) if *op == "(" => {
                 self.peekable.next();
                 let expr = self.expr();
-                self.expect(")".to_string())?;
+                self.expect_next(")".to_string())?;
 
                 expr
             }
@@ -359,17 +369,17 @@ impl<'a> Parser<'a> {
     fn for_stmt(&mut self) -> Result<Node, String> {
         self.peekable.next();
 
-        self.expect("(".to_string())?;
+        self.expect_next("(".to_string())?;
 
         // 初期化，条件，処理後はない場合がある
         let init = self.expr_stmt().ok();
-        self.expect(";".to_string())?;
+        self.expect_next(";".to_string())?;
 
         let cond = self.expr().ok();
-        self.expect(";".to_string())?;
+        self.expect_next(";".to_string())?;
 
         let inc = self.expr_stmt().ok();
-        self.expect(")".to_string())?;
+        self.expect_next(")".to_string())?;
 
         let then = self.stmt()?;
 
@@ -385,15 +395,15 @@ impl<'a> Parser<'a> {
         Ok(Node::ExprStmt{ val: Box::new(self.expr()?) })
     }
 
-    fn expect(&mut self, word: String) -> Result<(), String> {
+    fn expect_next(&mut self, word: String) -> Result<(), String> {
         let tk = self.peekable.peek();
+
         match tk {
             Some(Token::Reserved { op }) if *op == word => {
                 self.peekable.next();
                 Ok(())
             },
             _ => {
-                println!("tk: {:?}", tk);
                 let msg = format!("expect {}, but different found", word);
                 Err(msg)
             }

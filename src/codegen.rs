@@ -220,6 +220,10 @@ impl CodeGenerator {
 
                 return
             }
+            Node::Block { stmts } => {
+                stmts.iter().for_each(|stmt| self.gen(stmt));
+                return
+            }
         };
 
         println!("  push rax");
