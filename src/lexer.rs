@@ -86,12 +86,11 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
             },
             'a'..='z' => {
                 let _i = *i;
-                let ch = *ch;
                 let letter = get_letter(chars_with_index);
                 if KEYWORDS.contains(&&*letter) {
                     tokens.push(Token::Reserved { op: letter })
                 } else {
-                    let token = Token::Ident { name: ch.to_string() };
+                    let token = Token::Ident { name: letter };
                     tokens.push(token);
                     // chars_with_index.next();
                 }

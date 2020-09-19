@@ -1,14 +1,14 @@
-use crate::node::Node;
+use crate::node::Stmt;
 
 #[derive(Debug, PartialEq)]
 pub struct Function {
-    pub nodes: Vec<Node>,
+    pub nodes: Vec<Stmt>,
     pub locals: Vec<Var>,
     pub stack_size: usize
 }
 
 impl Function {
-    pub fn new(nodes: Vec<Node>, locals: Vec<Var>) -> Self {
+    pub fn new(nodes: Vec<Stmt>, locals: Vec<Var>) -> Self {
         Self {
             nodes: nodes,
             stack_size: locals.last().map_or(0, |var| var.offset),

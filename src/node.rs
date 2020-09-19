@@ -1,3 +1,5 @@
+use crate::program::Var;
+
 // EBNF
 // program := stmt*
 // stmt := expr ";"
@@ -6,8 +8,9 @@
 //       | "if" "(" expr ")" stmt ("else" stmt)? /* ( expr ) is primary. */
 //       | "while" "(" expr ")" stmt
 //       | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+//       | 
 // expr := assign
-// assign := equality ("=" assign)?  a=b=1のようなものを許す
+// assign := equality ("=" assign)?
 // equality := relational ("==" relational | "!=" relational)*
 // relational := add ("<" add | "<=" add | ">" add | ">=" add)*
 // add := mul ("+" mul | "-" mul)*
@@ -15,84 +18,87 @@
 // unary := ("+" | "-")? primary
 // primary := num | "(" expr ")"
 
-// trait Nodable {
-//     // fn gen(self);
-// }
+#[derive(PartialEq, Debug)]
+pub enum Stmt {
+    Return {
+        val: Expr
+    },
+    ExprStmt {
+        val: Expr
+    },
+    If {
+        cond: Box<Expr>,
+        then: Box<Stmt>,
+        els: Option<Box<Stmt>>,
+    },
+    While {
+        cond: Box<Expr>,
+        then: Box<Stmt>
+    },
+    For {
+        init: Box<Option<Expr>>,
+        cond: Box<Option<Expr>>,
+        inc: Box<Option<Expr>>,
+        then: Box<Stmt>,
+    },
+    Block {
+        stmts: Vec<Stmt>,
+    }
+}
 
-// pub struct Variable {
-//     pub name: String,
-//     pub offset: i64
-// }
-
-// pub enum Stmt {
-//     Return {
-//         val: Expr
-//     },
-//     ExprStmt {
-//         val: Expr
-//     },
-//     Assign {
-//         var: Variable,
-//         val: Expr
-//     },
-//     If {
-//     }
-//     While {
-//     }
-//     For {
-//     }
-// }
-// impl Nodable for Stmt {}
-
-// pub enum Expr {
-//     Eq {
-//         lhs: Box<Expr>,
-//         rhs: Box<Expr>
-//     },
-//     Neq {
-//         lhs: Box<Node>,
-//         rhs: Box<Node>
-//     },
-//     Gt {
-//         lhs: Box<Node>,
-//         rhs: Box<Node>
-//     },
-//     Ge {
-//         lhs: Box<Node>,
-//         rhs: Box<Node>
-//     },
-//     Lt {
-//         lhs: Box<Node>,
-//         rhs: Box<Node>
-//     },
-//     Le {
-//         lhs: Box<Node>,
-//         rhs: Box<Node>
-//     },
-//     Add {
-//         lhs: Box<Node>,
-//         rhs: Box<Node>
-//     },
-//     Sub {
-//         lhs: Box<Node>,
-//         rhs: Box<Node>
-//     },
-//     Mul {
-//         lhs: Box<Node>,
-//         rhs: Box<Node>
-//     },
-//     Div {
-//         lhs: Box<Node>,
-//         rhs: Box<Node>
-//     },
-//     Num {
-//         val: isize
-//     },
-//     Var {
-//         val: Variable
-//     }
-// }
-// impl Nodable for Expr {}
+#[derive(PartialEq, Debug)]
+pub enum Expr {
+    Eq {
+        lhs: Box<Expr>,
+        rhs: Box<Expr>
+    },
+    Neq {
+        lhs: Box<Expr>,
+        rhs: Box<Expr>
+    },
+    Gt {
+        lhs: Box<Expr>,
+        rhs: Box<Expr>
+    },
+    Ge {
+        lhs: Box<Expr>,
+        rhs: Box<Expr>
+    },
+    Lt {
+        lhs: Box<Expr>,
+        rhs: Box<Expr>
+    },
+    Le {
+        lhs: Box<Expr>,
+        rhs: Box<Expr>
+    },
+    Add {
+        lhs: Box<Expr>,
+        rhs: Box<Expr>
+    },
+    Sub {
+        lhs: Box<Expr>,
+        rhs: Box<Expr>
+    },
+    Mul {
+        lhs: Box<Expr>,
+        rhs: Box<Expr>
+    },
+    Div {
+        lhs: Box<Expr>,
+        rhs: Box<Expr>
+    },
+    Num {
+        val: isize
+    },
+    Var {
+        var: Var
+    },
+    Assign {
+        var: Var,
+        val: Box<Expr>
+    }
+}
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum Node {

@@ -1,4 +1,4 @@
-use crate::node::Node;
+use crate::node::{ Stmt, Expr };
 use crate::token::Token;
 use crate::program::{ Function, Var };
 use std::slice::Iter;
@@ -20,7 +20,6 @@ pub struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     pub fn new(input: &'a Vec<Token>) -> Self {
-
         Self {
             input: input,
             peekable: input.iter().peekable(),
@@ -35,8 +34,8 @@ impl<'a> Parser<'a> {
     }
 
     // program := stmt*
-    fn program(&mut self) -> Result<Vec<Node>, String> {
-        let mut nodes: Vec<Node> = Vec::new();
+    fn program(&mut self) -> Result<Vec<Stmt>, String> {
+        let mut nodes: Vec<Stmt> = Vec::new();
 
         while let Some(token) = self.peekable.peek() {
             if let Token::Eof = token {
@@ -54,7 +53,7 @@ impl<'a> Parser<'a> {
     //       | "if" "(" expr ")" stmt ("else" stmt)?
     //       | "while" "(" expr ")" stmt
     //       | "for" "(" expr? ";" expr? ";" expr? ")" stmt
-    fn stmt(&mut self) -> Result<Node, String> {
+    fn stmt(&mut self) -> Result<Stmt, String> {
         let tk = self.peekable.peek();
         match tk {
             Some(Token::Reserved { op }) if *op == "return" => {
@@ -63,18 +62,18 @@ impl<'a> Parser<'a> {
                 let expr = self.expr()?;
                 self.expect_next(";".to_string())?;
 
-                Ok(Node::Return { val: Box::new(expr) })
+                Ok(Stmt::Return { val: expr })
             }
             Some(Token::Reserved { op }) if *op == "{" => {
                 self.peekable.next();
-                let mut stmts: Vec<Node> = Vec::new();
+                let mut stmts: Vec<Stmt> = Vec::new();
 
                 while let Err(_) = self.expect_next("}".to_string()) {
                     let stmt = self.stmt()?;
                     stmts.push(stmt);
                 }
 
-                Ok(Node::Block { stmts })
+                Ok(Stmt::Block { stmts })
             }
             Some(Token::Reserved { op }) if *op == "if" => {
                 self.if_stmt()
@@ -95,31 +94,36 @@ impl<'a> Parser<'a> {
     }
 
     // expr := assign
-    fn expr(&mut self) -> Result<Node, String> {
+    fn expr(&mut self) -> Result<Expr, String> {
         self.assign()
     }
 
     // assign := equality ("=" assign)?
-    fn assign(&mut self) -> Result<Node, String> {
-        let mut node = self.equality()?;
-        if let Some(token) = self.peekable.peek() {
-            match token {
-                Token::Reserved { op } if *op == "=" => {
-                    self.peekable.next();
-                    node = Node::Assign {
-                        var: Box::new(node),
-                        val: Box::new(self.assign()?)
-                    }
-                }
-                _ => {}
+    fn assign(&mut self) -> Result<Expr, String> {
+        let node = self.equality();
+        let var = (&node).as_ref().ok().and_then(|nd| {
+            if let Expr::Var { var } = nd {
+                return Some(var)
             }
-        };
 
-        Ok(node)
+            None
+        });
+
+        if let Some(v) = var {
+            let is_assign = self.expect_next("=".to_string());
+            if let Ok(_) = is_assign {
+                return Ok(Expr::Assign {
+                    var: v.clone(),
+                    val: Box::new(self.expr()?)
+                })
+            }
+        }
+
+        node
     }
 
     // equality := relational ("==" relational | "!=" relational)*
-    fn equality(&mut self) -> Result<Node, String> {
+    fn equality(&mut self) -> Result<Expr, String> {
         let mut node = self.relational()?;
 
         while let Some(token) = self.peekable.peek() {
@@ -128,13 +132,13 @@ impl<'a> Parser<'a> {
                     self.peekable.next();
 
                     let rhs = self.relational()?;
-                    node = Node::Eq { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Eq { lhs: Box::new(node), rhs: Box::new(rhs) };
                 }
                 Token::Reserved { op } if *op == "!=" => {
                     self.peekable.next();
 
                     let rhs = self.relational()?;
-                    node = Node::Neq { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Neq { lhs: Box::new(node), rhs: Box::new(rhs) };
                 }
                 _ => { return Ok(node); }
             }
@@ -144,7 +148,7 @@ impl<'a> Parser<'a> {
     }
 
     // relational := add ("<" add | "<=" add | ">" add | ">=" add)*
-    fn relational(&mut self) -> Result<Node, String> {
+    fn relational(&mut self) -> Result<Expr, String> {
         let mut node = self.add()?;
 
         while let Some(token) = self.peekable.peek() {
@@ -153,25 +157,25 @@ impl<'a> Parser<'a> {
                     self.peekable.next();
 
                     let rhs = self.add()?;
-                    node = Node::Lt { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Lt { lhs: Box::new(node), rhs: Box::new(rhs) };
                 }
                 Token::Reserved { op } if *op == "<=" => {
                     self.peekable.next();
 
                     let rhs = self.add()?;
-                    node = Node::Le { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Le { lhs: Box::new(node), rhs: Box::new(rhs) };
                 }
                 Token::Reserved { op } if *op == ">" => {
                     self.peekable.next();
 
                     let rhs = self.add()?;
-                    node = Node::Gt { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Gt { lhs: Box::new(node), rhs: Box::new(rhs) };
                 }
                 Token::Reserved { op } if *op == ">=" => {
                     self.peekable.next();
 
                     let rhs = self.add()?;
-                    node = Node::Ge { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Ge { lhs: Box::new(node), rhs: Box::new(rhs) };
                 }
                 _ => { return Ok(node); }
             }
@@ -180,7 +184,7 @@ impl<'a> Parser<'a> {
         Ok(node)
     }
 
-    fn add(&mut self) -> Result<Node, String> {
+    fn add(&mut self) -> Result<Expr, String> {
         let mut node = self.mul()?;
 
         while let Some(token) = self.peekable.peek() {
@@ -190,14 +194,14 @@ impl<'a> Parser<'a> {
                     self.peekable.next();
 
                     let rhs = self.mul()?;
-                    node = Node::Add { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Add { lhs: Box::new(node), rhs: Box::new(rhs) };
                 },
                 // "-" mul
                 Token::Reserved { op } if *op == "-" => {
                     self.peekable.next();
 
                     let rhs = self.mul()?;
-                    node = Node::Sub { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Sub { lhs: Box::new(node), rhs: Box::new(rhs) };
                 },
                 // mul
                 _ => { return Ok(node); }
@@ -207,7 +211,7 @@ impl<'a> Parser<'a> {
         Ok(node)
     }
 
-    fn mul(&mut self) -> Result<Node, String> {
+    fn mul(&mut self) -> Result<Expr, String> {
         let mut node = self.unary()?;
 
         while let Some(token) = self.peekable.peek() {
@@ -217,7 +221,7 @@ impl<'a> Parser<'a> {
                     self.peekable.next();
 
                     let rhs = self.unary()?;
-                    node = Node::Mul { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Mul { lhs: Box::new(node), rhs: Box::new(rhs) };
                 },
 
                 // "/" primary
@@ -225,7 +229,7 @@ impl<'a> Parser<'a> {
                     self.peekable.next();
 
                     let rhs = self.unary()?;
-                    node = Node::Div { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Div { lhs: Box::new(node), rhs: Box::new(rhs) };
                 },
                 _ => {
                     return Ok(node);
@@ -236,7 +240,7 @@ impl<'a> Parser<'a> {
         Ok(node)
     }
 
-    fn unary(&mut self) -> Result<Node, String> {
+    fn unary(&mut self) -> Result<Expr, String> {
         if let Some(token) = self.peekable.peek() {
 
             match token {
@@ -249,8 +253,8 @@ impl<'a> Parser<'a> {
                     self.peekable.next();
 
                     let rhs = self.unary()?;
-                    Ok(Node::Sub {
-                        lhs: Box::new(Node::Num{ val: 0 }),
+                    Ok(Expr::Sub {
+                        lhs: Box::new(Expr::Num { val: 0 }),
                         rhs: Box::new(rhs)
                     })
                 },
@@ -289,7 +293,7 @@ impl<'a> Parser<'a> {
     // }
 
     // primary = "(" expr ")" | ident | num
-    fn primary(&mut self) -> Result<Node, String> {
+    fn primary(&mut self) -> Result<Expr, String> {
         let token = self.peekable.peek();
 
         match token {
@@ -306,19 +310,19 @@ impl<'a> Parser<'a> {
             // num
             Some(Token::Num { val, .. }) => {
                 self.peekable.next();
-                Ok(Node::Num { val: *val })
+                Ok(Expr::Num { val: *val })
             }
             // local var
             Some(Token::Ident { name }) => {
                 self.peekable.next();
                 if let Some(var) = self.find_lvar(name) {
-                    Ok(Node::Var { name: name.clone(), offset: var.offset })
+                    Ok(Expr::Var { var: var.clone() })
                 } else {
                     let offset = (self.locals.len() + 1) * 8;
                     let var = Var { name: name.clone(), offset: offset };
-                    self.locals.push(var);
+                    self.locals.push(var.clone());
 
-                    Ok(Node::Var { name: name.clone(), offset: offset })
+                    Ok(Expr::Var { var: var })
                 }
             }
             // unexpected
@@ -332,7 +336,7 @@ impl<'a> Parser<'a> {
         self.locals.iter().find(|item| { item.name == *name })
     }
 
-    fn if_stmt(&mut self) -> Result<Node, String> {
+    fn if_stmt(&mut self) -> Result<Stmt, String> {
         self.peekable.next();
 
         // primaryだと()なしでも動くようになるが, Cコンパイラではなくなる
@@ -347,43 +351,43 @@ impl<'a> Parser<'a> {
             _ => None
         };
 
-        Ok(Node::If {
+        Ok(Stmt::If {
             cond: Box::new(cond),
             then: Box::new(then),
             els: els.map(|x| Box::new(x)),
         })
     }
 
-    fn while_stmt(&mut self) -> Result<Node, String> {
+    fn while_stmt(&mut self) -> Result<Stmt, String> {
         self.peekable.next();
 
         let cond = self.primary()?;
         let then = self.stmt()?;
 
-        Ok(Node::While {
+        Ok(Stmt::While {
             cond: Box::new(cond),
             then: Box::new(then)
         })
     }
 
-    fn for_stmt(&mut self) -> Result<Node, String> {
+    fn for_stmt(&mut self) -> Result<Stmt, String> {
         self.peekable.next();
 
         self.expect_next("(".to_string())?;
 
         // 初期化，条件，処理後はない場合がある
-        let init = self.expr_stmt().ok();
+        let init = self.assign().ok();
         self.expect_next(";".to_string())?;
 
         let cond = self.expr().ok();
         self.expect_next(";".to_string())?;
 
-        let inc = self.expr_stmt().ok();
+        let inc = self.assign().ok();
         self.expect_next(")".to_string())?;
 
         let then = self.stmt()?;
 
-        Ok(Node::For {
+        Ok(Stmt::For {
             init: Box::new(init),
             cond: Box::new(cond),
             inc: Box::new(inc),
@@ -391,8 +395,8 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn expr_stmt(&mut self) -> Result<Node, String> {
-        Ok(Node::ExprStmt{ val: Box::new(self.expr()?) })
+    fn expr_stmt(&mut self) -> Result<Stmt, String> {
+        Ok(Stmt::ExprStmt { val: self.expr()? })
     }
 
     fn expect_next(&mut self, word: String) -> Result<(), String> {
@@ -409,6 +413,7 @@ impl<'a> Parser<'a> {
             }
         }
     }
+
 }
 
 #[test]

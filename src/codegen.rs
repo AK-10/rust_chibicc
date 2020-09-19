@@ -1,4 +1,4 @@
-use crate::node::Node;
+use crate::node::{ Stmt, Expr };
 use crate::program::Function;
 use std::cell::Cell;
 
@@ -23,7 +23,7 @@ impl CodeGenerator {
         println!("  sub rsp, {}", func.stack_size); // 208: 変数26個分(a-z)の領域を確保する 領域の単位は8byte
 
         while let Some(node) = node_iter.next() {
-            self.gen(node);
+            self.gen_stmt(node);
         };
 
         // Epilogue
@@ -34,21 +34,21 @@ impl CodeGenerator {
         println!("  ret");
     }
 
-    fn gen(&self, node: &Node) {
-        match node {
-            Node::Add { lhs, rhs } => {
+    fn gen_expr(&self, expr: &Expr) {
+        match expr {
+            Expr::Add { lhs, rhs } => {
                 self.gen_both_side(lhs, rhs);
                 println!("  add rax, rdi");
             },
-            Node::Sub { lhs, rhs } => {
+            Expr::Sub { lhs, rhs } => {
                 self.gen_both_side(lhs, rhs);
                 println!("  sub rax, rdi");
             },
-            Node::Mul { lhs, rhs } => {
+            Expr::Mul { lhs, rhs } => {
                 self.gen_both_side(lhs, rhs);
                 println!("  imul rax, rdi");
             },
-            Node::Div { lhs, rhs } => {
+            Expr::Div { lhs, rhs } => {
                 self.gen_both_side(lhs, rhs);
 
                 // idiv命令は符号あり除算を行う命令
@@ -59,11 +59,11 @@ impl CodeGenerator {
                 println!("  cqo");
                 println!("  idiv rdi");
             },
-            Node::Num { val } => {
+            Expr::Num { val } => {
                 println!("  push {}", val);
                 return
             }
-            Node::Eq { lhs, rhs } => {
+            Expr::Eq { lhs, rhs } => {
                 self.gen_both_side(lhs, rhs);
 
                 // cmp命令: 二つの引数のレジスタを比較して, フラグレジスタに結果を格納
@@ -75,14 +75,14 @@ impl CodeGenerator {
                 println!("  sete al");
                 println!("  movzb rax, al");
             }
-            Node::Neq { lhs, rhs } => {
+            Expr::Neq { lhs, rhs } => {
                 self.gen_both_side(lhs, rhs);
 
                 println!("  cmp rax, rdi");
                 println!("  setne al");
                 println!("  movzb rax, al");
             }
-            Node::Gt { lhs, rhs } => {
+            Expr::Gt { lhs, rhs } => {
                 // setl を使うため，rhs, lhsを逆にする
                 self.gen_both_side(rhs, lhs);
 
@@ -90,7 +90,7 @@ impl CodeGenerator {
                 println!("  setl al");
                 println!("  movzb rax, al");
             }
-            Node::Ge { lhs, rhs } => {
+            Expr::Ge { lhs, rhs } => {
                 // setle を使うため，rhs, lhsを逆にする
                 self.gen_both_side(rhs, lhs);
 
@@ -98,53 +98,52 @@ impl CodeGenerator {
                 println!("  setle al");
                 println!("  movzb rax, al");
             }
-            Node::Lt { lhs, rhs } => {
+            Expr::Lt { lhs, rhs } => {
                 self.gen_both_side(lhs, rhs);
 
                 println!("  cmp rax, rdi");
                 println!("  setl al");
                 println!("  movzb rax, al");
             }
-            Node::Le { lhs, rhs } => {
+            Expr::Le { lhs, rhs } => {
                 self.gen_both_side(lhs, rhs);
 
                 println!("  cmp rax, rdi");
                 println!("  setle al");
                 println!("  movzb rax, al");
             }
-            Node::Return { val } => {
-                self.gen(val);
+            Expr::Var { var } => {
+                gen_addr(var.offset);
+                load();
+
+                return
+            }
+            Expr::Assign { var, val } => {
+                gen_addr(var.offset);
+                self.gen_expr(val);
+                store();
+
+                return
+            }
+        }
+
+        println!("  push rax");
+    }
+
+    fn gen_stmt(&self, stmt: &Stmt) {
+        match stmt {
+            Stmt::Return { val } => {
+                self.gen_expr(val);
 
                 println!("  pop rax");
                 println!("  jmp .L.return");
-                return
             }
-            Node::ExprStmt { val } => {
-                self.gen(val);
+            Stmt::ExprStmt { val } => {
+                self.gen_expr(val);
                 println!("  add rsp, 8");
-                return
             }
-            Node::Var { offset, .. } => {
-                gen_addr(*offset);
-                load();
-                return
-            }
-            Node::Assign { var, val } => {
-                // なんとかしたい, 以下ができれば完璧
-                // #[derive(Node)]
-                // enum Assign { var: Var, val: Expr }
-                // #[derive(Node)]
-                // enum Var { name: String, offset: i64 }
 
-                if let Node::Var { offset, .. } = **var {
-                    gen_addr(offset);
-                    self.gen(val);
-
-                    store();
-                }
-                return
-            }
-            Node::If { cond, then, els } => {
+            Stmt::If { cond, then, els } => {
                 // if (A) B else Cのアセンブリ疑似コード
                 //   Aをコンパイルしたコード(この式の結果はstackにpushされているはず)
                 //   pop rax
@@ -159,7 +158,7 @@ impl CodeGenerator {
                 self.labelseq.set(self.labelseq.get() + 1);
                 let seq = self.labelseq.get();
 
-                self.gen(cond);
+                self.gen_expr(cond);
                 // stackのトップにcondの結果が格納されているはず
                 println!("  pop rax");
                 // conditionの結果を0と比較する. (条件式が偽であることかをみている)
@@ -168,70 +167,61 @@ impl CodeGenerator {
                 // else block exist
                 if let Some(els_block) = els {
                     println!("  je .L.else.{}", seq);
-                    self.gen(then);
+                    self.gen_stmt(then);
                     println!("  jmp .L.end.{}", seq);
                     println!(".L.else.{}:", seq);
-                    self.gen(els_block);
+                    self.gen_stmt(els_block);
                     println!(".L.end.{}:", seq);
                 // not exist
                 } else {
                     println!("  je .L.end.{}", seq);
-                    self.gen(then);
+                    self.gen_stmt(then);
                     println!(".L.end.{}:", seq);
                 }
-
-                return
             }
-            Node::While { cond, then } => {
+            Stmt::While { cond, then } => {
                 self.labelseq.set(self.labelseq.get() + 1);
                 let seq = self.labelseq.get();
 
                 println!(".L.begin.{}:", seq);
-                self.gen(cond);
+                self.gen_expr(cond);
                 println!("  pop rax");
                 println!("  cmp rax, 0");
                 println!("  je .L.end.{}", seq);
 
-                self.gen(then);
+                self.gen_stmt(then);
                 println!("  jmp .L.begin.{}", seq);
                 println!(".L.end.{}:", seq);
-
-                return
             }
-            Node::For { init, cond, inc, then } => {
+            Stmt::For { init, cond, inc, then } => {
                 self.labelseq.set(self.labelseq.get() + 1);
                 let seq = self.labelseq.get();
 
-                init.as_ref().as_ref().map(|x| self.gen(x));
+                init.as_ref().as_ref().map(|x| self.gen_expr(x));
                 println!(".L.begin.{}:", seq);
 
                 cond.as_ref().as_ref().map(|x| {
-                    self.gen(x);
+                    self.gen_expr(x);
                     println!("  pop rax");
                     println!("  cmp rax, 0");
                     println!("  je .L.end.{}", seq);
                 });
 
-                self.gen(then);
+                self.gen_stmt(then);
 
-                inc.as_ref().as_ref().map(|x| self.gen(x));
+                inc.as_ref().as_ref().map(|x| self.gen_expr(x));
                 println!("  jmp .L.begin.{}", seq);
                 println!(".L.end.{}:", seq);
-
-                return
             }
-            Node::Block { stmts } => {
-                stmts.iter().for_each(|stmt| self.gen(stmt));
-                return
+            Stmt::Block { stmts } => {
+                stmts.iter().for_each(|stmt| self.gen_stmt(stmt));
             }
         };
-
-        println!("  push rax");
     }
 
-    fn gen_both_side(&self, lhs: &Node, rhs: &Node) {
-        self.gen(lhs);
-        self.gen(rhs);
+    fn gen_both_side(&self, lhs: &Expr, rhs: &Expr) {
+        self.gen_expr(lhs);
+        self.gen_expr(rhs);
 
         println!("  pop rdi");
         println!("  pop rax");
