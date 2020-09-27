@@ -317,8 +317,14 @@ impl<'a> Parser<'a> {
                 // function call
                 self.peekable.next();
                 if let Ok(_) = self.expect_next("(".to_string()) {
+
+                    if let Ok(_) = self.expect_next(")".to_string()) {
+                        return Ok(Expr::FnCall { fn_name: name.clone(), args: Vec::new() })
+                    }
+                    let args = self.parse_args()?;
                     self.expect_next(")".to_string())?;
-                    return Ok(Expr::FnCall { fn_name: name.clone() })
+
+                    return Ok(Expr::FnCall { fn_name: name.clone(), args: args })
                 }
                 // variable
                 if let Some(var) = self.find_lvar(name) {
@@ -420,6 +426,15 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_args(&mut self) -> Result<Vec<Expr>, String> {
+        // 最初の一個だけ読んでおく
+        let mut args = vec![self.expr()?];
+        while let Ok(_) = self.expect_next(",".to_string()) {
+            args.push(self.expr()?);
+        }
+
+        Ok(args)
+    }
 }
 
 #[test]
@@ -440,8 +455,8 @@ fn parse_arithmetic_test() {
     let result = parser.parse().unwrap();
 
     let expect = vec![
-        Stmt::ExprStmt { val: Box::new(
-            Expr::Sub {
+        Stmt::ExprStmt {
+            val: Expr::Sub {
                 lhs: Box::new(
                     Expr::Add {
                         lhs: Box::new(Expr::Num { val: 1 }),
@@ -455,7 +470,7 @@ fn parse_arithmetic_test() {
                 ),
                 rhs: Box::new(Expr::Num {val: 20 })
             }
-        )}
+        }
     ];
 
     assert_eq!(result.nodes, expect);

@@ -103,6 +103,7 @@ pub enum Expr {
     },
     FnCall {
         fn_name: String,
+        args: Vec<Expr>
     }
 }
 

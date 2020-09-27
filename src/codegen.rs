@@ -2,6 +2,8 @@ use crate::node::{ Stmt, Expr };
 use crate::program::Function;
 use std::cell::Cell;
 
+const ARG_REG: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
+
 pub struct CodeGenerator {
     labelseq: Cell<usize>,
 }
@@ -125,7 +127,16 @@ impl CodeGenerator {
 
                 return
             }
-            Expr::FnCall { fn_name } => {
+            Expr::FnCall { fn_name, args } => {
+                let arg_size = args.len();
+                args.iter().for_each( |arg| {
+                    self.gen_expr(arg);
+                });
+
+                for idx in (0..arg_size).rev() {
+                    println!("  pop {}", ARG_REG[idx])
+                }
+
                 println!("  call {}", fn_name);
             }
         }
