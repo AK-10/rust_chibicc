@@ -125,6 +125,9 @@ impl CodeGenerator {
 
                 return
             }
+            Expr::FnCall { fn_name } => {
+                println!("  call {}", fn_name);
+            }
         }
 
         println!("  push rax");

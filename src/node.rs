@@ -16,7 +16,10 @@ use crate::program::Var;
 // add := mul ("+" mul | "-" mul)*
 // mul := unary ("*" unary | "/" unary)*
 // unary := ("+" | "-")? primary
-// primary := num | "(" expr ")"
+// primary := num
+//          | ident args? // 単なる変数か，関数呼び出し
+//          | "(" expr ")"
+// args := "(" ")"
 
 #[derive(PartialEq, Debug)]
 pub enum Stmt {
@@ -97,6 +100,9 @@ pub enum Expr {
     Assign {
         var: Var,
         val: Box<Expr>
+    },
+    FnCall {
+        fn_name: String,
     }
 }
 

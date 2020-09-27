@@ -130,7 +130,7 @@ fn get_letter(chars: &mut Peekable<Enumerate<Chars>>) -> String {
     let mut letter = String::new();
     while let Some((_, ch)) = chars.peek() {
         match ch {
-            'a'..='z' | 'A'..='Z' => {
+            'a'..='z' | 'A'..='Z' | '0'..='9' => {
                 letter.push(*ch);
                 chars.next();
             },

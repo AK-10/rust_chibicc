@@ -314,7 +314,13 @@ impl<'a> Parser<'a> {
             }
             // local var
             Some(Token::Ident { name }) => {
+                // function call
                 self.peekable.next();
+                if let Ok(_) = self.expect_next("(".to_string()) {
+                    self.expect_next(")".to_string())?;
+                    return Ok(Expr::FnCall { fn_name: name.clone() })
+                }
+                // variable
                 if let Some(var) = self.find_lvar(name) {
                     Ok(Expr::Var { var: var.clone() })
                 } else {
@@ -434,20 +440,20 @@ fn parse_arithmetic_test() {
     let result = parser.parse().unwrap();
 
     let expect = vec![
-        Node::ExprStmt { val: Box::new(
-            Node::Sub {
+        Stmt::ExprStmt { val: Box::new(
+            Expr::Sub {
                 lhs: Box::new(
-                    Node::Add {
-                        lhs: Box::new(Node::Num { val: 1 }),
+                    Expr::Add {
+                        lhs: Box::new(Expr::Num { val: 1 }),
                         rhs: Box::new(
-                            Node::Mul {
-                                lhs: Box::new(Node::Num { val: 2 }),
-                                rhs: Box::new(Node::Num { val: 3 })
+                            Expr::Mul {
+                                lhs: Box::new(Expr::Num { val: 2 }),
+                                rhs: Box::new(Expr::Num { val: 3 })
                             }
                         )
                     }
                 ),
-                rhs: Box::new(Node::Num {val: 20 })
+                rhs: Box::new(Expr::Num {val: 20 })
             }
         )}
     ];
@@ -471,24 +477,22 @@ fn parse_return_test() {
     let mut parser = Parser::new(&input);
     let result = parser.parse().unwrap();
     let expect = vec![
-        Node::ExprStmt { val: Box::new(
-            Node::Assign {
-                var: Box::new(
-                    Node::Var {
+        Stmt::ExprStmt {
+            val: Expr::Assign {
+                var: Var {
                         name: "foo".to_string(),
                         offset: 8
-                    }
-                ),
-                val: Box::new(Node::Num {val: 1 })
+                    },
+                val: Box::new(Expr::Num {val: 1 })
             }
-        )},
-        Node::Return {
-            val: Box::new(
-                Node::Var {
+        },
+        Stmt::Return {
+            val: Expr::Var {
+                var: Var {
                     name: "foo".to_string(),
                     offset: 8
                 }
-            )
+            }
         }
     ];
 
@@ -512,22 +516,22 @@ fn parse_cmp_test() {
     let mut parser = Parser::new(&input);
     let result = parser.parse().unwrap();
     let expect = vec![
-        Node::ExprStmt { val: Box::new(
-            Node::Eq {
+        Stmt::ExprStmt {
+            val: Expr::Eq {
                 lhs: Box::new(
-                    Node::Lt {
+                    Expr::Lt {
                         lhs: Box::new(
-                            Node::Ge {
-                                lhs: Box::new(Node::Num { val: 1 }),
-                                rhs: Box::new(Node::Num { val: 1 })
+                            Expr::Ge {
+                                lhs: Box::new(Expr::Num { val: 1 }),
+                                rhs: Box::new(Expr::Num { val: 1 })
                             }
                         ),
-                        rhs: Box::new(Node::Num { val: 1 }),
+                        rhs: Box::new(Expr::Num { val: 1 }),
                     }
                 ),
-                rhs: Box::new(Node::Num {val: 2 })
+                rhs: Box::new(Expr::Num {val: 2 })
             }
-        )}
+        }
     ];
 
     assert_eq!(result.nodes, expect);
