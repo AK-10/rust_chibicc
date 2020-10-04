@@ -1,39 +1,47 @@
 use crate::node::{ Stmt, Expr };
 use crate::program::Function;
-use std::cell::Cell;
+use std::cell::{ Cell, RefCell };
 
 const ARG_REG: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
 
 pub struct CodeGenerator {
+    funcname: RefCell<String>,
     labelseq: Cell<usize>,
 }
 
 impl CodeGenerator {
     pub fn new() -> Self {
-        Self { labelseq: Cell::new(0) }
+        Self {
+            funcname: RefCell::new(String::new()),
+            labelseq: Cell::new(0)
+        }
     }
 
-    pub fn codegen(&self, func: Function) {
-        let mut node_iter = func.nodes.iter();
-        println!(".intel_syntax noprefix");
-        println!(".globl main");
-        println!("main:");
+    pub fn codegen(&self, funcs: Vec<Function>) {
+        funcs.iter().for_each(|func| {
+            let mut node_iter = func.nodes.iter();
+            *self.funcname.borrow_mut() = func.name.to_string();
+            let funcname = self.funcname.borrow().to_string();
+            println!(".intel_syntax noprefix");
+            println!(".global {}", funcname);
+            println!("{}:", funcname);
 
-        // Prologue
-        println!("  push rbp");
-        println!("  mov rbp, rsp");
-        println!("  sub rsp, {}", func.stack_size); // 208: 変数26個分(a-z)の領域を確保する 領域の単位は8byte
+            // Prologue
+            println!("  push rbp");
+            println!("  mov rbp, rsp");
+            println!("  sub rsp, {}", func.stack_size);
 
-        while let Some(node) = node_iter.next() {
-            self.gen_stmt(node);
-        };
+            while let Some(node) = node_iter.next() {
+                self.gen_stmt(node);
+            };
 
-        // Epilogue
-        // 最後の式の結果がRAXに残っているのでそれが返り値になる
-        println!(".L.return:");
-        println!("  mov rsp, rbp");
-        println!("  pop rbp");
-        println!("  ret");
+            // Epilogue
+            // 最後の式の結果がRAXに残っているのでそれが返り値になる
+            println!(".L.return.{}:", funcname);
+            println!("  mov rsp, rbp");
+            println!("  pop rbp");
+            println!("  ret");
+        });
     }
 
     fn gen_expr(&self, expr: &Expr) {
@@ -180,7 +188,7 @@ impl CodeGenerator {
                 self.gen_expr(val);
 
                 println!("  pop rax");
-                println!("  jmp .L.return");
+                println!("  jmp .L.return.{}", self.funcname.borrow().as_str());
             }
             Stmt::ExprStmt { val } => {
                 self.gen_expr(val);

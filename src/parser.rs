@@ -27,25 +27,46 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Function, String> {
-        let node = self.program()?;
-
-        Ok(Function::new(node, self.locals.to_vec()))
+    pub fn parse(&mut self) -> Result<Vec<Function>, String> {
+       self.program()
     }
 
     // program := stmt*
-    fn program(&mut self) -> Result<Vec<Stmt>, String> {
-        let mut nodes: Vec<Stmt> = Vec::new();
+    fn program(&mut self) -> Result<Vec<Function>, String> {
+        let mut nodes: Vec<Function> = Vec::new();
 
         while let Some(token) = self.peekable.peek() {
+            // eofでbreakしないと，以降の処理でpeek()するので全体としてErrになる(Noneでエラーにするような処理がprimaryにある)
             if let Token::Eof = token {
-                break;
+                break
             }
-
-            nodes.push(self.stmt()?);
+            nodes.push(self.function()?);
         };
 
         Ok(nodes)
+    }
+
+    // function := ident "(" ")" "{" stmt* "}"
+    fn function(&mut self) -> Result<Function, String> {
+        if let Some(Token::Ident{ name }) = self.peekable.next() {
+            self.expect_next("(".to_string())?;
+            self.expect_next(")".to_string())?;
+            self.expect_next("{".to_string())?;
+
+            let mut nodes = Vec::new();
+
+            while let Err(_) = self.expect_next("}".to_string()) {
+                nodes.push(self.stmt()?);
+            };
+
+            // self.expect_next("}".to_string())?;
+            let locals = self.locals.to_vec();
+            self.locals.clear();
+
+            Ok(Function::new(name.to_string(), nodes, locals))
+        } else {
+            Err("expect ident, but different".to_string())
+        }
     }
 
     // stmt := expr ";"
