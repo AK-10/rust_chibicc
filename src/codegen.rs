@@ -137,7 +137,37 @@ impl CodeGenerator {
                     println!("  pop {}", ARG_REG[idx])
                 }
 
+                // ABIの仕様で関数呼び出しの前にRSPを(16の倍数)にする必要がある
+                // push, popは8バイト単位で変更を行うのでcall命令を行うときにスタックが(16の倍数)byteになっているとは限らない
+                // やりたいことは, RSP(スタックの先頭のポインタ)が16の倍数でなければ8を追加する(スタックの方向的にsub rsp, 8をする)
+                // RAX は variadic function のために0にセットする
+                // 「x86 関数呼び出し アライメント」でぐぐるといろいろ出てくる
+                let cur_labelseq = self.labelseq.get();
+                self.labelseq.set(cur_labelseq + 1);
+
+                // and rax, 15
+                // 15 -> 00001111
+                // andの結果が5ビット目より下位ビットが立っている場合16で割り切れない事になる
+                // 5ビット目以上はandでは常に0になる（15のビットより）
+                // つまり16で割り切れる場合，andによってZF = 1になる(アライメントを調整しなくて良い)
+                // この場合, raxを0にセットしてcall命令を呼ぶだけ
+                // 16で割り切れない場合，ZF = 0より
+                // sub rsp, 8 mov rax, 0 をして関数を呼ぶ
+                println!("  mov rax, rsp");
+                println!("  and rax, 15"); // and: オペランドの論理積を計算し，第一引数に格納
+
+                println!("  jnz .L.call.{}", self.labelseq.get()); // jnz: フラグレジスタのZFが0の時(比較の結果，等しくない)，adr[,x]のアドレスへ分岐(実行が移動)する
+                println!("  mov rax, 0");
                 println!("  call {}", fn_name);
+                println!("  jmp .L.end.{}", self.labelseq.get());
+                println!(".L.call.{}:", self.labelseq.get());
+                println!("  sub rsp, 8");
+                println!("  mov rax, 0");
+
+                println!("  call {}", fn_name);
+
+                println!("  add rsp, 8");
+                println!(".L.end.{}:", self.labelseq.get());
             }
         }
 
