@@ -17,6 +17,7 @@ mod parser_helper;
 pub struct Parser<'a> {
     pub input: &'a Vec<Token>,
     peekable: Peekable<Iter<'a, Token>>,
+    // 関数の引数，関数内で宣言された変数を保持する, 関数のスコープから外れたらリセットする
     pub locals: Vec<Var>
 }
 
@@ -42,17 +43,21 @@ impl<'a> Parser<'a> {
             if let Token::Eof = token {
                 break
             }
+
             nodes.push(self.function()?);
         };
 
         Ok(nodes)
     }
 
-    // function := ident "(" ")" "{" stmt* "}"
+    // function := ident "(" params ")" "{" stmt* "}"
+    // params := ident ("," ident)*
     fn function(&mut self) -> Result<Function, String> {
         if let Some(Token::Ident{ name }) = self.peekable.next() {
-            self.expect_next("(".to_string())?;
-            self.expect_next(")".to_string())?;
+            // parse params
+            let params = self.parse_func_params()?;
+            self.locals = params.clone();
+
             self.expect_next("{".to_string())?;
 
             let mut nodes = Vec::new();
@@ -61,11 +66,10 @@ impl<'a> Parser<'a> {
                 nodes.push(self.stmt()?);
             };
 
-            // self.expect_next("}".to_string())?;
             let locals = self.locals.to_vec();
             self.locals.clear();
 
-            Ok(Function::new(name.to_string(), nodes, locals))
+            Ok(Function::new(name.to_string(), nodes, locals, params))
         } else {
             Err("expect ident, but different".to_string())
         }
@@ -340,7 +344,7 @@ impl<'a> Parser<'a> {
                 // function call
                 self.peekable.next();
                 if let Ok(_) = self.expect_next("(".to_string()) {
-
+                    // 引数なし
                     if let Ok(_) = self.expect_next(")".to_string()) {
                         return Ok(Expr::FnCall { fn_name: name.clone(), args: Vec::new() })
                     }

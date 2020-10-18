@@ -86,6 +86,7 @@ impl<'a> Parser<'_> {
         }
     }
 
+    // 関数呼び出しにおける引数をparseする
     pub(in super) fn parse_args(&mut self) -> Result<Vec<Expr>, String> {
         // 最初の一個だけ読んでおく
         let mut args = vec![self.expr()?];
@@ -94,5 +95,48 @@ impl<'a> Parser<'_> {
         }
 
         Ok(args)
+    }
+
+
+    // 関数呼び出しにおける引数をparseする
+    // params := ident ("," ident)*
+    pub(in super) fn parse_func_params(&mut self) -> Result<Vec<Var> ,String> {
+        self.expect_next("(".to_string())?;
+
+        let mut params = Vec::<Var>::new();
+        if self.expect_next(")".to_string()).is_ok() {
+            return Ok(params)
+        }
+
+        let first_args = self.peekable.peek();
+        if let Some(Token::Ident { name }) = first_args {
+            self.peekable.next();
+
+            let offset = (params.len() + 1) * 8;
+            params.push(Var { name: name.clone(), offset });
+        } else {
+            return Err("token not found".to_string())
+        }
+
+        while let Ok(_) = self.expect_next(",".to_string()) {
+            match self.peekable.peek() {
+                Some(Token::Ident { name }) => {
+                    self.peekable.next();
+                    let offset = (params.len() + 1) * 8;
+
+                    params.push(Var { name: name.clone(), offset: offset })
+                },
+                Some(token) => {
+                    return Err(format!("expect ident, result: {:?}", token))
+                }
+                _ => {
+                    return Err("token not found".to_string())
+                }
+            }
+        }
+
+        self.expect_next(")".to_string())?;
+
+        Ok(params)
     }
 }

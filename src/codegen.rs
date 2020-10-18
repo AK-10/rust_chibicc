@@ -18,11 +18,11 @@ impl CodeGenerator {
     }
 
     pub fn codegen(&self, funcs: Vec<Function>) {
+        println!(".intel_syntax noprefix");
         funcs.iter().for_each(|func| {
             let mut node_iter = func.nodes.iter();
             *self.funcname.borrow_mut() = func.name.to_string();
             let funcname = self.funcname.borrow().to_string();
-            println!(".intel_syntax noprefix");
             println!(".global {}", funcname);
             println!("{}:", funcname);
 
@@ -30,6 +30,10 @@ impl CodeGenerator {
             println!("  push rbp");
             println!("  mov rbp, rsp");
             println!("  sub rsp, {}", func.stack_size);
+
+            func.params.iter().enumerate().for_each(|(i, var)| {
+                println!("  mov [rbp-{}], {}", var.offset, ARG_REG[i]);
+            });
 
             while let Some(node) = node_iter.next() {
                 self.gen_stmt(node);
@@ -141,6 +145,16 @@ impl CodeGenerator {
                     self.gen_expr(arg);
                 });
 
+                // 引数をスタックにpushして各レジスタにpopすることで引数を渡す
+                // sub(2, 4)のとき
+                // push 2
+                // push 4
+                // ここで関数定義がsub(a, b)ならば，a -> rdi, b -> rsiになるようにすれば良い
+                // このように引数の順序を保持するには,使うレジスタの逆からpopする必要がある
+                // pop rsi -> 4
+                // pop rdi -> 2
+                // clang, gccでassemblyダンプしてみると何かわかるかもしれない
+                // cc -S -mllvm --x86-asm-syntax=intel assign.c -O0
                 for idx in (0..arg_size).rev() {
                     println!("  pop {}", ARG_REG[idx])
                 }

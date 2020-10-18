@@ -5,16 +5,18 @@ pub struct Function {
     pub name: String,
     pub nodes: Vec<Stmt>,
     pub locals: Vec<Var>,
+    pub params: Vec<Var>,
     pub stack_size: usize
 }
 
 impl Function {
-    pub fn new(name: String, nodes: Vec<Stmt>, locals: Vec<Var>) -> Self {
+    pub fn new(name: String, nodes: Vec<Stmt>, locals: Vec<Var>, params: Vec<Var>) -> Self {
         Self {
             name: name,
             nodes: nodes,
             stack_size: locals.last().map_or(0, |var| var.offset),
             locals: locals,
+            params: params
         }
     }
 }
