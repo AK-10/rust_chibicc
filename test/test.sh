@@ -14,7 +14,7 @@ assert() {
     expected="$1"
     input="$2"
 
-    cargo run -- "$input" > tmp.s
+    cargo run --release -- "$input" > tmp.s
     gcc -static -o tmp tmp.s tmp2.o
     ./tmp
     actual="$?"
@@ -91,5 +91,13 @@ assert 7 'main() { return add2(3,4); } add2(x, y) { return x+y; }'
 assert 1 'main() { return sub2(4,3); } sub2(x, y) { return x-y; }'
 assert 55 'main() { return fib(9); } fib(x) { if (x<=1) return 1; return fib(x-1) + fib(x-2); }'
 
-echo OK
+assert 3 'main() { x=3; return *&x; }'
+assert 3 'main() { x=3; y=&x; z=&y; return **z; }'
+assert 5 'main() { x=3; y=&x; *y=5; return x; }'
+# 以下は本家ではsyntax errorになっていたので一旦スルー
+# assert 5 'main() { x=3; y=5; return *(&x+8); }'
+# assert 3 'main() { x=3; y=5; return *(&y-8); }'
+# assert 7 'main() { x=3; y=5; *(&x+8)=7; return y; }'
+# assert 7 'main() { x=3; y=5; *(&y-8)=7; return x; }'
 
+echo OK

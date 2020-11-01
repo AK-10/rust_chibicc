@@ -15,7 +15,10 @@ use crate::program::Var;
 // relational := add ("<" add | "<=" add | ">" add | ">=" add)*
 // add := mul ("+" mul | "-" mul)*
 // mul := unary ("*" unary | "/" unary)*
-// unary := ("+" | "-")? primary
+// unary := "+"? primary
+//        | "-"? primary
+//        | "*"? unary
+//        | "&"? unary
 // primary := num
 //          | ident args? // 単なる変数か，関数呼び出し
 //          | "(" expr ")"
@@ -98,90 +101,17 @@ pub enum Expr {
         var: Var
     },
     Assign {
-        var: Var,
+        var: Box<Expr>, // x = 10, *y = 100とかあるので今のところexprにするしかない
         val: Box<Expr>
     },
     FnCall {
         fn_name: String,
         args: Vec<Expr>
-    }
-}
-
-#[derive(PartialEq, Clone, Debug)]
-pub enum Node {
-    Eq {
-        lhs: Box<Node>,
-        rhs: Box<Node>
     },
-    Neq {
-        lhs: Box<Node>,
-        rhs: Box<Node>
+    Addr {
+        operand: Box<Expr>
     },
-    Gt {
-        lhs: Box<Node>,
-        rhs: Box<Node>
-    },
-    Ge {
-        lhs: Box<Node>,
-        rhs: Box<Node>
-    },
-    Lt {
-        lhs: Box<Node>,
-        rhs: Box<Node>
-    },
-    Le {
-        lhs: Box<Node>,
-        rhs: Box<Node>
-    },
-    Add {
-        lhs: Box<Node>,
-        rhs: Box<Node>
-    },
-    Sub {
-        lhs: Box<Node>,
-        rhs: Box<Node>
-    },
-    Mul {
-        lhs: Box<Node>,
-        rhs: Box<Node>
-    },
-    Div {
-        lhs: Box<Node>,
-        rhs: Box<Node>
-    },
-    Num {
-        val: isize
-    },
-    Return {
-        val: Box<Node>
-    },
-    ExprStmt {
-        val: Box<Node>
-    },
-    Assign {
-        var: Box<Node>, // Lvarしか入れたくない
-        val: Box<Node> // Exprしか入れたくない
-    },
-    Var {
-        name: String,
-        offset: usize // offset from RBP(ベースポインタ)
-    },
-    If {
-        cond: Box<Node>,
-        then: Box<Node>,
-        els: Option<Box<Node>>,
-    },
-    While {
-        cond: Box<Node>,
-        then: Box<Node>
-    },
-    For {
-        init: Box<Option<Node>>,
-        cond: Box<Option<Node>>,
-        inc: Box<Option<Node>>,
-        then: Box<Node>,
-    },
-    Block {
-        stmts: Vec<Node>,
+    Deref {
+        operand: Box<Expr>
     }
 }

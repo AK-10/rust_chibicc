@@ -126,14 +126,14 @@ impl CodeGenerator {
                 println!("  setle al");
                 println!("  movzb rax, al");
             }
-            Expr::Var { var } => {
-                gen_addr(var.offset);
+            Expr::Var { .. } => {
+                self.gen_addr(expr);
                 load();
 
                 return
             }
             Expr::Assign { var, val } => {
-                gen_addr(var.offset);
+                self.gen_addr(var);
                 self.gen_expr(val);
                 store();
 
@@ -178,7 +178,8 @@ impl CodeGenerator {
                 println!("  mov rax, rsp");
                 println!("  and rax, 15"); // and: オペランドの論理積を計算し，第一引数に格納
 
-                println!("  jnz .L.call.{}", self.labelseq.get()); // jnz: フラグレジスタのZFが0の時(比較の結果，等しくない)，adr[,x]のアドレスへ分岐(実行が移動)する
+                // jnz: フラグレジスタのZFが0の時(比較の結果，等しくない)，adr[,x]のアドレスへ分岐(実行が移動)する
+                println!("  jnz .L.call.{}", self.labelseq.get());
                 println!("  mov rax, 0");
                 println!("  call {}", fn_name);
                 println!("  jmp .L.end.{}", self.labelseq.get());
@@ -190,6 +191,15 @@ impl CodeGenerator {
 
                 println!("  add rsp, 8");
                 println!(".L.end.{}:", self.labelseq.get());
+            }
+            Expr::Addr { operand } => {
+                self.gen_addr(operand);
+                return
+            }
+            Expr::Deref { operand } => {
+                self.gen_expr(operand);
+                load();
+                return
             }
         }
 
@@ -292,13 +302,27 @@ impl CodeGenerator {
         println!("  pop rdi");
         println!("  pop rax");
     }
+
+    // pushes the given node's address to the stack
+    fn gen_addr(&self, expr: &Expr) {
+        match expr {
+            Expr::Deref { operand } => {
+                self.gen_expr(operand);
+            }
+            Expr::Var { var } => {
+                // lea: アドレスのロード
+                println!("  lea rax, [rbp-{}]", var.offset);
+                println!("  push rax");
+            }
+            _ => {
+                panic!("unexpected operand {:?}", expr);
+            }
+        }
+
+    }
 }
 
-fn gen_addr(offset: usize) {
-    // lea: アドレスのロード
-    println!("  lea rax, [rbp-{}]", offset);
-    println!("  push rax");
-}
+
 
 fn load() {
     println!("  pop rax");

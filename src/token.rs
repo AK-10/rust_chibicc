@@ -1,3 +1,4 @@
+// Todo: Symbolを追加する('(', ')', '{', '}'など)
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Reserved {

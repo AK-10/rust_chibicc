@@ -31,7 +31,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse(&mut self) -> Result<Vec<Function>, String> {
-       self.program()
+        self.program()
     }
 
     // program := stmt*
@@ -128,7 +128,7 @@ impl<'a> Parser<'a> {
     // assign := equality ("=" assign)?
     fn assign(&mut self) -> Result<Expr, String> {
         let node = self.equality();
-        let var = (&node).as_ref().ok().and_then(|nd| {
+        (&node).as_ref().ok().and_then(|nd| {
             if let Expr::Var { var } = nd {
                 return Some(var)
             }
@@ -136,14 +136,12 @@ impl<'a> Parser<'a> {
             None
         });
 
-        if let Some(v) = var {
-            let is_assign = self.expect_next("=".to_string());
-            if let Ok(_) = is_assign {
-                return Ok(Expr::Assign {
-                    var: v.clone(),
-                    val: Box::new(self.expr()?)
-                })
-            }
+        let is_assign = self.expect_next("=".to_string());
+        if let Ok(_) = is_assign {
+            return Ok(Expr::Assign {
+                var: Box::new(node?),
+                val: Box::new(self.expr()?)
+            })
         }
 
         node
@@ -285,6 +283,18 @@ impl<'a> Parser<'a> {
                         rhs: Box::new(rhs)
                     })
                 },
+                Token::Reserved { op } if *op == "*" => {
+                    self.peekable.next();
+                    let operand = self.unary()?;
+
+                    Ok(Expr::Deref { operand: Box::new(operand) })
+                },
+                Token::Reserved { op } if *op == "&" => {
+                    self.peekable.next();
+                    let operand = self.unary()?;
+
+                    Ok(Expr::Addr { operand: Box::new(operand) })
+                }
                 _ => {
                     self.primary()
                 }
