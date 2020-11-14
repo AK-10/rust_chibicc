@@ -94,10 +94,18 @@ assert 55 'main() { return fib(9); } fib(x) { if (x<=1) return 1; return fib(x-1
 assert 3 'main() { x=3; return *&x; }'
 assert 3 'main() { x=3; y=&x; z=&y; return **z; }'
 assert 5 'main() { x=3; y=&x; *y=5; return x; }'
-# 以下は本家ではsyntax errorになっていたので一旦スルー
+
+# local変数の実装が本家とは違うのでアドレスのプラスとマイナスが逆になっている
+# 本家は x=3; y=5;で | 関数呼び出し時点のrbp | 5 | 3 | ... | のようになっているが，
+# 今回の実装では x= 3; y = 5;で | 関数呼び出し時点のrbp | 3 | 5 | ... |となっている
+
 # assert 5 'main() { x=3; y=5; return *(&x+8); }'
 # assert 3 'main() { x=3; y=5; return *(&y-8); }'
 # assert 7 'main() { x=3; y=5; *(&x+8)=7; return y; }'
 # assert 7 'main() { x=3; y=5; *(&y-8)=7; return x; }'
+assert 5 'main() { x=3; y=5; return *(&x-8); }'
+assert 3 'main() { x=3; y=5; return *(&y+8); }'
+assert 7 'main() { x=3; y=5; *(&x-8)=7; return y; }'
+assert 7 'main() { x=3; y=5; *(&y+8)=7; return x; }'
 
 echo OK
