@@ -75,16 +75,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn stmt(&mut self) -> Result<Stmt, String> {
-        self.stmt2()
-    }
-
     // stmt := expr ";"
     //       | "return" expr ";"
     //       | "if" "(" expr ")" stmt ("else" stmt)?
     //       | "while" "(" expr ")" stmt
     //       | "for" "(" expr? ";" expr? ";" expr? ")" stmt
-    fn stmt2(&mut self) -> Result<Stmt, String> {
+    fn stmt(&mut self) -> Result<Stmt, String> {
         let tk = self.peekable.peek();
         match tk {
             Some(Token::Reserved { op }) if *op == "return" => {
@@ -93,7 +89,7 @@ impl<'a> Parser<'a> {
                 let expr = self.expr()?;
                 self.expect_next(";".to_string())?;
 
-                Ok(Stmt::Return { val: expr })
+                Ok(Stmt::Return { val: ExprWrapper::new(expr) })
             }
             Some(Token::Reserved { op }) if *op == "{" => {
                 self.peekable.next();
@@ -144,8 +140,8 @@ impl<'a> Parser<'a> {
         if let Ok(_) = is_assign {
             let val = self.expr()?;
             return Ok(Expr::Assign {
-                var: Box::new(node?),
-                val: Box::new(val)
+                var: ExprWrapper::new(node?),
+                val: ExprWrapper::new(val)
             })
         }
 
@@ -162,13 +158,13 @@ impl<'a> Parser<'a> {
                     self.peekable.next();
 
                     let rhs = self.relational()?;
-                    node = Expr::Eq { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Eq { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
                 }
                 Token::Reserved { op } if *op == "!=" => {
                     self.peekable.next();
 
                     let rhs = self.relational()?;
-                    node = Expr::Neq { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Neq { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
                 }
                 _ => { return Ok(node); }
             }
@@ -187,25 +183,25 @@ impl<'a> Parser<'a> {
                     self.peekable.next();
 
                     let rhs = self.add()?;
-                    node = Expr::Lt { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Lt { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
                 }
                 Token::Reserved { op } if *op == "<=" => {
                     self.peekable.next();
 
                     let rhs = self.add()?;
-                    node = Expr::Le { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Le { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
                 }
                 Token::Reserved { op } if *op == ">" => {
                     self.peekable.next();
 
                     let rhs = self.add()?;
-                    node = Expr::Gt { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Gt { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
                 }
                 Token::Reserved { op } if *op == ">=" => {
                     self.peekable.next();
 
                     let rhs = self.add()?;
-                    node = Expr::Ge { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Ge { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
                 }
                 _ => { return Ok(node); }
             }
@@ -224,14 +220,14 @@ impl<'a> Parser<'a> {
                     self.peekable.next();
 
                     let rhs = self.mul()?;
-                    node = Expr::Add { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Add { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
                 },
                 // "-" mul
                 Token::Reserved { op } if *op == "-" => {
                     self.peekable.next();
 
                     let rhs = self.mul()?;
-                    node = Expr::Sub { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Sub { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
                 },
                 // mul
                 _ => { return Ok(node); }
@@ -251,7 +247,7 @@ impl<'a> Parser<'a> {
                     self.peekable.next();
 
                     let rhs = self.unary()?;
-                    node = Expr::Mul { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Mul { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
                 },
 
                 // "/" primary
@@ -259,7 +255,7 @@ impl<'a> Parser<'a> {
                     self.peekable.next();
 
                     let rhs = self.unary()?;
-                    node = Expr::Div { lhs: Box::new(node), rhs: Box::new(rhs) };
+                    node = Expr::Div { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
                 },
                 _ => {
                     return Ok(node);
@@ -284,21 +280,21 @@ impl<'a> Parser<'a> {
 
                     let rhs = self.unary()?;
                     Ok(Expr::Sub {
-                        lhs: Box::new(Expr::Num { val: 0 }),
-                        rhs: Box::new(rhs)
+                        lhs: ExprWrapper::new(Expr::Num { val: 0 }),
+                        rhs: ExprWrapper::new(rhs)
                     })
                 },
                 Token::Reserved { op } if *op == "*" => {
                     self.peekable.next();
                     let operand = self.unary()?;
 
-                    Ok(Expr::Deref { operand: Box::new(operand) })
+                    Ok(Expr::Deref { operand: ExprWrapper::new(operand) })
                 },
                 Token::Reserved { op } if *op == "&" => {
                     self.peekable.next();
                     let operand = self.unary()?;
 
-                    Ok(Expr::Addr { operand: Box::new(operand) })
+                    Ok(Expr::Addr { operand: ExprWrapper::new(operand) })
                 }
                 _ => {
                     self.primary()

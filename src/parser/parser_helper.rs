@@ -1,5 +1,5 @@
 use crate::parser::Parser;
-use crate::node::{ Stmt, Expr };
+use crate::node::{ Stmt, ExprWrapper };
 use crate::token::Token;
 use crate::program::{ Var };
 
@@ -24,7 +24,7 @@ impl<'a> Parser<'_> {
         };
 
         Ok(Stmt::If {
-            cond: Box::new(cond),
+            cond: ExprWrapper::new(cond),
             then: Box::new(then),
             els: els.map(|x| Box::new(x)),
         })
@@ -37,7 +37,7 @@ impl<'a> Parser<'_> {
         let then = self.stmt()?;
 
         Ok(Stmt::While {
-            cond: Box::new(cond),
+            cond: ExprWrapper::new(cond),
             then: Box::new(then)
         })
     }
@@ -60,15 +60,15 @@ impl<'a> Parser<'_> {
         let then = self.stmt()?;
 
         Ok(Stmt::For {
-            init: Box::new(init),
-            cond: Box::new(cond),
-            inc: Box::new(inc),
+            init: init.map(|x| ExprWrapper::new(x)),
+            cond: cond.map(|x| ExprWrapper::new(x)),
+            inc: inc.map(|x| ExprWrapper::new(x)),
             then: Box::new(then)
         })
     }
 
     pub(in super) fn expr_stmt(&mut self) -> Result<Stmt, String> {
-        Ok(Stmt::ExprStmt { val: self.expr()? })
+        Ok(Stmt::ExprStmt { val: ExprWrapper::new(self.expr()?) })
     }
 
     pub(in super) fn expect_next(&mut self, word: String) -> Result<(), String> {
@@ -87,16 +87,15 @@ impl<'a> Parser<'_> {
     }
 
     // 関数呼び出しにおける引数をparseする
-    pub(in super) fn parse_args(&mut self) -> Result<Vec<Expr>, String> {
+    pub(in super) fn parse_args(&mut self) -> Result<Vec<ExprWrapper>, String> {
         // 最初の一個だけ読んでおく
-        let mut args = vec![self.expr()?];
+        let mut args = vec![ExprWrapper::new(self.expr()?)];
         while let Ok(_) = self.expect_next(",".to_string()) {
-            args.push(self.expr()?);
+            args.push(ExprWrapper::new(self.expr()?));
         }
 
         Ok(args)
     }
-
 
     // 関数呼び出しにおける引数をparseする
     // params := ident ("," ident)*

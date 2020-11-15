@@ -30,24 +30,24 @@ use crate::_type::Type::{ Int, Ptr };
 #[derive(PartialEq, Debug)]
 pub enum Stmt {
     Return {
-        val: Expr
+        val: ExprWrapper
     },
     ExprStmt {
-        val: Expr
+        val: ExprWrapper
     },
     If {
-        cond: Box<ExprWrapper>,
+        cond: ExprWrapper,
         then: Box<Stmt>,
         els: Option<Box<Stmt>>,
     },
     While {
-        cond: Box<Expr>,
+        cond: ExprWrapper,
         then: Box<Stmt>
     },
     For {
-        init: Box<Option<ExprWrapper>>,
-        cond: Box<Option<ExprWrapper>>,
-        inc: Box<Option<ExprWrapper>>,
+        init: Option<ExprWrapper>,
+        cond: Option<ExprWrapper>,
+        inc: Option<ExprWrapper>,
         then: Box<Stmt>,
     },
     Block {
@@ -59,6 +59,15 @@ pub enum Stmt {
 pub struct ExprWrapper {
     ty: Type,
     expr: Box<Expr>
+}
+
+impl ExprWrapper {
+    pub fn new(expr: Expr) -> Self {
+        Self {
+            ty: expr.detect_type(),
+            expr: Box::new(expr)
+        }
+    }
 }
 
 #[derive(PartialEq, Debug)]
