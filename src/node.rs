@@ -57,8 +57,8 @@ pub enum Stmt {
 
 #[derive(PartialEq, Debug)]
 pub struct ExprWrapper {
-    ty: Type,
-    expr: Box<Expr>
+    pub ty: Type,
+    pub expr: Box<Expr>
 }
 
 impl ExprWrapper {
@@ -163,23 +163,23 @@ impl Expr {
             Expr::Var { .. } => Int,
             Expr::PtrDiff { .. } => Int,
             Expr::FnCall { .. } => Int,
-            Expr::PtrAdd { lhs, rhs } => {
+            Expr::PtrAdd { lhs, rhs: _ } => {
                 Expr::type_of_ptr_operation(lhs)
             },
-            Expr::PtrSub { lhs, rhs } => {
+            Expr::PtrSub { lhs, rhs: _ } => {
                 Expr::type_of_ptr_operation(lhs)
             },
             Expr::Assign { val, .. } => {
                 Expr::type_of_ptr_operation(val)
             },
             Expr::Addr { operand } => {
-                Ptr { base: Box::new(operand.ty) }
+                Ptr { base: Box::new(operand.ty.clone()) }
             },
             Expr::Deref { operand } => {
                 let ty = operand.expr.detect_type();
                 match ty {
                     Ptr { base } => {
-                        *base.as_ref()
+                        base.as_ref().clone()
                     },
                     Int => Int
                 }
@@ -188,6 +188,6 @@ impl Expr {
     }
 
     fn type_of_ptr_operation(expr_wrapper: &ExprWrapper) -> Type {
-        expr_wrapper.ty
+        expr_wrapper.ty.clone()
     }
 }

@@ -1,4 +1,4 @@
-use crate::node::{ Stmt, Expr };
+use crate::node::{ Stmt, Expr, ExprWrapper };
 use crate::program::Function;
 use std::cell::{ Cell, RefCell };
 
@@ -48,8 +48,8 @@ impl CodeGenerator {
         });
     }
 
-    fn gen_expr(&self, expr: &Expr) {
-        match expr {
+    fn gen_expr(&self, expr_wrapper: &ExprWrapper) {
+        match expr_wrapper.expr.as_ref() {
             Expr::Add { lhs, rhs } => {
                 self.gen_both_side(lhs, rhs);
                 println!("  add rax, rdi");
@@ -127,7 +127,7 @@ impl CodeGenerator {
                 println!("  movzb rax, al");
             }
             Expr::Var { .. } => {
-                self.gen_addr(expr);
+                self.gen_addr(expr_wrapper);
                 load();
 
                 return
@@ -309,7 +309,7 @@ impl CodeGenerator {
         };
     }
 
-    fn gen_both_side(&self, lhs: &Expr, rhs: &Expr) {
+    fn gen_both_side(&self, lhs: &ExprWrapper, rhs: &ExprWrapper) {
         self.gen_expr(lhs);
         self.gen_expr(rhs);
 
@@ -318,8 +318,8 @@ impl CodeGenerator {
     }
 
     // pushes the given node's address to the stack
-    fn gen_addr(&self, expr: &Expr) {
-        match expr {
+    fn gen_addr(&self, expr_wrapper: &ExprWrapper) {
+        match expr_wrapper.expr.as_ref() {
             Expr::Deref { operand } => {
                 self.gen_expr(operand);
             }
@@ -329,7 +329,7 @@ impl CodeGenerator {
                 println!("  push rax");
             }
             _ => {
-                panic!("unexpected operand {:?}", expr);
+                panic!("unexpected operand {:?}", expr_wrapper);
             }
         }
     }
