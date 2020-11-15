@@ -201,17 +201,20 @@ impl CodeGenerator {
                 load();
                 return
             }
-            Expr::PtrAdd { .. } => {
+            Expr::PtrAdd { lhs, rhs } => {
+                self.gen_both_side(lhs, rhs);
                 println!("  imul rdi, 8"); // アドレスの単位は8byteなので
                 println!("  add rax, rdi");
             }
-            Expr::PtrSub { .. } => {
+            Expr::PtrSub { lhs, rhs } => {
+                self.gen_both_side(lhs, rhs);
                 println!("  imul rdi, 8"); // アドレスの単位は8byteなので
                 println!("  sub rax, rdi");
             }
-            Expr::PtrDiff { .. } => {
+            Expr::PtrDiff { lhs, rhs } => {
+                self.gen_both_side(lhs, rhs);
                 println!("  sub rax, rdi");
-                println!("  sub cqo");
+                println!("  cqo");
                 println!("  mov rdi, 8");
                 println!("  idiv rdi");
             }

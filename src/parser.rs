@@ -1,5 +1,6 @@
 use crate::node::{ Stmt, Expr, ExprWrapper };
 use crate::token::Token;
+use crate::_type::Type;
 use crate::program::{ Function, Var };
 use std::slice::Iter;
 use std::iter::Peekable;
@@ -219,15 +220,46 @@ impl<'a> Parser<'a> {
                 Token::Reserved { op } if *op == "+" => {
                     self.peekable.next();
 
-                    let rhs = self.mul()?;
-                    node = Expr::Add { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
+                    let lhs = ExprWrapper::new(node);
+                    let rhs = ExprWrapper::new(self.mul()?);
+
+                    match (&lhs.ty, &rhs.ty) {
+                        (Type::Int, Type::Int) => {
+                            node = Expr::Add { lhs: lhs, rhs: rhs };
+                        },
+                        (Type::Ptr { .. }, Type::Int) => {
+                            // 本来はPtrAddだが，変数の格納順が本家とは違うのでPtrSubにしている
+                            node = Expr::PtrSub { lhs: lhs, rhs: rhs };
+                        },
+                        (Type::Int, Type::Ptr { .. }) => {
+                            node = Expr::PtrSub { lhs: rhs, rhs: lhs };
+                        },
+                        (_, _) => {
+                            return Err("invalid operands at +".to_string());
+                        }
+                    }
                 },
                 // "-" mul
                 Token::Reserved { op } if *op == "-" => {
                     self.peekable.next();
+                    let lhs = ExprWrapper::new(node);
+                    let rhs = ExprWrapper::new(self.mul()?);
 
-                    let rhs = self.mul()?;
-                    node = Expr::Sub { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
+                    match (&lhs.ty, &rhs.ty) {
+                        (Type::Int, Type::Int) => {
+                            node = Expr::Sub { lhs: lhs, rhs: rhs };
+                        },
+                        (Type::Ptr { .. }, Type::Int) => {
+                            node = Expr::PtrAdd { lhs: lhs, rhs: rhs };
+                        },
+                        (Type::Ptr { .. }, Type::Ptr { .. }) => {
+                            // 本家とは変数の格納順が違うのでlhsとrhsを逆にしている
+                            node = Expr::PtrDiff { lhs: rhs, rhs: lhs };
+                        },
+                        (_, _) => {
+                            return Err("invalid operands at -".to_string());
+                        }
+                    }
                 },
                 // mul
                 _ => { return Ok(node); }

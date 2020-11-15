@@ -55,7 +55,7 @@ pub enum Stmt {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct ExprWrapper {
     pub ty: Type,
     pub expr: Box<Expr>
@@ -70,7 +70,7 @@ impl ExprWrapper {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Expr {
     Eq {
         lhs: ExprWrapper,
