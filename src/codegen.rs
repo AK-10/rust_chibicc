@@ -132,14 +132,14 @@ impl CodeGenerator {
 
                 return
             }
-            Expr::Assign { var, val } => {
+            Expr::Assign { var, val, .. } => {
                 self.gen_addr(var);
                 self.gen_expr(val);
                 store();
 
                 return
             }
-            Expr::FnCall { fn_name, args } => {
+            Expr::FnCall { fn_name, args, .. } => {
                 let arg_size = args.len();
                 args.iter().for_each( |arg| {
                     self.gen_expr(arg);
@@ -200,6 +200,20 @@ impl CodeGenerator {
                 self.gen_expr(operand);
                 load();
                 return
+            }
+            Expr::PtrAdd { .. } => {
+                println!("  imul rdi, 8"); // アドレスの単位は8byteなので
+                println!("  add rax, rdi");
+            }
+            Expr::PtrSub { .. } => {
+                println!("  imul rdi, 8"); // アドレスの単位は8byteなので
+                println!("  sub rax, rdi");
+            }
+            Expr::PtrDiff { .. } => {
+                println!("  sub rax, rdi");
+                println!("  sub cqo");
+                println!("  mov rdi, 8");
+                println!("  idiv rdi");
             }
         }
 
@@ -318,7 +332,6 @@ impl CodeGenerator {
                 panic!("unexpected operand {:?}", expr);
             }
         }
-
     }
 }
 

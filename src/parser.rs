@@ -1,4 +1,4 @@
-use crate::node::{ Stmt, Expr };
+use crate::node::{ Stmt, Expr, ExprWrapper };
 use crate::token::Token;
 use crate::program::{ Function, Var };
 use std::slice::Iter;
@@ -75,12 +75,16 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn stmt(&mut self) -> Result<Stmt, String> {
+        self.stmt2()
+    }
+
     // stmt := expr ";"
     //       | "return" expr ";"
     //       | "if" "(" expr ")" stmt ("else" stmt)?
     //       | "while" "(" expr ")" stmt
     //       | "for" "(" expr? ";" expr? ";" expr? ")" stmt
-    fn stmt(&mut self) -> Result<Stmt, String> {
+    fn stmt2(&mut self) -> Result<Stmt, String> {
         let tk = self.peekable.peek();
         match tk {
             Some(Token::Reserved { op }) if *op == "return" => {
@@ -138,9 +142,10 @@ impl<'a> Parser<'a> {
 
         let is_assign = self.expect_next("=".to_string());
         if let Ok(_) = is_assign {
+            let val = self.expr()?;
             return Ok(Expr::Assign {
                 var: Box::new(node?),
-                val: Box::new(self.expr()?)
+                val: Box::new(val)
             })
         }
 

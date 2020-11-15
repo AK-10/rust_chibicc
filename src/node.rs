@@ -1,5 +1,8 @@
 use crate::program::Var;
 
+use crate::_type::Type;
+use crate::_type::Type::{ Int, Ptr };
+
 // EBNF
 // program := stmt*
 // stmt := expr ";"
@@ -33,7 +36,7 @@ pub enum Stmt {
         val: Expr
     },
     If {
-        cond: Box<Expr>,
+        cond: Box<ExprWrapper>,
         then: Box<Stmt>,
         els: Option<Box<Stmt>>,
     },
@@ -42,9 +45,9 @@ pub enum Stmt {
         then: Box<Stmt>
     },
     For {
-        init: Box<Option<Expr>>,
-        cond: Box<Option<Expr>>,
-        inc: Box<Option<Expr>>,
+        init: Box<Option<ExprWrapper>>,
+        cond: Box<Option<ExprWrapper>>,
+        inc: Box<Option<ExprWrapper>>,
         then: Box<Stmt>,
     },
     Block {
@@ -53,46 +56,52 @@ pub enum Stmt {
 }
 
 #[derive(PartialEq, Debug)]
+pub struct ExprWrapper {
+    ty: Type,
+    expr: Box<Expr>
+}
+
+#[derive(PartialEq, Debug)]
 pub enum Expr {
     Eq {
-        lhs: Box<Expr>,
-        rhs: Box<Expr>
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
     },
     Neq {
-        lhs: Box<Expr>,
-        rhs: Box<Expr>
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
     },
     Gt {
-        lhs: Box<Expr>,
-        rhs: Box<Expr>
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
     },
     Ge {
-        lhs: Box<Expr>,
-        rhs: Box<Expr>
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
     },
     Lt {
-        lhs: Box<Expr>,
-        rhs: Box<Expr>
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
     },
     Le {
-        lhs: Box<Expr>,
-        rhs: Box<Expr>
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
     },
     Add {
-        lhs: Box<Expr>,
-        rhs: Box<Expr>
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
     },
     Sub {
-        lhs: Box<Expr>,
-        rhs: Box<Expr>
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
     },
     Mul {
-        lhs: Box<Expr>,
-        rhs: Box<Expr>
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
     },
     Div {
-        lhs: Box<Expr>,
-        rhs: Box<Expr>
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
     },
     Num {
         val: isize
@@ -101,17 +110,75 @@ pub enum Expr {
         var: Var
     },
     Assign {
-        var: Box<Expr>, // x = 10, *y = 100とかあるので今のところexprにするしかない
-        val: Box<Expr>
+        var: ExprWrapper, // x = 10, *y = 100とかあるので今のところexprにするしかない
+        val: ExprWrapper
     },
     FnCall {
         fn_name: String,
-        args: Vec<Expr>
+        args: Vec<ExprWrapper>
     },
     Addr {
-        operand: Box<Expr>
+        operand: ExprWrapper
     },
     Deref {
-        operand: Box<Expr>
+        operand: ExprWrapper
+    },
+    PtrAdd { // ptr + num or num + ptr
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
+    },
+    PtrSub { // ptr - num or num - ptr
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
+    },
+    PtrDiff { // ptr - ptr
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
+    }
+}
+
+impl Expr {
+    pub fn detect_type(&self) -> Type {
+        match self {
+            Expr::Eq { .. } => Int,
+            Expr::Neq { .. } => Int,
+            Expr::Gt { .. } => Int,
+            Expr::Ge { .. } => Int,
+            Expr::Lt { .. } => Int,
+            Expr::Le { .. } => Int,
+            Expr::Add { .. } => Int,
+            Expr::Sub { .. } => Int,
+            Expr::Mul { .. } => Int,
+            Expr::Div { .. } => Int,
+            Expr::Num { .. } => Int,
+            Expr::Var { .. } => Int,
+            Expr::PtrDiff { .. } => Int,
+            Expr::FnCall { .. } => Int,
+            Expr::PtrAdd { lhs, rhs } => {
+                Expr::type_of_ptr_operation(lhs)
+            },
+            Expr::PtrSub { lhs, rhs } => {
+                Expr::type_of_ptr_operation(lhs)
+            },
+            Expr::Assign { val, .. } => {
+                Expr::type_of_ptr_operation(val)
+            },
+            Expr::Addr { operand } => {
+                Ptr { base: Box::new(operand.ty) }
+            },
+            Expr::Deref { operand } => {
+                let ty = operand.expr.detect_type();
+                match ty {
+                    Ptr { base } => {
+                        *base.as_ref()
+                    },
+                    Int => Int
+                }
+            }
+        }
+    }
+
+    fn type_of_ptr_operation(expr_wrapper: &ExprWrapper) -> Type {
+        expr_wrapper.ty
     }
 }
