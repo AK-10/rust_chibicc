@@ -1,7 +1,8 @@
 use crate::parser::Parser;
-use crate::node::{ Stmt, ExprWrapper };
+use crate::node::{ Stmt, ExprWrapper, Expr };
 use crate::token::Token;
-use crate::program::{ Var };
+use crate::program::Var;
+use crate::_type::Type;
 
 impl<'a> Parser<'_> {
     pub(in super) fn find_lvar(&self, name: &String) -> Option<&Var> {
@@ -67,6 +68,37 @@ impl<'a> Parser<'_> {
         })
     }
 
+    // variable declaration
+    // declaration := basetype ident ("=" expr) ";"
+    pub(in super) fn declaration(&mut self) -> Result<Stmt, String> {
+        let ty = self.base_type()?;
+        let offset = (self.locals.len() + 1) * 8;
+
+        match self.peekable.peek() {
+            Some(Token::Ident { name }) => {
+                let expr =
+                    if let Err(_) = self.expect_next("=".to_string()) {
+                        let var = Var { name: name.to_string(), offset };
+                        self.expect_next(";".to_string())?;
+
+                        Expr::Var(var)
+                    } else {
+                        let lhs = Var { name: name.to_string(), offset };
+                        let rhs = self.expr()?;
+                        self.expect_next(";".to_string())?;
+
+                        Expr::Assign{ var: Expr::Var(lhs).to_expr_wrapper(), val: rhs.to_expr_wrapper() }
+                    };
+
+                Ok(Stmt::ExprStmt { val: ExprWrapper { ty, expr: Box::new(expr) } })
+            }
+            _ => {
+                return Err("expect ident, but not found".to_string())
+            }
+        }
+
+    }
+
     pub(in super) fn expr_stmt(&mut self) -> Result<Stmt, String> {
         Ok(Stmt::ExprStmt { val: ExprWrapper::new(self.expr()?) })
     }
@@ -123,7 +155,7 @@ impl<'a> Parser<'_> {
                     self.peekable.next();
                     let offset = (params.len() + 1) * 8;
 
-                    params.push(Var { name: name.clone(), offset: offset })
+                    params.push(Var { name: name.clone(), offset })
                 },
                 Some(token) => {
                     return Err(format!("expect ident, result: {:?}", token))
@@ -138,4 +170,20 @@ impl<'a> Parser<'_> {
 
         Ok(params)
     }
+
+    pub(in super) fn base_type(&mut self) -> Result<Type, String> {
+        self.expect_next("int".to_string())?;
+
+        let ty = Type::Int;
+        match self.peekable.peek() {
+            Some(Token::Reserved { op }) if op == "*" => {
+                self.peekable.next();
+                Ok(Type::Ptr { base: Box::new(ty) })
+            }
+            _ => {
+                Ok(ty)
+            }
+        }
+    }
 }
+

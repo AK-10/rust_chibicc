@@ -51,8 +51,9 @@ impl<'a> Parser<'a> {
         Ok(nodes)
     }
 
-    // function := ident "(" params ")" "{" stmt* "}"
-    // params := ident ("," ident)*
+    // function := basetype ident "(" params ")" "{" stmt* "}"
+    // params := param ("," param)*
+    // param := basetype ident
     fn function(&mut self) -> Result<Function, String> {
         if let Some(Token::Ident{ name }) = self.peekable.next() {
             // parse params
@@ -81,6 +82,7 @@ impl<'a> Parser<'a> {
     //       | "if" "(" expr ")" stmt ("else" stmt)?
     //       | "while" "(" expr ")" stmt
     //       | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+    //       | declaration
     fn stmt(&mut self) -> Result<Stmt, String> {
         let tk = self.peekable.peek();
         match tk {
@@ -112,6 +114,9 @@ impl<'a> Parser<'a> {
             Some(Token::Reserved { op }) if *op == "for" => {
                 self.for_stmt()
             }
+            Some(Token::Reserved { op }) if *op == "int" => {
+                self.declaration()
+            }
             _ => {
                 let expr_stmt = self.expr_stmt();
                 self.expect_next(";".to_string())?;
@@ -130,7 +135,7 @@ impl<'a> Parser<'a> {
     fn assign(&mut self) -> Result<Expr, String> {
         let node = self.equality();
         (&node).as_ref().ok().and_then(|nd| {
-            if let Expr::Var { var } = nd {
+            if let Expr::Var(var) = nd {
                 return Some(var)
             }
 
@@ -225,11 +230,11 @@ impl<'a> Parser<'a> {
 
                     match (&lhs.ty, &rhs.ty) {
                         (Type::Int, Type::Int) => {
-                            node = Expr::Add { lhs: lhs, rhs: rhs };
+                            node = Expr::Add { lhs, rhs };
                         },
                         (Type::Ptr { .. }, Type::Int) => {
                             // 本来はPtrAddだが，変数の格納順が本家とは違うのでPtrSubにしている
-                            node = Expr::PtrSub { lhs: lhs, rhs: rhs };
+                            node = Expr::PtrSub { lhs, rhs };
                         },
                         (Type::Int, Type::Ptr { .. }) => {
                             node = Expr::PtrSub { lhs: rhs, rhs: lhs };
@@ -247,10 +252,10 @@ impl<'a> Parser<'a> {
 
                     match (&lhs.ty, &rhs.ty) {
                         (Type::Int, Type::Int) => {
-                            node = Expr::Sub { lhs: lhs, rhs: rhs };
+                            node = Expr::Sub { lhs, rhs };
                         },
                         (Type::Ptr { .. }, Type::Int) => {
-                            node = Expr::PtrAdd { lhs: lhs, rhs: rhs };
+                            node = Expr::PtrAdd { lhs, rhs };
                         },
                         (Type::Ptr { .. }, Type::Ptr { .. }) => {
                             // 本家とは変数の格納順が違うのでlhsとrhsを逆にしている
@@ -370,7 +375,7 @@ impl<'a> Parser<'a> {
             // ERR: compile error
             // expected tuple struct or tuple variant, found associated function `String::from`
             // Some(Token::Reserved { op: String::from("(") }) => {}
-            Some(Token::Reserved { op }) if *op == "(" => {
+            Some(Token::Reserved { op }) if op == "(" => {
                 self.peekable.next();
                 let expr = self.expr();
                 self.expect_next(")".to_string())?;
@@ -394,17 +399,17 @@ impl<'a> Parser<'a> {
                     let args = self.parse_args()?;
                     self.expect_next(")".to_string())?;
 
-                    return Ok(Expr::FnCall { fn_name: name.clone(), args: args })
+                    return Ok(Expr::FnCall { fn_name: name.clone(), args })
                 }
                 // variable
-                if let Some(var) = self.find_lvar(name) {
-                    Ok(Expr::Var { var: var.clone() })
+                if let Some(var) = self.find_lvar(&name) {
+                    Ok(Expr::Var(var.clone()))
                 } else {
                     let offset = (self.locals.len() + 1) * 8;
-                    let var = Var { name: name.clone(), offset: offset };
+                    let var = Var { name: name.clone(), offset };
                     self.locals.push(var.clone());
 
-                    Ok(Expr::Var { var: var })
+                    Ok(Expr::Var(var))
                 }
             }
             // unexpected

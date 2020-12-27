@@ -11,7 +11,7 @@ use crate::_type::Type::{ Int, Ptr };
 //       | "if" "(" expr ")" stmt ("else" stmt)? /* ( expr ) is primary. */
 //       | "while" "(" expr ")" stmt
 //       | "for" "(" expr? ";" expr? ";" expr? ")" stmt
-//       | 
+//       |
 // expr := assign
 // assign := equality ("=" assign)?
 // equality := relational ("==" relational | "!=" relational)*
@@ -115,9 +115,7 @@ pub enum Expr {
     Num {
         val: isize
     },
-    Var {
-        var: Var
-    },
+    Var(Var),
     Assign {
         var: ExprWrapper, // x = 10, *y = 100とかあるので今のところexprにするしかない
         val: ExprWrapper
@@ -160,7 +158,7 @@ impl Expr {
             Expr::Mul { .. } => Int,
             Expr::Div { .. } => Int,
             Expr::Num { .. } => Int,
-            Expr::Var { .. } => Int,
+            Expr::Var(_) => Int,
             Expr::PtrDiff { .. } => Int,
             Expr::FnCall { .. } => Int,
             Expr::PtrAdd { lhs, rhs: _ } => {
@@ -186,6 +184,11 @@ impl Expr {
             }
         }
     }
+
+    pub fn to_expr_wrapper(&self) -> ExprWrapper {
+        ExprWrapper::new(self.clone())
+    }
+
 
     fn type_of_ptr_operation(expr_wrapper: &ExprWrapper) -> Type {
         expr_wrapper.ty.clone()

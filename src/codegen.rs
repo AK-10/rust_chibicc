@@ -326,7 +326,7 @@ impl CodeGenerator {
             Expr::Deref { operand } => {
                 self.gen_expr(operand);
             }
-            Expr::Var { var } => {
+            Expr::Var(var) => {
                 // lea: アドレスのロード
                 println!("  lea rax, [rbp-{}]", var.offset);
                 println!("  push rax");

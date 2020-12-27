@@ -31,5 +31,6 @@ impl Function {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Var {
     pub name: String,
-    pub offset: usize
+    pub offset: usize,
 }
+

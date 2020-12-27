@@ -5,3 +5,4 @@ pub enum Type {
         base: Box<Type>
     }
 }
+
