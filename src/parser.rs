@@ -25,7 +25,7 @@ pub struct Parser<'a> {
 impl<'a> Parser<'a> {
     pub fn new(input: &'a Vec<Token>) -> Self {
         Self {
-            input: input,
+            input,
             peekable: input.iter().peekable(),
             locals: Vec::new()
         }
@@ -55,6 +55,8 @@ impl<'a> Parser<'a> {
     // params := param ("," param)*
     // param := basetype ident
     fn function(&mut self) -> Result<Function, String> {
+        self.base_type()?; // 一時的に無駄に消費するだけ
+
         if let Some(Token::Ident{ name }) = self.peekable.next() {
             // parse params
             let params = self.parse_func_params()?;

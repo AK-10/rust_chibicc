@@ -218,6 +218,7 @@ impl CodeGenerator {
                 println!("  mov rdi, 8");
                 println!("  idiv rdi");
             }
+            Expr::Null => return
         }
 
         println!("  push rax");
@@ -233,7 +234,10 @@ impl CodeGenerator {
             }
             Stmt::ExprStmt { val } => {
                 self.gen_expr(val);
-                println!("  add rsp, 8");
+                if let Expr::Null = *val.expr {
+                } else {
+                    println!("  add rsp, 8");
+                }
             }
 
             Stmt::If { cond, then, els } => {

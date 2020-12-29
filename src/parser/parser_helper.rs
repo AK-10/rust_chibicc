@@ -78,12 +78,17 @@ impl<'a> Parser<'_> {
             Some(Token::Ident { name }) => {
                 let expr =
                     if let Err(_) = self.expect_next("=".to_string()) {
+                        // int a; みたいな場合はローカル変数への追加だけ行う. (push rax, 3 みたいなのはしない)
                         let var = Var { name: name.to_string(), offset };
+                        self.locals.push(var);
+
+                        self.peekable.next();
                         self.expect_next(";".to_string())?;
 
-                        Expr::Var(var)
+                        Expr::Null
                     } else {
                         let lhs = Var { name: name.to_string(), offset };
+                        self.peekable.next();
                         let rhs = self.expr()?;
                         self.expect_next(";".to_string())?;
 

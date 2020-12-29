@@ -141,7 +141,8 @@ pub enum Expr {
     PtrDiff { // ptr - ptr
         lhs: ExprWrapper,
         rhs: ExprWrapper
-    }
+    },
+    Null
 }
 
 impl Expr {
@@ -182,6 +183,7 @@ impl Expr {
                     Int => Int
                 }
             }
+            Expr::Null => Int
         }
     }
 
