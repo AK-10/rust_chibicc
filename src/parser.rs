@@ -407,11 +407,7 @@ impl<'a> Parser<'a> {
                 if let Some(var) = self.find_lvar(&name) {
                     Ok(Expr::Var(var.clone()))
                 } else {
-                    let offset = (self.locals.len() + 1) * 8;
-                    let var = Var { name: name.clone(), offset };
-                    self.locals.push(var.clone());
-
-                    Ok(Expr::Var(var))
+                    Err(format!("undefined variable: {:?}", name).to_string())
                 }
             }
             // unexpected

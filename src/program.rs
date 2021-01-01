@@ -1,4 +1,5 @@
 use crate::node::Stmt;
+use crate::_type::Type;
 
 #[derive(Debug, PartialEq)]
 pub struct Function {
@@ -30,6 +31,7 @@ impl Function {
 // };
 #[derive(Debug, Clone, PartialEq)]
 pub struct Var {
+    pub ty: Type,
     pub name: String,
     pub offset: usize,
 }

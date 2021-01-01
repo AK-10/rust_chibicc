@@ -72,22 +72,21 @@ impl<'a> Parser<'_> {
     // declaration := basetype ident ("=" expr) ";"
     pub(in super) fn declaration(&mut self) -> Result<Stmt, String> {
         let ty = self.base_type()?;
-        let offset = (self.locals.len() + 1) * 8;
-
         match self.peekable.peek() {
             Some(Token::Ident { name }) => {
                 self.peekable.next();
-
                 let expr =
                     if let Err(_) = self.expect_next("=".to_string()) {
                         // int a; みたいな場合はローカル変数への追加だけ行う. (push rax, 3 みたいなのはしない)
-                        let var = Var { name: name.to_string(), offset };
+                        let var = self.new_var(name, &ty);
                         self.locals.push(var);
                         self.expect_next(";".to_string())?;
 
                         Expr::Null
                     } else {
-                        let lhs = Var { name: name.to_string(), offset };
+                        let lhs = self.new_var(name, &ty);
+                        self.locals.push(lhs.clone());
+
                         let rhs = self.expr()?;
                         self.expect_next(";".to_string())?;
 
@@ -133,33 +132,33 @@ impl<'a> Parser<'_> {
         Ok(args)
     }
 
-    // 関数呼び出しにおける引数をparseする
+    // 関数宣言における引数をparseする
     // params := ident ("," ident)*
-    pub(in super) fn parse_func_params(&mut self) -> Result<Vec<Var> ,String> {
+    pub(in super) fn parse_func_params(&mut self) -> Result<Vec<Var>, String> {
         self.expect_next("(".to_string())?;
 
         let mut params = Vec::<Var>::new();
         if self.expect_next(")".to_string()).is_ok() {
             return Ok(params)
         }
+        let ty = self.base_type()?;
+        let first_arg = self.peekable.peek();
 
-        let first_args = self.peekable.peek();
-        if let Some(Token::Ident { name }) = first_args {
+        if let Some(Token::Ident { name }) = first_arg {
             self.peekable.next();
 
-            let offset = (params.len() + 1) * 8;
-            params.push(Var { name: name.clone(), offset });
+            params.push(self.new_var(name, &ty));
         } else {
             return Err("token not found".to_string())
         }
 
         while let Ok(_) = self.expect_next(",".to_string()) {
+            let _ = self.base_type();
             match self.peekable.peek() {
                 Some(Token::Ident { name }) => {
                     self.peekable.next();
-                    let offset = (params.len() + 1) * 8;
 
-                    params.push(Var { name: name.clone(), offset })
+                    params.push(self.new_var(name, &ty));
                 },
                 Some(token) => {
                     return Err(format!("expect ident, result: {:?}", token))
@@ -188,6 +187,12 @@ impl<'a> Parser<'_> {
                 Ok(ty)
             }
         }
+    }
+
+    pub(in super) fn new_var(&self, name: &String, ty: &Type) -> Var {
+        let offset = (self.locals.len() + 1) * 8;
+
+        Var { name: name.to_string(), offset, ty: ty.clone() }
     }
 }
 
