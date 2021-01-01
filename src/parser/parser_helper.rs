@@ -180,14 +180,22 @@ impl<'a> Parser<'_> {
         self.expect_next("int".to_string())?;
 
         let ty = Type::Int;
+
+        // ポインタ型はネストしても一つとしてみなす
         match self.peekable.peek() {
             Some(Token::Reserved { op }) if op == "*" => {
-                self.peekable.next();
+                self.consume_pointer();
                 Ok(Type::Ptr { base: Box::new(ty) })
             }
             _ => {
                 Ok(ty)
             }
+        }
+    }
+
+    pub(in super) fn consume_pointer(&mut self) {
+        while let Some(Token::Reserved { op }) = self.peekable.peek() {
+            if op == "*" { self.peekable.next(); } else { break }
         }
     }
 
