@@ -147,7 +147,8 @@ impl<'a> Parser<'_> {
         if let Some(Token::Ident { name }) = first_arg {
             self.peekable.next();
 
-            params.push(self.new_var(name, &ty));
+            let offset = (params.len() + 1) * 8;
+            params.push(Var { name: name.clone(), offset, ty: ty.clone() });
         } else {
             return Err("token not found".to_string())
         }
@@ -158,7 +159,8 @@ impl<'a> Parser<'_> {
                 Some(Token::Ident { name }) => {
                     self.peekable.next();
 
-                    params.push(self.new_var(name, &ty));
+                    let offset = (params.len() + 1) * 8;
+                    params.push(Var { name: name.clone(), offset, ty: ty.clone() });
                 },
                 Some(token) => {
                     return Err(format!("expect ident, result: {:?}", token))
