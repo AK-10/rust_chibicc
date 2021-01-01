@@ -159,7 +159,6 @@ impl Expr {
             Expr::Mul { .. } => Int,
             Expr::Div { .. } => Int,
             Expr::Num { .. } => Int,
-            Expr::Var(_) => Int,
             Expr::PtrDiff { .. } => Int,
             Expr::FnCall { .. } => Int,
             Expr::PtrAdd { lhs, rhs: _ } => {
@@ -182,7 +181,10 @@ impl Expr {
                     },
                     Int => Int
                 }
-            }
+            },
+            Expr::Var(var) => {
+                var.ty.clone()
+            },
             Expr::Null => Int
         }
     }
