@@ -148,19 +148,19 @@ impl<'a> Parser<'_> {
             self.peekable.next();
 
             let offset = (params.len() + 1) * 8;
-            params.push(Var { name: name.clone(), offset, ty: ty.clone() });
+            params.push(Var { name: name.clone(), offset, ty });
         } else {
             return Err("token not found".to_string())
         }
 
         while let Ok(_) = self.expect_next(",".to_string()) {
-            let _ = self.base_type();
+            let ty = self.base_type()?;
             match self.peekable.peek() {
                 Some(Token::Ident { name }) => {
                     self.peekable.next();
 
                     let offset = (params.len() + 1) * 8;
-                    params.push(Var { name: name.clone(), offset, ty: ty.clone() });
+                    params.push(Var { name: name.clone(), offset, ty });
                 },
                 Some(token) => {
                     return Err(format!("expect ident, result: {:?}", token))
