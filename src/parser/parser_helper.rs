@@ -46,17 +46,17 @@ impl<'a> Parser<'_> {
     pub(in super) fn for_stmt(&mut self) -> Result<Stmt, String> {
         self.peekable.next();
 
-        self.expect_next("(".to_string())?;
+        self.expect_next_symbol("(".to_string())?;
 
         // 初期化，条件，処理後はない場合がある
         let init = self.assign().ok();
-        self.expect_next(";".to_string())?;
+        self.expect_next_symbol(";".to_string())?;
 
         let cond = self.expr().ok();
-        self.expect_next(";".to_string())?;
+        self.expect_next_symbol(";".to_string())?;
 
         let inc = self.assign().ok();
-        self.expect_next(")".to_string())?;
+        self.expect_next_symbol(")".to_string())?;
 
         let then = self.stmt()?;
 
@@ -76,11 +76,11 @@ impl<'a> Parser<'_> {
             Some(Token::Ident { name }) => {
                 self.peekable.next();
                 let expr =
-                    if let Err(_) = self.expect_next("=".to_string()) {
+                    if let Err(_) = self.expect_next_reserved("=".to_string()) {
                         // int a; みたいな場合はローカル変数への追加だけ行う. (push rax, 3 みたいなのはしない)
                         let var = self.new_var(name, &ty);
                         self.locals.push(var);
-                        self.expect_next(";".to_string())?;
+                        self.expect_next_symbol(";".to_string())?;
 
                         Expr::Null
                     } else {
@@ -88,7 +88,7 @@ impl<'a> Parser<'_> {
                         self.locals.push(lhs.clone());
 
                         let rhs = self.expr()?;
-                        self.expect_next(";".to_string())?;
+                        self.expect_next_symbol(";".to_string())?;
 
                         Expr::Assign{ var: Expr::Var(lhs).to_expr_wrapper(), val: rhs.to_expr_wrapper() }
                     };
@@ -106,7 +106,22 @@ impl<'a> Parser<'_> {
         Ok(Stmt::ExprStmt { val: ExprWrapper::new(self.expr()?) })
     }
 
-    pub(in super) fn expect_next(&mut self, word: String) -> Result<(), String> {
+    pub(in super) fn expect_next_symbol(&mut self, word: String) -> Result<(), String> {
+        let tk = self.peekable.peek();
+
+        match tk {
+            Some(Token::Symbol(op)) if *op == word => {
+                self.peekable.next();
+                Ok(())
+            },
+            _ => {
+                let msg = format!("expect {}, but different found", word);
+                Err(msg)
+            }
+        }
+    }
+
+    pub(in super) fn expect_next_reserved(&mut self, word: String) -> Result<(), String> {
         let tk = self.peekable.peek();
 
         match tk {
@@ -125,7 +140,7 @@ impl<'a> Parser<'_> {
     pub(in super) fn parse_args(&mut self) -> Result<Vec<ExprWrapper>, String> {
         // 最初の一個だけ読んでおく
         let mut args = vec![ExprWrapper::new(self.expr()?)];
-        while let Ok(_) = self.expect_next(",".to_string()) {
+        while let Ok(_) = self.expect_next_symbol(",".to_string()) {
             args.push(ExprWrapper::new(self.expr()?));
         }
 
@@ -135,10 +150,10 @@ impl<'a> Parser<'_> {
     // 関数宣言における引数をparseする
     // params := ident ("," ident)*
     pub(in super) fn parse_func_params(&mut self) -> Result<Vec<Var>, String> {
-        self.expect_next("(".to_string())?;
+        self.expect_next_symbol("(".to_string())?;
 
         let mut params = Vec::<Var>::new();
-        if self.expect_next(")".to_string()).is_ok() {
+        if self.expect_next_symbol(")".to_string()).is_ok() {
             return Ok(params)
         }
         let ty = self.base_type()?;
@@ -153,7 +168,7 @@ impl<'a> Parser<'_> {
             return Err("token not found".to_string())
         }
 
-        while let Ok(_) = self.expect_next(",".to_string()) {
+        while let Ok(_) = self.expect_next_symbol(",".to_string()) {
             let ty = self.base_type()?;
             match self.peekable.peek() {
                 Some(Token::Ident { name }) => {
@@ -171,13 +186,13 @@ impl<'a> Parser<'_> {
             }
         }
 
-        self.expect_next(")".to_string())?;
+        self.expect_next_symbol(")".to_string())?;
 
         Ok(params)
     }
 
     pub(in super) fn base_type(&mut self) -> Result<Type, String> {
-        self.expect_next("int".to_string())?;
+        self.expect_next_reserved("int".to_string())?;
 
         let ty = Type::Int;
 
@@ -205,4 +220,3 @@ impl<'a> Parser<'_> {
         Var { name: name.to_string(), offset, ty: ty.clone() }
     }
 }
-

@@ -11,6 +11,7 @@ pub enum Token {
     Ident {
         name: String,
     },
+    Symbol(String),
     Eof
 }
 

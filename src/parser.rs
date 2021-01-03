@@ -62,11 +62,11 @@ impl<'a> Parser<'a> {
             let params = self.parse_func_params()?;
             self.locals = params.clone();
 
-            self.expect_next("{".to_string())?;
+            self.expect_next_symbol("{".to_string())?;
 
             let mut nodes = Vec::new();
 
-            while let Err(_) = self.expect_next("}".to_string()) {
+            while let Err(_) = self.expect_next_symbol("}".to_string()) {
                 nodes.push(self.stmt()?);
             };
 
@@ -92,15 +92,15 @@ impl<'a> Parser<'a> {
                 self.peekable.next();
 
                 let expr = self.expr()?;
-                self.expect_next(";".to_string())?;
+                self.expect_next_symbol(";".to_string())?;
 
                 Ok(Stmt::Return { val: ExprWrapper::new(expr) })
             }
-            Some(Token::Reserved { op }) if *op == "{" => {
+            Some(Token::Symbol(op)) if *op == "{" => {
                 self.peekable.next();
                 let mut stmts: Vec<Stmt> = Vec::new();
 
-                while let Err(_) = self.expect_next("}".to_string()) {
+                while let Err(_) = self.expect_next_symbol("}".to_string()) {
                     let stmt = self.stmt()?;
                     stmts.push(stmt);
                 }
@@ -121,7 +121,7 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 let expr_stmt = self.expr_stmt();
-                self.expect_next(";".to_string())?;
+                self.expect_next_symbol(";".to_string())?;
 
                 expr_stmt
             }
@@ -144,7 +144,7 @@ impl<'a> Parser<'a> {
             None
         });
 
-        let is_assign = self.expect_next("=".to_string());
+        let is_assign = self.expect_next_reserved("=".to_string());
         if let Ok(_) = is_assign {
             let val = self.expr()?;
             return Ok(Expr::Assign {
@@ -378,10 +378,10 @@ impl<'a> Parser<'a> {
             // ERR: compile error
             // expected tuple struct or tuple variant, found associated function `String::from`
             // Some(Token::Reserved { op: String::from("(") }) => {}
-            Some(Token::Reserved { op }) if op == "(" => {
+            Some(Token::Symbol(op)) if op == "(" => {
                 self.peekable.next();
                 let expr = self.expr();
-                self.expect_next(")".to_string())?;
+                self.expect_next_symbol(")".to_string())?;
 
                 expr
             }
@@ -394,13 +394,13 @@ impl<'a> Parser<'a> {
             Some(Token::Ident { name }) => {
                 // function call
                 self.peekable.next();
-                if let Ok(_) = self.expect_next("(".to_string()) {
+                if let Ok(_) = self.expect_next_symbol("(".to_string()) {
                     // 引数なし
-                    if let Ok(_) = self.expect_next(")".to_string()) {
+                    if let Ok(_) = self.expect_next_symbol(")".to_string()) {
                         return Ok(Expr::FnCall { fn_name: name.clone(), args: Vec::new() })
                     }
                     let args = self.parse_args()?;
-                    self.expect_next(")".to_string())?;
+                    self.expect_next_symbol(")".to_string())?;
 
                     return Ok(Expr::FnCall { fn_name: name.clone(), args })
                 }
