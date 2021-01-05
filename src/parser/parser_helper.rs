@@ -219,4 +219,24 @@ impl<'a> Parser<'_> {
 
         Var { name: name.to_string(), offset, ty: ty.clone() }
     }
+
+    pub(in super) fn read_type_suffix(&mut self, base: Type) -> Result<Type, String> {
+        match self.expect_next_symbol("[".to_string()) {
+            Ok(_) => {
+                match self.peekable.next() {
+                    Some(Token::Num { val, .. }) => {
+                        if let Err(e) = self.expect_next_symbol("]".to_string()) {
+                            Err(e)
+                        } else {
+                            Ok(Type::Array { base: Box::new(base), len: *val as usize })
+                        }
+                    },
+                    _ => {
+                        Err("expect num after [".to_string())
+                    }
+                }
+            }
+            Err(_) => Ok(base)
+        }
+    }
 }
