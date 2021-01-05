@@ -59,7 +59,6 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
                 chars_with_index.next();
             },
             '(' | ')' | ';' | '{' | '}' | ',' | '[' | ']' => {
-                // Todo: Reserved -> Symbolに変更する
                 let token = Token::Symbol(ch.to_string());
                 tokens.push(token);
                 chars_with_index.next();

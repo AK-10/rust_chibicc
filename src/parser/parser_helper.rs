@@ -215,7 +215,7 @@ impl<'a> Parser<'_> {
     }
 
     pub(in super) fn new_var(&self, name: &String, ty: &Type) -> Var {
-        let offset = (self.locals.len() + 1) * 8;
+        let offset = self.locals.last().map_or(ty.size(), |var| var.offset + ty.size());
 
         Var { name: name.to_string(), offset, ty: ty.clone() }
     }
