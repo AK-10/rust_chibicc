@@ -195,25 +195,18 @@ impl<'a> Parser<'_> {
 
     pub(in super) fn base_type(&mut self) -> Result<Type, String> {
         self.expect_next_reserved("int".to_string())?;
+        let mut ty = Type::Int;
 
-        let ty = Type::Int;
-
-        // ポインタ型はネストしても一つとしてみなす
-        match self.peekable.peek() {
-            Some(Token::Reserved { op }) if op == "*" => {
-                self.consume_pointer();
-                Ok(Type::Ptr { base: Box::new(ty) })
-            }
-            _ => {
-                Ok(ty)
-            }
-        }
-    }
-
-    pub(in super) fn consume_pointer(&mut self) {
         while let Some(Token::Reserved { op }) = self.peekable.peek() {
-            if op == "*" { self.peekable.next(); } else { break }
+            if op == "*" {
+                ty = Type::Ptr { base: Box::new(ty) };
+                self.peekable.next();
+            } else {
+                break
+            }
         }
+
+        Ok(ty)
     }
 
     pub(in super) fn new_var(&self, name: &String, ty: &Type) -> Var {

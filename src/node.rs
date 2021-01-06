@@ -180,13 +180,13 @@ impl Expr {
             Expr::Deref { operand } => {
                 let ty = operand.expr.detect_type();
                 match ty {
-                    Int => Int, // エラーにする
                     Ptr { base } => {
                         base.as_ref().clone()
                     },
                     Type::Array { base, .. } => {
                         base.as_ref().clone()
                     }
+                    _ => panic!("can not deref value")
                 }
             },
             Expr::Var(var) => {
