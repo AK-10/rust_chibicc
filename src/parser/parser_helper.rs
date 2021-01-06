@@ -161,10 +161,13 @@ impl<'a> Parser<'_> {
         let ty = self.base_type()?;
         let first_arg = self.peekable.peek();
 
+
+        let mut offset = 0;
+
         if let Some(Token::Ident { name }) = first_arg {
             self.peekable.next();
+            offset += ty.size();
 
-            let offset = (params.len() + 1) * 8;
             params.push(Var { name: name.clone(), offset, ty });
         } else {
             return Err("token not found".to_string())
@@ -176,7 +179,7 @@ impl<'a> Parser<'_> {
                 Some(Token::Ident { name }) => {
                     self.peekable.next();
 
-                    let offset = (params.len() + 1) * 8;
+                    offset += ty.size();
                     params.push(Var { name: name.clone(), offset, ty });
                 },
                 Some(token) => {

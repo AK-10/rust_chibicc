@@ -15,7 +15,7 @@ impl Function {
         Self {
             name,
             nodes,
-            stack_size: locals.last().map_or(0, |var| var.offset),
+            stack_size: locals.iter().fold(0, |acc, var| acc + var.ty.size()),
             locals,
             params
         }
