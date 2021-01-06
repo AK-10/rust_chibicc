@@ -171,15 +171,22 @@ impl Expr {
                 Expr::type_of_ptr_operation(val)
             },
             Expr::Addr { operand } => {
-                Ptr { base: Box::new(operand.ty.clone()) }
-            },
+                let ty = operand.ty.clone();
+                match ty {
+                    Type::Array { base, .. } => Ptr { base },
+                    _ => Ptr { base: Box::new(ty) }
+                }
+           },
             Expr::Deref { operand } => {
                 let ty = operand.expr.detect_type();
                 match ty {
+                    Int => Int, // エラーにする
                     Ptr { base } => {
                         base.as_ref().clone()
                     },
-                    Int => Int
+                    Type::Array { base, .. } => {
+                        base.as_ref().clone()
+                    }
                 }
             },
             Expr::Var(var) => {

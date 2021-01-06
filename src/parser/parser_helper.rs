@@ -69,12 +69,14 @@ impl<'a> Parser<'_> {
     }
 
     // variable declaration
-    // declaration := basetype ident ("=" expr) ";"
+    // declaration := basetype ident ("[" num "]")* ("=" expr) ";"
     pub(in super) fn declaration(&mut self) -> Result<Stmt, String> {
         let ty = self.base_type()?;
+
         match self.peekable.peek() {
             Some(Token::Ident { name }) => {
                 self.peekable.next();
+                let ty = self.read_type_suffix(ty)?;
                 let expr =
                     if let Err(_) = self.expect_next_reserved("=".to_string()) {
                         // int a; みたいな場合はローカル変数への追加だけ行う. (push rax, 3 みたいなのはしない)
