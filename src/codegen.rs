@@ -1,5 +1,7 @@
 use crate::node::{ Stmt, Expr, ExprWrapper };
 use crate::program::Function;
+use crate::_type::Type;
+
 use std::cell::{ Cell, RefCell };
 
 const ARG_REG: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
@@ -198,7 +200,10 @@ impl CodeGenerator {
             }
             Expr::Deref { operand } => {
                 self.gen_expr(operand);
-                load();
+                match operand.ty {
+                    Type::Array { .. } => {},
+                    _ => { load(); }
+                }
                 return
             }
             Expr::PtrAdd { lhs, rhs } => {
