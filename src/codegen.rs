@@ -128,14 +128,21 @@ impl CodeGenerator {
                 println!("  setle al");
                 println!("  movzb rax, al");
             }
-            Expr::Var { .. } => {
+            Expr::Var(_) => {
                 self.gen_addr(expr_wrapper);
-                load();
+                match expr_wrapper.get_type() {
+                    Type::Array { .. } => {},
+                    _ => { load(); }
+                }
 
                 return
             }
             Expr::Assign { var, val, .. } => {
-                self.gen_addr(var);
+                match expr_wrapper.get_type() {
+                    Type::Array { .. } => { panic!("not an lvalue") },
+                    _ => { self.gen_addr(var); }
+                }
+
                 self.gen_expr(val);
                 store();
 
@@ -200,7 +207,7 @@ impl CodeGenerator {
             }
             Expr::Deref { operand } => {
                 self.gen_expr(operand);
-                match operand.ty {
+                match expr_wrapper.ty {
                     Type::Array { .. } => {},
                     _ => { load(); }
                 }
@@ -346,8 +353,6 @@ impl CodeGenerator {
         }
     }
 }
-
-
 
 fn load() {
     println!("  pop rax");

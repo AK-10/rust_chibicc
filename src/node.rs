@@ -68,6 +68,15 @@ impl ExprWrapper {
             expr: Box::new(expr)
         }
     }
+
+    // arrayは+,-などではpointerとして使う
+    // 一方でarrayとして読み取りたいときもあるので基本はfieldのtyを使い，特殊なときはget_typeを取る
+    pub fn get_type(&self) -> &Type {
+        match self.expr.as_ref() {
+            Expr::Var(var) => &var.ty,
+            _ => &self.ty
+        }
+    }
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -178,8 +187,9 @@ impl Expr {
                 }
            },
             Expr::Deref { operand } => {
-                let ty = operand.expr.detect_type();
-                match ty {
+                let ty = operand.get_type();
+
+                 match ty {
                     Ptr { base } => {
                         base.as_ref().clone()
                     },
@@ -190,7 +200,11 @@ impl Expr {
                 }
             },
             Expr::Var(var) => {
-                var.ty.clone()
+                let ty = var.ty.clone();
+                match ty {
+                    Type::Array { base, .. } => Ptr { base },
+                    _ => ty
+                }
             },
             Expr::Null => Int
         }
