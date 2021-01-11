@@ -33,8 +33,9 @@ impl CodeGenerator {
             println!("  mov rbp, rsp");
             println!("  sub rsp, {}", func.stack_size);
 
+            println!("params: {:?}", func.params);
             func.params.iter().enumerate().for_each(|(i, var)| {
-                println!("  mov [rbp-{}], {}", var.offset, ARG_REG[i]);
+                println!("  mov [rbp-{}], {}", var.borrow().offset.value(), ARG_REG[i]);
             });
 
             while let Some(node) = node_iter.next() {
@@ -344,7 +345,7 @@ impl CodeGenerator {
             }
             Expr::Var(var) => {
                 // lea: アドレスのロード
-                println!("  lea rax, [rbp-{}]", var.offset);
+                println!("  lea rax, [rbp-{}]", var.borrow().offset.value());
                 println!("  push rax");
             }
             _ => {

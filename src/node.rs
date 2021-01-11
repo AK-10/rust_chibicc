@@ -1,7 +1,10 @@
 use crate::program::Var;
-
 use crate::_type::Type;
 use crate::_type::Type::{ Int, Ptr };
+
+use std::rc::Rc;
+use std::cell::RefCell;
+
 
 // EBNF
 // program := stmt*
@@ -71,10 +74,10 @@ impl ExprWrapper {
 
     // arrayは+,-などではpointerとして使う
     // 一方でarrayとして読み取りたいときもあるので基本はfieldのtyを使い，特殊なときはget_typeを取る
-    pub fn get_type(&self) -> &Type {
+    pub fn get_type(&self) -> Type {
         match self.expr.as_ref() {
-            Expr::Var(var) => &var.ty,
-            _ => &self.ty
+            Expr::Var(ref var) => var.borrow().ty.clone(),
+            _ => self.ty.clone()
         }
     }
 }
@@ -124,7 +127,7 @@ pub enum Expr {
     Num {
         val: isize
     },
-    Var(Var),
+    Var(Rc<RefCell<Var>>),
     Assign {
         var: ExprWrapper, // x = 10, *y = 100とかあるので今のところexprにするしかない
         val: ExprWrapper
@@ -188,6 +191,7 @@ impl Expr {
            },
             Expr::Deref { operand } => {
                 let ty = operand.get_type();
+                println!("ty: {:?}", ty);
 
                  match ty {
                     Ptr { base } => {
@@ -200,10 +204,10 @@ impl Expr {
                 }
             },
             Expr::Var(var) => {
-                let ty = var.ty.clone();
-                match ty {
-                    Type::Array { base, .. } => Ptr { base },
-                    _ => ty
+                let v = var.borrow();
+                match v.ty {
+                    Type::Array { ref base, .. } => Ptr { base: base.clone() },
+                    _ => v.ty.clone()
                 }
             },
             Expr::Null => Int

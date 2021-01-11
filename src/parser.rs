@@ -4,6 +4,8 @@ use crate::_type::Type;
 use crate::program::{ Function, Var };
 use std::slice::Iter;
 use std::iter::Peekable;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 mod parser_helper;
 
@@ -19,7 +21,7 @@ pub struct Parser<'a> {
     pub input: &'a Vec<Token>,
     peekable: Peekable<Iter<'a, Token>>,
     // 関数の引数，関数内で宣言された変数を保持する, 関数のスコープから外れたらリセットする
-    pub locals: Vec<Var>
+    pub locals: Vec<Rc<RefCell<Var>>>
 }
 
 impl<'a> Parser<'a> {
@@ -55,7 +57,7 @@ impl<'a> Parser<'a> {
     // params := param ("," param)*
     // param := basetype ident
     fn function(&mut self) -> Result<Function, String> {
-        self.base_type()?; // 一時的に無駄に消費するだけ
+        self.base_type()?; // 一時的に無駄に消費するだけ(現状常にintなので)
 
         if let Some(Token::Ident{ name }) = self.peekable.next() {
             // parse params
@@ -235,11 +237,10 @@ impl<'a> Parser<'a> {
                             node = Expr::Add { lhs, rhs };
                         },
                         (Type::Ptr { .. }, Type::Int) => {
-                            // 本来はPtrAddだが，変数の格納順が本家とは違うのでPtrSubにしている
-                            node = Expr::PtrSub { lhs, rhs };
+                            node = Expr::PtrAdd { lhs, rhs };
                         },
                         (Type::Int, Type::Ptr { .. }) => {
-                            node = Expr::PtrSub { lhs: rhs, rhs: lhs };
+                            node = Expr::PtrAdd { lhs: rhs, rhs: lhs };
                         },
                         (_, _) => {
                             return Err("invalid operands at +".to_string());
@@ -405,8 +406,8 @@ impl<'a> Parser<'a> {
                     return Ok(Expr::FnCall { fn_name: name.clone(), args })
                 }
                 // variable
-                if let Some(var) = self.find_lvar(&name) {
-                    Ok(Expr::Var(var.clone()))
+                if let Some(ref var) = self.find_lvar(&name) {
+                    Ok(Expr::Var(Rc::clone(var)))
                 } else {
                     Err(format!("undefined variable: {:?}", name).to_string())
                 }

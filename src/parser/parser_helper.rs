@@ -1,12 +1,18 @@
 use crate::parser::Parser;
 use crate::node::{ Stmt, ExprWrapper, Expr };
 use crate::token::Token;
-use crate::program::Var;
+use crate::program::{ Var, Offset };
 use crate::_type::Type;
 
-impl<'a> Parser<'_> {
-    pub(in super) fn find_lvar(&self, name: &String) -> Option<&Var> {
-        self.locals.iter().find(|item| { item.name == *name })
+use std::rc::Rc;
+use std::cell::RefCell;
+
+
+impl<'a> Parser<'a> {
+    pub(in super) fn find_lvar(&self, name: &String) -> Option<Rc<RefCell<Var>>> {
+        self.locals.iter()
+            .find(|var| { var.borrow().name == *name })
+            .map(|var| Rc::clone(var)) // &Rc<RefCell<Var>> -> Rc<RefCell<Var>>にする
     }
 
     pub(in super) fn if_stmt(&mut self) -> Result<Stmt, String> {
@@ -87,12 +93,12 @@ impl<'a> Parser<'_> {
                         Expr::Null
                     } else {
                         let lhs = self.new_var(name, &ty);
-                        self.locals.push(lhs.clone());
+                        self.locals.push(Rc::clone(&lhs));
 
                         let rhs = self.expr()?;
                         self.expect_next_symbol(";".to_string())?;
 
-                        Expr::Assign{ var: Expr::Var(lhs).to_expr_wrapper(), val: rhs.to_expr_wrapper() }
+                        Expr::Assign { var: Expr::Var(Rc::clone(&lhs)).to_expr_wrapper(), val: rhs.to_expr_wrapper() }
                     };
 
                 Ok(Stmt::ExprStmt { val: ExprWrapper { ty, expr: Box::new(expr) } })
@@ -151,24 +157,20 @@ impl<'a> Parser<'_> {
 
     // 関数宣言における引数をparseする
     // params := ident ("," ident)*
-    pub(in super) fn parse_func_params(&mut self) -> Result<Vec<Var>, String> {
+    pub(in super) fn parse_func_params(&mut self) -> Result<Vec<Rc<RefCell<Var>>>, String> {
         self.expect_next_symbol("(".to_string())?;
 
-        let mut params = Vec::<Var>::new();
+        let mut params = Vec::<Rc<RefCell<Var>>>::new();
         if self.expect_next_symbol(")".to_string()).is_ok() {
             return Ok(params)
         }
         let ty = self.base_type()?;
         let first_arg = self.peekable.peek();
 
-
-        let mut offset = 0;
-
         if let Some(Token::Ident { name }) = first_arg {
             self.peekable.next();
-            offset += ty.size();
 
-            params.push(Var { name: name.clone(), offset, ty });
+            params.push(self.new_var(name, &ty));
         } else {
             return Err("token not found".to_string())
         }
@@ -179,8 +181,7 @@ impl<'a> Parser<'_> {
                 Some(Token::Ident { name }) => {
                     self.peekable.next();
 
-                    offset += ty.size();
-                    params.push(Var { name: name.clone(), offset, ty });
+                    params.push(self.new_var(name, &ty));
                 },
                 Some(token) => {
                     return Err(format!("expect ident, result: {:?}", token))
@@ -212,10 +213,16 @@ impl<'a> Parser<'_> {
         Ok(ty)
     }
 
-    pub(in super) fn new_var(&self, name: &String, ty: &Type) -> Var {
-        let offset = self.locals.last().map_or(ty.size(), |var| var.offset + ty.size());
-
-        Var { name: name.to_string(), offset, ty: ty.clone() }
+    pub(in super) fn new_var(&self, name: &String, ty: &Type) -> Rc<RefCell<Var>> {
+        Rc::new(
+            RefCell::new(
+                Var {
+                    name: name.to_string(),
+                    offset: Offset::Unset,
+                    ty: ty.clone()
+                }
+            )
+        )
     }
 
     pub(in super) fn read_type_suffix(&mut self, base: Type) -> Result<Type, String> {
