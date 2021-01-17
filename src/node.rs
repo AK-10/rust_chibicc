@@ -203,12 +203,8 @@ impl Expr {
                 }
             },
             Expr::Var(var) => {
-                let v = var.borrow();
-                match v.ty {
-                    Type::Array { ref base, .. } => Ptr { base: base.clone() },
-                    _ => v.ty.clone()
-                }
-            },
+                var.borrow().ty.clone()
+           },
             Expr::Null => Int
         }
     }

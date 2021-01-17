@@ -239,6 +239,9 @@ impl<'a> Parser<'a> {
                         (Type::Ptr { .. }, Type::Int) => {
                             node = Expr::PtrAdd { lhs, rhs };
                         },
+                        (Type::Array { .. }, Type::Int) => {
+                            node = Expr::PtrAdd { lhs, rhs };
+                        }
                         (Type::Int, Type::Ptr { .. }) => {
                             node = Expr::PtrAdd { lhs: rhs, rhs: lhs };
                         },
@@ -253,15 +256,17 @@ impl<'a> Parser<'a> {
                     let lhs = ExprWrapper::new(node);
                     let rhs = ExprWrapper::new(self.mul()?);
 
-                    match (&lhs.ty, &rhs.ty) {
+                    match (&lhs.get_type(), &rhs.ty) {
                         (Type::Int, Type::Int) => {
                             node = Expr::Sub { lhs, rhs };
                         },
                         (Type::Ptr { .. }, Type::Int) => {
                             node = Expr::PtrSub { lhs, rhs };
                         },
+                        (Type::Array { .. }, Type::Int) => {
+                            node = Expr::PtrSub { lhs, rhs };
+                        },
                         (Type::Ptr { .. }, Type::Ptr { .. }) => {
-                            // 本家とは変数の格納順が違うのでlhsとrhsを逆にしている
                             node = Expr::PtrDiff { lhs, rhs };
                         },
                         (_, _) => {

@@ -20,4 +20,12 @@ impl Type {
             }
         }
     }
+
+    pub fn base_size(&self) -> usize {
+        match self {
+            Type::Ptr { base } => base.size(),
+            Type::Array { base, .. } => base.size(),
+            _ => panic!("expect base type, but does not base type")
+        }
+    }
 }

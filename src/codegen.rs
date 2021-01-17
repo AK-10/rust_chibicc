@@ -215,19 +215,19 @@ impl CodeGenerator {
             }
             Expr::PtrAdd { lhs, rhs } => {
                 self.gen_both_side(lhs, rhs);
-                println!("  imul rdi, 8"); // アドレスの単位は8byteなので
+                println!("  imul rdi, {}", expr_wrapper.ty.base_size());
                 println!("  add rax, rdi");
             }
             Expr::PtrSub { lhs, rhs } => {
                 self.gen_both_side(lhs, rhs);
-                println!("  imul rdi, 8"); // アドレスの単位は8byteなので
+                println!("  imul rdi, {}", expr_wrapper.ty.base_size());
                 println!("  sub rax, rdi");
             }
             Expr::PtrDiff { lhs, rhs } => {
                 self.gen_both_side(lhs, rhs);
                 println!("  sub rax, rdi");
                 println!("  cqo");
-                println!("  mov rdi, 8");
+                println!("  mov rdi, {}", lhs.ty.base_size());
                 println!("  idiv rdi");
             }
             Expr::Null => return

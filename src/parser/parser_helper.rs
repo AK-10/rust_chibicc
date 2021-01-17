@@ -83,6 +83,7 @@ impl<'a> Parser<'a> {
             Some(Token::Ident { name }) => {
                 self.peekable.next();
                 let ty = self.read_type_suffix(ty)?;
+
                 let expr =
                     if let Err(_) = self.expect_next_reserved("=".to_string()) {
                         // int a; みたいな場合はローカル変数への追加だけ行う. (push rax, 3 みたいなのはしない)
@@ -233,7 +234,8 @@ impl<'a> Parser<'a> {
                         if let Err(e) = self.expect_next_symbol("]".to_string()) {
                             Err(e)
                         } else {
-                            Ok(Type::Array { base: Box::new(base), len: *val as usize })
+                            let nested_base = self.read_type_suffix(base)?;
+                            Ok(Type::Array { base: Box::new(nested_base), len: *val as usize })
                         }
                     },
                     _ => {
