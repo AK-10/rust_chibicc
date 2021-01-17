@@ -19,10 +19,12 @@ impl Function {
             nodes,
             stack_size: locals.iter().fold(0, |acc, var| acc + var.borrow().ty.size()),
             locals: Self::calc_offsets(&locals),
-            params: Self::calc_offsets(&params)
+            params
         }
     }
 
+    // locals のoffset計算を行う.
+    // localsの先頭はparamsが持つ要素のポインタなのでparamsも同時にoffset計算される
     fn calc_offsets(locals: &Vec<Rc<RefCell<Var>>>) -> Vec<Rc<RefCell<Var>>> {
         let mut reversed = locals.clone();
         let mut offset = 0;

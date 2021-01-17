@@ -191,7 +191,6 @@ impl Expr {
            },
             Expr::Deref { operand } => {
                 let ty = operand.get_type();
-                println!("ty: {:?}", ty);
 
                  match ty {
                     Ptr { base } => {

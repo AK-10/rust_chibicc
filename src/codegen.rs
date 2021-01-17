@@ -33,7 +33,6 @@ impl CodeGenerator {
             println!("  mov rbp, rsp");
             println!("  sub rsp, {}", func.stack_size);
 
-            println!("params: {:?}", func.params);
             func.params.iter().enumerate().for_each(|(i, var)| {
                 println!("  mov [rbp-{}], {}", var.borrow().offset.value(), ARG_REG[i]);
             });
