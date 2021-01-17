@@ -256,7 +256,7 @@ impl<'a> Parser<'a> {
                     let lhs = ExprWrapper::new(node);
                     let rhs = ExprWrapper::new(self.mul()?);
 
-                    match (&lhs.get_type(), &rhs.ty) {
+                    match (&lhs.ty, &rhs.ty) {
                         (Type::Int, Type::Int) => {
                             node = Expr::Sub { lhs, rhs };
                         },

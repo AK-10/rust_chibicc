@@ -130,7 +130,7 @@ impl CodeGenerator {
             }
             Expr::Var(_) => {
                 self.gen_addr(expr_wrapper);
-                match expr_wrapper.get_type() {
+                match expr_wrapper.ty {
                     Type::Array { .. } => {},
                     _ => { load(); }
                 }
@@ -138,7 +138,7 @@ impl CodeGenerator {
                 return
             }
             Expr::Assign { var, val, .. } => {
-                match expr_wrapper.get_type() {
+                match expr_wrapper.ty {
                     Type::Array { .. } => { panic!("not an lvalue") },
                     _ => { self.gen_addr(var); }
                 }
