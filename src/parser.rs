@@ -258,11 +258,11 @@ impl<'a> Parser<'a> {
                             node = Expr::Sub { lhs, rhs };
                         },
                         (Type::Ptr { .. }, Type::Int) => {
-                            node = Expr::PtrAdd { lhs, rhs };
+                            node = Expr::PtrSub { lhs, rhs };
                         },
                         (Type::Ptr { .. }, Type::Ptr { .. }) => {
                             // 本家とは変数の格納順が違うのでlhsとrhsを逆にしている
-                            node = Expr::PtrDiff { lhs: rhs, rhs: lhs };
+                            node = Expr::PtrDiff { lhs, rhs };
                         },
                         (_, _) => {
                             return Err("invalid operands at -".to_string());
