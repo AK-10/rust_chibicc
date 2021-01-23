@@ -108,7 +108,6 @@ impl<'a> Parser<'a> {
                 return Err("expect ident, but not found".to_string())
             }
         }
-
     }
 
     pub(in super) fn expr_stmt(&mut self) -> Result<Stmt, String> {
@@ -244,6 +243,46 @@ impl<'a> Parser<'a> {
                 }
             }
             Err(_) => Ok(base)
+        }
+    }
+
+    pub(in super) fn new_add(lhs: ExprWrapper, rhs: ExprWrapper) -> Result<Expr, String> {
+        match (&lhs.ty, &rhs.ty) {
+            (Type::Int, Type::Int) => {
+                Ok(Expr::Add { lhs, rhs })
+            },
+            (Type::Ptr { .. }, Type::Int) => {
+                Ok(Expr::PtrAdd { lhs, rhs })
+            },
+            (Type::Array { .. }, Type::Int) => {
+                Ok(Expr::PtrAdd { lhs, rhs })
+            }
+            (Type::Int, Type::Ptr { .. }) => {
+                Ok(Expr::PtrAdd { lhs: rhs, rhs: lhs })
+            },
+            (_, _) => {
+                return Err("invalid operands at +".to_string());
+            }
+        }
+    }
+
+    pub(in super) fn new_sub(lhs: ExprWrapper, rhs: ExprWrapper) -> Result<Expr, String> {
+       match (&lhs.ty, &rhs.ty) {
+            (Type::Int, Type::Int) => {
+                Ok(Expr::Sub { lhs, rhs })
+            },
+            (Type::Ptr { .. }, Type::Int) => {
+                Ok(Expr::PtrSub { lhs, rhs })
+            },
+            (Type::Array { .. }, Type::Int) => {
+                Ok(Expr::PtrSub { lhs, rhs })
+            },
+            (Type::Ptr { .. }, Type::Ptr { .. }) => {
+                Ok(Expr::PtrDiff { lhs, rhs })
+            },
+            (_, _) => {
+                return Err("invalid operands at -".to_string());
+            }
         }
     }
 }

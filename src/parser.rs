@@ -1,6 +1,5 @@
 use crate::node::{ Stmt, Expr, ExprWrapper };
 use crate::token::Token;
-use crate::_type::Type;
 use crate::program::{ Function, Var };
 use std::slice::Iter;
 use std::iter::Peekable;
@@ -221,34 +220,17 @@ impl<'a> Parser<'a> {
     }
 
     fn add(&mut self) -> Result<Expr, String> {
-        let mut node = self.mul()?;
+        let node = self.mul()?;
 
         while let Some(token) = self.peekable.peek() {
             match token {
                 // "+" mul
                 Token::Reserved { op } if *op == "+" => {
                     self.peekable.next();
-
                     let lhs = ExprWrapper::new(node);
                     let rhs = ExprWrapper::new(self.mul()?);
 
-                    match (&lhs.ty, &rhs.ty) {
-                        (Type::Int, Type::Int) => {
-                            node = Expr::Add { lhs, rhs };
-                        },
-                        (Type::Ptr { .. }, Type::Int) => {
-                            node = Expr::PtrAdd { lhs, rhs };
-                        },
-                        (Type::Array { .. }, Type::Int) => {
-                            node = Expr::PtrAdd { lhs, rhs };
-                        }
-                        (Type::Int, Type::Ptr { .. }) => {
-                            node = Expr::PtrAdd { lhs: rhs, rhs: lhs };
-                        },
-                        (_, _) => {
-                            return Err("invalid operands at +".to_string());
-                        }
-                    }
+                    return Parser::new_add(lhs, rhs);
                 },
                 // "-" mul
                 Token::Reserved { op } if *op == "-" => {
@@ -256,23 +238,7 @@ impl<'a> Parser<'a> {
                     let lhs = ExprWrapper::new(node);
                     let rhs = ExprWrapper::new(self.mul()?);
 
-                    match (&lhs.ty, &rhs.ty) {
-                        (Type::Int, Type::Int) => {
-                            node = Expr::Sub { lhs, rhs };
-                        },
-                        (Type::Ptr { .. }, Type::Int) => {
-                            node = Expr::PtrSub { lhs, rhs };
-                        },
-                        (Type::Array { .. }, Type::Int) => {
-                            node = Expr::PtrSub { lhs, rhs };
-                        },
-                        (Type::Ptr { .. }, Type::Ptr { .. }) => {
-                            node = Expr::PtrDiff { lhs, rhs };
-                        },
-                        (_, _) => {
-                            return Err("invalid operands at -".to_string());
-                        }
-                    }
+                    return Parser::new_sub(lhs, rhs);
                 },
                 // mul
                 _ => { return Ok(node); }
@@ -312,9 +278,10 @@ impl<'a> Parser<'a> {
         Ok(node)
     }
 
+    // unary := ("+" | "-" | "*" | "&")? unary
+    //        | postfix
     fn unary(&mut self) -> Result<Expr, String> {
         if let Some(token) = self.peekable.peek() {
-
             match token {
                 Token::Reserved { op } if *op == "+" => {
                     self.peekable.next();
@@ -347,7 +314,25 @@ impl<'a> Parser<'a> {
                 }
             }
         } else {
-            Err("expect token, but token not found".to_string())
+            self.postfix()
+        }
+    }
+
+    fn postfix(&mut self) -> Result<Expr, String> {
+        let node = self.primary()?;
+        if let Ok(_) = self.expect_next_symbol("[".to_string()) {
+            // x[y] is short for *(x + y)
+            let expr = self.expr()?;
+            let nd = Parser::new_add(node.to_expr_wrapper(), expr.to_expr_wrapper())?;
+
+            match self.expect_next_symbol("]".to_string()) {
+                Ok(_) => {
+                    Ok(Expr::Deref { operand: nd.to_expr_wrapper() })
+                },
+                _ => Err("expect ] after [ expr".to_string())
+            }
+        } else {
+            Ok(node)
         }
     }
 
