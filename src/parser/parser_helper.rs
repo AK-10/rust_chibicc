@@ -256,10 +256,13 @@ impl<'a> Parser<'a> {
             },
             (Type::Array { .. }, Type::Int) => {
                 Ok(Expr::PtrAdd { lhs, rhs })
-            }
+            },
             (Type::Int, Type::Ptr { .. }) => {
                 Ok(Expr::PtrAdd { lhs: rhs, rhs: lhs })
             },
+            (Type::Int, Type::Array { .. }) => {
+                Ok(Expr::PtrAdd { lhs: rhs, rhs: lhs })
+            }
             (_, _) => {
                 return Err("invalid operands at +".to_string());
             }

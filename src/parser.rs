@@ -282,40 +282,37 @@ impl<'a> Parser<'a> {
     // unary := ("+" | "-" | "*" | "&")? unary
     //        | postfix
     fn unary(&mut self) -> Result<Expr, String> {
-        if let Some(token) = self.peekable.peek() {
-            match token {
-                Token::Reserved { op } if *op == "+" => {
-                    self.peekable.next();
+        let tk = self.peekable.peek();
+        match tk {
+            Some(Token::Reserved { op }) if *op == "+" => {
+                self.peekable.next();
 
-                    self.primary()
-                },
-                Token::Reserved { op } if *op == "-" => {
-                    self.peekable.next();
+                self.primary()
+            },
+            Some(Token::Reserved { op }) if *op == "-" => {
+                self.peekable.next();
 
-                    let rhs = self.unary()?;
-                    Ok(Expr::Sub {
-                        lhs: ExprWrapper::new(Expr::Num { val: 0 }),
-                        rhs: ExprWrapper::new(rhs)
-                    })
-                },
-                Token::Reserved { op } if *op == "*" => {
-                    self.peekable.next();
-                    let operand = self.unary()?;
+                let rhs = self.unary()?;
+                Ok(Expr::Sub {
+                    lhs: ExprWrapper::new(Expr::Num { val: 0 }),
+                    rhs: ExprWrapper::new(rhs)
+                })
+            },
+            Some(Token::Reserved { op }) if *op == "*" => {
+                self.peekable.next();
+                let operand = self.unary()?;
 
-                    Ok(Expr::Deref { operand: ExprWrapper::new(operand) })
-                },
-                Token::Reserved { op } if *op == "&" => {
-                    self.peekable.next();
-                    let operand = self.unary()?;
+                Ok(Expr::Deref { operand: ExprWrapper::new(operand) })
+            },
+            Some(Token::Reserved { op }) if *op == "&" => {
+                self.peekable.next();
+                let operand = self.unary()?;
 
-                    Ok(Expr::Addr { operand: ExprWrapper::new(operand) })
-                }
-                _ => {
-                    self.primary()
-                }
+                Ok(Expr::Addr { operand: ExprWrapper::new(operand) })
             }
-        } else {
-            self.postfix()
+            _ => {
+                self.postfix()
+            }
         }
     }
 
