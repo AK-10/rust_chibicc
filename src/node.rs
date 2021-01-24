@@ -165,33 +165,33 @@ impl Expr {
             Expr::PtrDiff { .. } => Rc::new(Int),
             Expr::FnCall { .. } => Rc::new(Int),
             Expr::PtrAdd { lhs, rhs: _ } => {
-                Expr::type_of_ptr_operation(lhs)
+                Rc::clone(&lhs.ty)
             },
             Expr::PtrSub { lhs, rhs: _ } => {
-                Expr::type_of_ptr_operation(lhs)
+                Rc::clone(&lhs.ty)
             },
             Expr::Assign { val, .. } => {
-                Expr::type_of_ptr_operation(val)
+                Rc::clone(&val.ty)
             },
             Expr::Addr { operand } => {
-                match *(operand.ty) {
-                    Type::Array { base, .. } => base,
-                    _ => Rc::new(Ptr { base: operand.ty })
+                let ty = operand.ty.as_ref();
+                match ty {
+                    Type::Array { base, .. } => Rc::clone(base),
+                    _ => Rc::new(Ptr { base: Rc::clone(&operand.ty) })
                 }
-           },
+            },
             Expr::Deref { operand } => {
-                 match *operand.ty {
+                 match operand.ty.as_ref() {
                     Ptr { base } => {
-                        base
-                    },
+                        Rc::clone(base) },
                     Type::Array { base, .. } => {
-                        base
+                        Rc::clone(base)
                     }
                     _ => panic!("can not deref value")
                 }
             },
             Expr::Var(var) => {
-                var.borrow().ty
+                Rc::clone(&var.borrow().ty)
            },
             Expr::Null => Rc::new(Int)
         }
@@ -199,10 +199,5 @@ impl Expr {
 
     pub fn to_expr_wrapper(&self) -> ExprWrapper {
         ExprWrapper::new(self.clone())
-    }
-
-
-    fn type_of_ptr_operation(expr_wrapper: &ExprWrapper) -> Rc<Type> {
-        expr_wrapper.ty
     }
 }

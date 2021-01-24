@@ -87,13 +87,13 @@ impl<'a> Parser<'a> {
                 let expr =
                     if let Err(_) = self.expect_next_reserved("=".to_string()) {
                         // int a; みたいな場合はローカル変数への追加だけ行う. (push rax, 3 みたいなのはしない)
-                        let var = self.new_var(name, &ty);
+                        let var = self.new_var(name, Rc::clone(&ty));
                         self.locals.push(var);
                         self.expect_next_symbol(";".to_string())?;
 
                         Expr::Null
                     } else {
-                        let lhs = self.new_var(name, &ty);
+                        let lhs = self.new_var(name, Rc::clone(&ty));
                         self.locals.push(Rc::clone(&lhs));
 
                         let rhs = self.expr()?;
@@ -102,7 +102,7 @@ impl<'a> Parser<'a> {
                         Expr::Assign { var: Expr::Var(Rc::clone(&lhs)).to_expr_wrapper(), val: rhs.to_expr_wrapper() }
                     };
 
-                Ok(Stmt::ExprStmt { val: ExprWrapper { ty: Rc::new(ty), expr: Box::new(expr) } })
+                Ok(Stmt::ExprStmt { val: ExprWrapper { ty: Rc::clone(&ty), expr: Box::new(expr) } })
             }
             _ => {
                 return Err("expect ident, but not found".to_string())
@@ -170,7 +170,7 @@ impl<'a> Parser<'a> {
         if let Some(Token::Ident { name }) = first_arg {
             self.peekable.next();
 
-            params.push(self.new_var(name, &ty));
+            params.push(self.new_var(name, ty));
         } else {
             return Err("token not found".to_string())
         }
@@ -181,7 +181,7 @@ impl<'a> Parser<'a> {
                 Some(Token::Ident { name }) => {
                     self.peekable.next();
 
-                    params.push(self.new_var(name, &ty));
+                    params.push(self.new_var(name, ty));
                 },
                 Some(token) => {
                     return Err(format!("expect ident, result: {:?}", token))
@@ -197,7 +197,7 @@ impl<'a> Parser<'a> {
         Ok(params)
     }
 
-    pub(in super) fn base_type(&mut self) -> Result<Type, String> {
+    pub(in super) fn base_type(&mut self) -> Result<Rc<Type>, String> {
         self.expect_next_reserved("int".to_string())?;
         let mut ty = Type::Int;
 
@@ -210,22 +210,22 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(ty)
+        Ok(Rc::new(ty))
     }
 
-    pub(in super) fn new_var(&self, name: &String, ty: &Type) -> Rc<RefCell<Var>> {
+    pub(in super) fn new_var(&self, name: &String, ty: Rc<Type>) -> Rc<RefCell<Var>> {
         Rc::new(
             RefCell::new(
                 Var {
                     name: name.to_string(),
                     offset: Offset::Unset,
-                    ty: Rc::new(*ty)
+                    ty: Rc::clone(&ty)
                 }
             )
         )
     }
 
-    pub(in super) fn read_type_suffix(&mut self, base: Type) -> Result<Type, String> {
+    pub(in super) fn read_type_suffix(&mut self, base: Rc<Type>) -> Result<Rc<Type>, String> {
         match self.expect_next_symbol("[".to_string()) {
             Ok(_) => {
                 match self.peekable.next() {
@@ -234,7 +234,7 @@ impl<'a> Parser<'a> {
                             Err(e)
                         } else {
                             let nested_base = self.read_type_suffix(base)?;
-                            Ok(Type::Array { base: Rc::new(nested_base), len: *val as usize })
+                            Ok(Rc::new(Type::Array { base: nested_base, len: *val as usize }))
                         }
                     },
                     _ => {
@@ -247,7 +247,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(in super) fn new_add(lhs: ExprWrapper, rhs: ExprWrapper) -> Result<Expr, String> {
-        match (*lhs.ty, *rhs.ty) {
+        match (lhs.ty.as_ref(), rhs.ty.as_ref()) {
             (Type::Int, Type::Int) => {
                 Ok(Expr::Add { lhs, rhs })
             },
@@ -270,7 +270,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(in super) fn new_sub(lhs: ExprWrapper, rhs: ExprWrapper) -> Result<Expr, String> {
-       match (*lhs.ty, *rhs.ty) {
+       match (lhs.ty.as_ref(), rhs.ty.as_ref()) {
             (Type::Int, Type::Int) => {
                 Ok(Expr::Sub { lhs, rhs })
             },
