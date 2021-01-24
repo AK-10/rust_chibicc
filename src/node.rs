@@ -60,7 +60,7 @@ pub enum Stmt {
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct ExprWrapper {
-    pub ty: Type,
+    pub ty: Rc<Type>,
     pub expr: Box<Expr>
 }
 
@@ -149,21 +149,21 @@ pub enum Expr {
 }
 
 impl Expr {
-    pub fn detect_type(&self) -> Type {
+    pub fn detect_type(&self) -> Rc<Type> {
         match self {
-            Expr::Eq { .. } => Int,
-            Expr::Neq { .. } => Int,
-            Expr::Gt { .. } => Int,
-            Expr::Ge { .. } => Int,
-            Expr::Lt { .. } => Int,
-            Expr::Le { .. } => Int,
-            Expr::Add { .. } => Int,
-            Expr::Sub { .. } => Int,
-            Expr::Mul { .. } => Int,
-            Expr::Div { .. } => Int,
-            Expr::Num { .. } => Int,
-            Expr::PtrDiff { .. } => Int,
-            Expr::FnCall { .. } => Int,
+            Expr::Eq { .. } => Rc::new(Int),
+            Expr::Neq { .. } => Rc::new(Int),
+            Expr::Gt { .. } => Rc::new(Int),
+            Expr::Ge { .. } => Rc::new(Int),
+            Expr::Lt { .. } => Rc::new(Int),
+            Expr::Le { .. } => Rc::new(Int),
+            Expr::Add { .. } => Rc::new(Int),
+            Expr::Sub { .. } => Rc::new(Int),
+            Expr::Mul { .. } => Rc::new(Int),
+            Expr::Div { .. } => Rc::new(Int),
+            Expr::Num { .. } => Rc::new(Int),
+            Expr::PtrDiff { .. } => Rc::new(Int),
+            Expr::FnCall { .. } => Rc::new(Int),
             Expr::PtrAdd { lhs, rhs: _ } => {
                 Expr::type_of_ptr_operation(lhs)
             },
@@ -174,29 +174,26 @@ impl Expr {
                 Expr::type_of_ptr_operation(val)
             },
             Expr::Addr { operand } => {
-                let ty = operand.ty.clone();
-                match ty {
-                    Type::Array { base, .. } => Ptr { base },
-                    _ => Ptr { base: Box::new(ty) }
+                match *(operand.ty) {
+                    Type::Array { base, .. } => base,
+                    _ => Rc::new(Ptr { base: operand.ty })
                 }
            },
             Expr::Deref { operand } => {
-                let ty = operand.ty.clone();
-
-                 match ty {
+                 match *operand.ty {
                     Ptr { base } => {
-                        base.as_ref().clone()
+                        base
                     },
                     Type::Array { base, .. } => {
-                        base.as_ref().clone()
+                        base
                     }
                     _ => panic!("can not deref value")
                 }
             },
             Expr::Var(var) => {
-                var.borrow().ty.clone()
+                var.borrow().ty
            },
-            Expr::Null => Int
+            Expr::Null => Rc::new(Int)
         }
     }
 
@@ -205,7 +202,7 @@ impl Expr {
     }
 
 
-    fn type_of_ptr_operation(expr_wrapper: &ExprWrapper) -> Type {
-        expr_wrapper.ty.clone()
+    fn type_of_ptr_operation(expr_wrapper: &ExprWrapper) -> Rc<Type> {
+        expr_wrapper.ty
     }
 }

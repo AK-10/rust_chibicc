@@ -1,11 +1,13 @@
+use std::rc::Rc;
+
 #[derive(PartialEq, Debug, Clone)]
 pub enum Type {
     Int,
     Ptr {
-        base: Box<Type>
+        base: Rc<Type>
     },
     Array {
-        base: Box<Type>,
+        base: Rc<Type>,
         len: usize
     }
 }
@@ -29,3 +31,4 @@ impl Type {
         }
     }
 }
+

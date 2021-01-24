@@ -50,7 +50,7 @@ impl Function {
 // };
 #[derive(Debug, Clone, PartialEq)]
 pub struct Var {
-    pub ty: Type,
+    pub ty: Rc<Type>,
     pub name: String,
     // 構文解析の時点では0
     pub offset: Offset,

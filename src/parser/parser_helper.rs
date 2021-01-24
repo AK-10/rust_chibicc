@@ -102,7 +102,7 @@ impl<'a> Parser<'a> {
                         Expr::Assign { var: Expr::Var(Rc::clone(&lhs)).to_expr_wrapper(), val: rhs.to_expr_wrapper() }
                     };
 
-                Ok(Stmt::ExprStmt { val: ExprWrapper { ty, expr: Box::new(expr) } })
+                Ok(Stmt::ExprStmt { val: ExprWrapper { ty: Rc::new(ty), expr: Box::new(expr) } })
             }
             _ => {
                 return Err("expect ident, but not found".to_string())
@@ -203,7 +203,7 @@ impl<'a> Parser<'a> {
 
         while let Some(Token::Reserved { op }) = self.peekable.peek() {
             if op == "*" {
-                ty = Type::Ptr { base: Box::new(ty) };
+                ty = Type::Ptr { base: Rc::new(ty) };
                 self.peekable.next();
             } else {
                 break
@@ -219,7 +219,7 @@ impl<'a> Parser<'a> {
                 Var {
                     name: name.to_string(),
                     offset: Offset::Unset,
-                    ty: ty.clone()
+                    ty: Rc::new(*ty)
                 }
             )
         )
@@ -234,7 +234,7 @@ impl<'a> Parser<'a> {
                             Err(e)
                         } else {
                             let nested_base = self.read_type_suffix(base)?;
-                            Ok(Type::Array { base: Box::new(nested_base), len: *val as usize })
+                            Ok(Type::Array { base: Rc::new(nested_base), len: *val as usize })
                         }
                     },
                     _ => {
@@ -247,7 +247,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(in super) fn new_add(lhs: ExprWrapper, rhs: ExprWrapper) -> Result<Expr, String> {
-        match (&lhs.ty, &rhs.ty) {
+        match (*lhs.ty, *rhs.ty) {
             (Type::Int, Type::Int) => {
                 Ok(Expr::Add { lhs, rhs })
             },
@@ -270,7 +270,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(in super) fn new_sub(lhs: ExprWrapper, rhs: ExprWrapper) -> Result<Expr, String> {
-       match (&lhs.ty, &rhs.ty) {
+       match (*lhs.ty, *rhs.ty) {
             (Type::Int, Type::Int) => {
                 Ok(Expr::Sub { lhs, rhs })
             },
