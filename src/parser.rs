@@ -317,21 +317,21 @@ impl<'a> Parser<'a> {
     }
 
     fn postfix(&mut self) -> Result<Expr, String> {
-        let node = self.primary()?;
-        if let Ok(_) = self.expect_next_symbol("[".to_string()) {
+        let mut node = self.primary()?;
+        while let Ok(_) = self.expect_next_symbol("[".to_string()) {
             // x[y] is short for *(x + y)
             let expr = self.expr()?;
-            let nd = Parser::new_add(node.to_expr_wrapper(), expr.to_expr_wrapper())?;
+            let exp = Parser::new_add(node.to_expr_wrapper(), expr.to_expr_wrapper())?;
 
             match self.expect_next_symbol("]".to_string()) {
                 Ok(_) => {
-                    Ok(Expr::Deref { operand: nd.to_expr_wrapper() })
+                    node = Expr::Deref { operand: exp.to_expr_wrapper() };
                 },
-                _ => Err("expect ] after [ expr".to_string())
+                _ => return Err("expect ] after [ expr".to_string())
             }
-        } else {
-            Ok(node)
         }
+
+        Ok(node)
     }
 
     // ERR: compile error
