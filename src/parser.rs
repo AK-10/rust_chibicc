@@ -359,7 +359,7 @@ impl<'a> Parser<'a> {
     //     }
     // }
 
-    // primary = "(" expr ")" | ident | num
+    // primary = "(" expr ")" | "sizeof" unary | ident func-args? | num
     fn primary(&mut self) -> Result<Expr, String> {
         let token = self.peekable.peek();
 
@@ -399,6 +399,13 @@ impl<'a> Parser<'a> {
                 } else {
                     Err(format!("undefined variable: {:?}", name).to_string())
                 }
+            }
+            Some(Token::Reserved { op }) if op == "sizeof" => {
+                self.peekable.next();
+                let node = self.unary()?;
+                let size = node.detect_type().size();
+
+                Ok(Expr::Num { val: size as isize })
             }
             // unexpected
             _ => {

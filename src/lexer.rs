@@ -8,7 +8,7 @@ use std::iter::{Peekable, Enumerate};
 // 本当はimpl Iter<Item=Token>を返したい
 // pub fn tokenize(chars: &mut Peekable<Chars>) -> impl Iter<Item=Token>
 
-const KEYWORDS: [&str; 6] = ["return", "if", "while", "else", "for", "int"];
+const KEYWORDS: [&str; 7] = ["return", "if", "while", "else", "for", "int", "sizeof"];
 
 pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
     let mut tokens: Vec<Token> = Vec::new();
