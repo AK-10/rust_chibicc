@@ -219,8 +219,9 @@ impl<'a> Parser<'a> {
         Ok(node)
     }
 
+    // add := mul ("+" | "-")*
     fn add(&mut self) -> Result<Expr, String> {
-        let node = self.mul()?;
+        let mut node = self.mul()?;
 
         while let Some(token) = self.peekable.peek() {
             match token {
@@ -230,7 +231,7 @@ impl<'a> Parser<'a> {
                     let lhs = ExprWrapper::new(node);
                     let rhs = ExprWrapper::new(self.mul()?);
 
-                    return Parser::new_add(lhs, rhs);
+                    node = Parser::new_add(lhs, rhs)?;
                 },
                 // "-" mul
                 Token::Reserved { op } if *op == "-" => {
@@ -238,7 +239,7 @@ impl<'a> Parser<'a> {
                     let lhs = ExprWrapper::new(node);
                     let rhs = ExprWrapper::new(self.mul()?);
 
-                    return Parser::new_sub(lhs, rhs);
+                    node = Parser::new_sub(lhs, rhs)?;
                 },
                 // mul
                 _ => { return Ok(node); }
