@@ -1,6 +1,6 @@
 use crate::node::{ Stmt, Expr, ExprWrapper };
 use crate::token::Token;
-use crate::program::{ Function, Var };
+use crate::program::{ Function, Var, Program };
 use std::slice::Iter;
 use std::iter::Peekable;
 use std::rc::Rc;
@@ -20,7 +20,8 @@ pub struct Parser<'a> {
     pub input: &'a Vec<Token>,
     peekable: Peekable<Iter<'a, Token>>,
     // 関数の引数，関数内で宣言された変数を保持する, 関数のスコープから外れたらリセットする
-    pub locals: Vec<Rc<RefCell<Var>>>
+    pub locals: Vec<Rc<RefCell<Var>>>,
+    pub globals: Vec<Rc<RefCell<Var>>>
 }
 
 impl<'a> Parser<'a> {
@@ -28,16 +29,17 @@ impl<'a> Parser<'a> {
         Self {
             input,
             peekable: input.iter().peekable(),
-            locals: Vec::new()
+            locals: Vec::new(),
+            globals: Vec::new()
         }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Function>, String> {
+    pub fn parse(&mut self) -> Result<Program, String> {
         self.program()
     }
 
     // program := stmt*
-    fn program(&mut self) -> Result<Vec<Function>, String> {
+    fn program(&mut self) -> Result<Program, String> {
         let mut nodes: Vec<Function> = Vec::new();
 
         while let Some(token) = self.peekable.peek() {
@@ -49,7 +51,10 @@ impl<'a> Parser<'a> {
             nodes.push(self.function()?);
         };
 
-        Ok(nodes)
+        Ok(Program {
+            fns: nodes,
+            globals: self.globals.clone()
+        })
     }
 
     // function := basetype ident "(" params ")" "{" stmt* "}"

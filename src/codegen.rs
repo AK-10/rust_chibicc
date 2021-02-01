@@ -1,5 +1,5 @@
 use crate::node::{ Stmt, Expr, ExprWrapper };
-use crate::program::Function;
+use crate::program::{ Program };
 use crate::_type::Type;
 
 use std::cell::{ Cell, RefCell };
@@ -19,9 +19,9 @@ impl CodeGenerator {
         }
     }
 
-    pub fn codegen(&self, funcs: Vec<Function>) {
+    pub fn codegen(&self, prog: &Program) {
         println!(".intel_syntax noprefix");
-        funcs.iter().for_each(|func| {
+        prog.fns.iter().for_each(|func| {
             let mut node_iter = func.nodes.iter();
             *self.funcname.borrow_mut() = func.name.to_string();
             let funcname = self.funcname.borrow().to_string();

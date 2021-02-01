@@ -29,6 +29,6 @@ fn main() {
 
     match parsed {
         Err(msg) => { eprintln!("{}", msg); },
-        Ok(ast) => { code_gen.codegen(ast) }
+        Ok(ast) => { code_gen.codegen(&ast) }
     };
 }

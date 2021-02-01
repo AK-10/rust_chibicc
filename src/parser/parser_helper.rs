@@ -219,7 +219,8 @@ impl<'a> Parser<'a> {
                 Var {
                     name: name.to_string(),
                     offset: Offset::Unset,
-                    ty: Rc::clone(&ty)
+                    ty: Rc::clone(&ty),
+                    is_local: true
                 }
             )
         )

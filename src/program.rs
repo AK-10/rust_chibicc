@@ -3,6 +3,11 @@ use crate::_type::Type;
 use std::rc::Rc;
 use std::cell::RefCell;
 
+pub struct Program {
+    pub fns: Vec<Function>,
+    pub globals: Vec<Rc<RefCell<Var>>>
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Function {
     pub name: String,
@@ -50,9 +55,10 @@ impl Function {
 // };
 #[derive(Debug, Clone, PartialEq)]
 pub struct Var {
-    pub ty: Rc<Type>,
     pub name: String,
-    // 構文解析の時点では0
+    pub ty: Rc<Type>,
+    pub is_local: bool,
+     // 構文解析の時点では0
     pub offset: Offset,
 }
 
