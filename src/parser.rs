@@ -38,7 +38,7 @@ impl<'a> Parser<'a> {
         self.program()
     }
 
-    // program := stmt*
+    // program := (global-var | function)*
     fn program(&mut self) -> Result<Program, String> {
         let mut nodes: Vec<Function> = Vec::new();
 
@@ -47,8 +47,23 @@ impl<'a> Parser<'a> {
             if let Token::Eof = token {
                 break
             }
+            if self.is_function() {
 
-            nodes.push(self.function()?);
+                nodes.push(self.function()?);
+            } else {
+                let ty = self.base_type()?;
+                let ident = self.expect_next_ident()?;
+
+                match ident {
+                    Token::Ident { name } => {
+                        self.globals.push(self.new_var(&name, ty, false))
+                    },
+                    _ => {
+                        return Err("unknown error".to_string())
+                    }
+                }
+
+            }
         };
 
         Ok(Program {
@@ -399,7 +414,7 @@ impl<'a> Parser<'a> {
                     return Ok(Expr::FnCall { fn_name: name.clone(), args })
                 }
                 // variable
-                if let Some(ref var) = self.find_lvar(&name) {
+                if let Some(ref var) = self.find_var(&name) {
                     Ok(Expr::Var(Rc::clone(var)))
                 } else {
                     Err(format!("undefined variable: {:?}", name).to_string())

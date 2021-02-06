@@ -7,10 +7,16 @@ use crate::_type::Type;
 use std::rc::Rc;
 use std::cell::RefCell;
 
-
 impl<'a> Parser<'a> {
-    pub(in super) fn find_lvar(&self, name: &String) -> Option<Rc<RefCell<Var>>> {
-        self.locals.iter()
+    // local変数 -> global変数の順に探す
+    pub(in super) fn find_var(&self, name: &String) -> Option<Rc<RefCell<Var>>> {
+        let local_var = self.locals.iter()
+            .find(|var| { var.borrow().name == *name })
+            .map(|var| Rc::clone(var)); // &Rc<RefCell<Var>> -> Rc<RefCell<Var>>にする
+
+        if local_var.is_some() { return local_var }
+
+        self.globals.iter()
             .find(|var| { var.borrow().name == *name })
             .map(|var| Rc::clone(var)) // &Rc<RefCell<Var>> -> Rc<RefCell<Var>>にする
     }
@@ -213,14 +219,14 @@ impl<'a> Parser<'a> {
         Ok(Rc::new(ty))
     }
 
-    pub(in super) fn new_var(&self, name: &String, ty: Rc<Type>) -> Rc<RefCell<Var>> {
+    pub(in super) fn new_var(&self, name: &String, ty: Rc<Type>, is_local: bool) -> Rc<RefCell<Var>> {
         Rc::new(
             RefCell::new(
                 Var {
                     name: name.to_string(),
                     offset: Offset::Unset,
                     ty: Rc::clone(&ty),
-                    is_local: true
+                    is_local
                 }
             )
         )
@@ -288,5 +294,31 @@ impl<'a> Parser<'a> {
                 return Err("invalid operands at -".to_string());
             }
         }
+    }
+
+    pub(in super) fn expect_next_ident(&mut self) -> Result<Token, String> {
+        if let Some(Token::Ident { .. }) = self.peekable.peek() {
+            let tk = self.peekable.next().unwrap();
+            Ok(*tk)
+        } else {
+            Err("expect identifier".to_string())
+        }
+    }
+
+    // function := type ident "(" params* ")"
+    // gvar := type ident ("=" expr ";")
+    pub(in super) fn is_function(&mut self) -> bool {
+        // 単に確認がしたいので初期状態を保持
+        // TODO: 先頭だけコピーするなんとかする
+        let cloned_peekable = self.peekable.clone();
+
+        self.base_type();
+        self.expect_next_ident();
+
+        let is_fn = self.expect_next_symbol("(".to_string()).is_ok();
+
+        self.peekable = cloned_peekable;
+
+        is_fn
     }
 }
