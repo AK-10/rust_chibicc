@@ -1,53 +1,29 @@
 use crate::node::{ Stmt, Expr, ExprWrapper };
-use crate::program::{ Program };
+use crate::program::Program;
 use crate::_type::Type;
 
 use std::cell::{ Cell, RefCell };
 
 const ARG_REG: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
 
-pub struct CodeGenerator {
+pub struct CodeGenerator<'a> {
+    prog: &'a Program,
     funcname: RefCell<String>,
     labelseq: Cell<usize>,
 }
 
-impl CodeGenerator {
-    pub fn new() -> Self {
+impl<'a> CodeGenerator<'a> {
+    pub fn new(prog: &'a Program) -> Self {
         Self {
+            prog,
             funcname: RefCell::new(String::new()),
-            labelseq: Cell::new(0)
-        }
+            labelseq: Cell::new(0) }
     }
 
-    pub fn codegen(&self, prog: &Program) {
+    pub fn codegen(&self) {
         println!(".intel_syntax noprefix");
-        prog.fns.iter().for_each(|func| {
-            let mut node_iter = func.nodes.iter();
-            *self.funcname.borrow_mut() = func.name.to_string();
-            let funcname = self.funcname.borrow().to_string();
-            println!(".global {}", funcname);
-            println!("{}:", funcname);
-
-            // Prologue
-            println!("  push rbp");
-            println!("  mov rbp, rsp");
-            println!("  sub rsp, {}", func.stack_size);
-
-            func.params.iter().enumerate().for_each(|(i, var)| {
-                println!("  mov [rbp-{}], {}", var.borrow().offset.value(), ARG_REG[i]);
-            });
-
-            while let Some(node) = node_iter.next() {
-                self.gen_stmt(node);
-            };
-
-            // Epilogue
-            // 最後の式の結果がRAXに残っているのでそれが返り値になる
-            println!(".L.return.{}:", funcname);
-            println!("  mov rsp, rbp");
-            println!("  pop rbp");
-            println!("  ret");
-        });
+        self.emit_data();
+        self.emit_text();
     }
 
     fn gen_expr(&self, expr_wrapper: &ExprWrapper) {
@@ -343,14 +319,58 @@ impl CodeGenerator {
                 self.gen_expr(operand);
             }
             Expr::Var(var) => {
-                // lea: アドレスのロード
-                println!("  lea rax, [rbp-{}]", var.borrow().offset.value());
-                println!("  push rax");
+                if var.borrow().is_local {
+                    // lea: アドレスのロード
+                    println!("  lea rax, [rbp-{}]", var.borrow().offset.value());
+                    println!("  push rax");
+                } else {
+                    println!("  push offset {}", var.borrow().name);
+                }
             }
             _ => {
                 panic!("unexpected operand {:?}", expr_wrapper);
             }
         }
+    }
+
+    fn emit_data(&self) {
+        println!(".data");
+        self.prog.globals.iter().for_each(|v| {
+            let var = v.borrow();
+            println!("{:?}:", var.name);
+            println!("  .zero {}", var.ty.size());
+        });
+    }
+
+    fn emit_text(&self) {
+        println!(".text");
+        self.prog.fns.iter().for_each(|func| {
+            let mut node_iter = func.nodes.iter();
+            *self.funcname.borrow_mut() = func.name.to_string();
+            let funcname = self.funcname.borrow().to_string();
+            println!(".global {}", funcname);
+            println!("{}:", funcname);
+
+            // Prologue
+            println!("  push rbp");
+            println!("  mov rbp, rsp");
+            println!("  sub rsp, {}", func.stack_size);
+
+            func.params.iter().enumerate().for_each(|(i, var)| {
+                println!("  mov [rbp-{}], {}", var.borrow().offset.value(), ARG_REG[i]);
+            });
+
+            while let Some(node) = node_iter.next() {
+                self.gen_stmt(node);
+            };
+
+            // Epilogue
+            // 最後の式の結果がRAXに残っているのでそれが返り値になる
+            println!(".L.return.{}:", funcname);
+            println!("  mov rsp, rbp");
+            println!("  pop rbp");
+            println!("  ret");
+        });
     }
 }
 

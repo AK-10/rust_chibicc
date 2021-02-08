@@ -51,18 +51,8 @@ impl<'a> Parser<'a> {
 
                 nodes.push(self.function()?);
             } else {
-                let ty = self.base_type()?;
-                let ident = self.expect_next_ident()?;
-
-                match ident {
-                    Token::Ident { name } => {
-                        self.globals.push(self.new_var(&name, ty, false))
-                    },
-                    _ => {
-                        return Err("unknown error".to_string())
-                    }
-                }
-
+                let gvar = self.global_var()?;
+                self.globals.push(gvar);
             }
         };
 

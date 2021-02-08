@@ -93,13 +93,13 @@ impl<'a> Parser<'a> {
                 let expr =
                     if let Err(_) = self.expect_next_reserved("=".to_string()) {
                         // int a; みたいな場合はローカル変数への追加だけ行う. (push rax, 3 みたいなのはしない)
-                        let var = self.new_var(name, Rc::clone(&ty));
+                        let var = self.new_var(name, Rc::clone(&ty), true);
                         self.locals.push(var);
                         self.expect_next_symbol(";".to_string())?;
 
                         Expr::Null
                     } else {
-                        let lhs = self.new_var(name, Rc::clone(&ty));
+                        let lhs = self.new_var(name, Rc::clone(&ty), true);
                         self.locals.push(Rc::clone(&lhs));
 
                         let rhs = self.expr()?;
@@ -176,7 +176,7 @@ impl<'a> Parser<'a> {
         if let Some(Token::Ident { name }) = first_arg {
             self.peekable.next();
 
-            params.push(self.new_var(name, ty));
+            params.push(self.new_var(name, ty, true));
         } else {
             return Err("token not found".to_string())
         }
@@ -187,7 +187,7 @@ impl<'a> Parser<'a> {
                 Some(Token::Ident { name }) => {
                     self.peekable.next();
 
-                    params.push(self.new_var(name, ty));
+                    params.push(self.new_var(name, ty, true));
                 },
                 Some(token) => {
                     return Err(format!("expect ident, result: {:?}", token))
@@ -230,6 +230,23 @@ impl<'a> Parser<'a> {
                 }
             )
         )
+    }
+
+    pub(in super) fn global_var(&mut self) -> Result<Rc<RefCell<Var>>, String> {
+        let base_ty = self.base_type()?;
+        let ident = self.expect_next_ident()?;
+
+        match ident {
+            Token::Ident { name } => {
+                let ty = self.read_type_suffix(base_ty)?;
+                self.expect_next_symbol(";".to_string())?;
+
+                Ok(self.new_var(&name, ty, false))
+            },
+            _ => {
+                Err("".to_string())
+            }
+        }
     }
 
     pub(in super) fn read_type_suffix(&mut self, base: Rc<Type>) -> Result<Rc<Type>, String> {
@@ -299,7 +316,7 @@ impl<'a> Parser<'a> {
     pub(in super) fn expect_next_ident(&mut self) -> Result<Token, String> {
         if let Some(Token::Ident { .. }) = self.peekable.peek() {
             let tk = self.peekable.next().unwrap();
-            Ok(*tk)
+            Ok(tk.clone())
         } else {
             Err("expect identifier".to_string())
         }
@@ -309,11 +326,12 @@ impl<'a> Parser<'a> {
     // gvar := type ident ("=" expr ";")
     pub(in super) fn is_function(&mut self) -> bool {
         // 単に確認がしたいので初期状態を保持
-        // TODO: 先頭だけコピーするなんとかする
+        // TODO: 先頭だけコピーする
         let cloned_peekable = self.peekable.clone();
 
-        self.base_type();
-        self.expect_next_ident();
+
+        let _ = self.base_type();
+        let _ = self.expect_next_ident();
 
         let is_fn = self.expect_next_symbol("(".to_string()).is_ok();
 

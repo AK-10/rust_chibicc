@@ -25,10 +25,8 @@ fn main() {
     let mut parser = Parser::new(&tokens);
     let parsed = parser.parse();
 
-    let code_gen = CodeGenerator::new();
-
     match parsed {
         Err(msg) => { eprintln!("{}", msg); },
-        Ok(ast) => { code_gen.codegen(&ast) }
+        Ok(ast) => { CodeGenerator::new(&ast).codegen() }
     };
 }
