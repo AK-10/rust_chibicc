@@ -19,10 +19,12 @@ pub struct Function {
 
 impl Function {
     pub fn new(name: String, nodes: Vec<Stmt>, locals: Vec<Rc<RefCell<Var>>>, params: Vec<Rc<RefCell<Var>>>) -> Self {
+        let offset = locals.iter().fold(0, |acc, var| acc + var.borrow().ty.size());
+
         Self {
             name,
             nodes,
-            stack_size: locals.iter().fold(0, |acc, var| acc + var.borrow().ty.size()),
+            stack_size: Self::align_to(offset, 8),
             locals: Self::calc_offsets(&locals),
             params
         }
@@ -44,6 +46,19 @@ impl Function {
 
         reversed
     }
+
+    // alignの倍数に調整する
+    // !はbitwise not
+    // &はbitwise and
+    //
+    // n -> 17, align -> 8のとき 24になってほしい
+    // n + align - 1 -> 17 + 8 - 1 -> 24 -> 00011000
+    // !(align - 1) -> !(7) -> !(00000111) -> 11111000
+    // (n + align - 1) & !(align - 1) -> 00011000 & 11111000 -> 00011000
+    fn align_to(n: usize, align: usize) -> usize {
+        (n + align - 1) & !(align - 1)
+    }
+
 }
 
 // 元のコードは以下, lenはname.lenで代用

@@ -8,7 +8,7 @@ use std::iter::{Peekable, Enumerate};
 // 本当はimpl Iter<Item=Token>を返したい
 // pub fn tokenize(chars: &mut Peekable<Chars>) -> impl Iter<Item=Token>
 
-const KEYWORDS: [&str; 7] = ["return", "if", "while", "else", "for", "int", "sizeof"];
+const KEYWORDS: [&str; 8] = ["return", "if", "while", "else", "for", "int", "char", "sizeof"];
 
 pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
     let mut tokens: Vec<Token> = Vec::new();
@@ -90,7 +90,7 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
                 chars_with_index.next();
                 continue;
             },
-            'a'..='z' => {
+            'a'..='z' | 'A'..='Z' | '_' => {
                 let _i = *i;
                 let letter = get_letter(chars_with_index);
                 if KEYWORDS.contains(&&*letter) {
@@ -136,7 +136,7 @@ fn get_letter(chars: &mut Peekable<Enumerate<Chars>>) -> String {
     let mut letter = String::new();
     while let Some((_, ch)) = chars.peek() {
         match ch {
-            'a'..='z' | 'A'..='Z' | '0'..='9' => {
+            'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => {
                 letter.push(*ch);
                 chars.next();
             },

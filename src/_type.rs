@@ -9,7 +9,8 @@ pub enum Type {
     Array {
         base: Rc<Type>,
         len: usize
-    }
+    },
+    Char
 }
 
 impl Type {
@@ -19,7 +20,8 @@ impl Type {
             Type::Ptr { .. } => 8,
             Type::Array { base, len } => {
                 base.size() * len
-            }
+            },
+            Type::Char => 1
         }
     }
 

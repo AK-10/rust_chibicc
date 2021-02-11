@@ -203,9 +203,15 @@ impl<'a> Parser<'a> {
         Ok(params)
     }
 
+    // base_type = ("char" | "int") "*"*
     pub(in super) fn base_type(&mut self) -> Result<Rc<Type>, String> {
-        self.expect_next_reserved("int".to_string())?;
-        let mut ty = Type::Int;
+        let mut ty = if let Ok(_) = self.expect_next_reserved("int".to_string()) {
+            Type::Int
+        } else if let Ok(_) = self.expect_next_reserved("char".to_string()) {
+            Type::Char
+        } else {
+            return Err("unknown type".to_string())
+        };
 
         while let Some(Token::Reserved { op }) = self.peekable.peek() {
             if op == "*" {

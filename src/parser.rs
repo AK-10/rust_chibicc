@@ -66,7 +66,7 @@ impl<'a> Parser<'a> {
     // params := param ("," param)*
     // param := basetype ident
     fn function(&mut self) -> Result<Function, String> {
-        self.base_type()?; // 一時的に無駄に消費するだけ(現状常にintなので)
+        self.base_type()?;
 
         if let Some(Token::Ident{ name }) = self.peekable.next() {
             // parse params
@@ -127,7 +127,7 @@ impl<'a> Parser<'a> {
             Some(Token::Reserved { op }) if *op == "for" => {
                 self.for_stmt()
             }
-            Some(Token::Reserved { op }) if *op == "int" => {
+            Some(Token::Reserved { op }) if *op == "int" || *op == "char" => {
                 self.declaration()
             }
             _ => {

@@ -1,10 +1,11 @@
 use crate::node::{ Stmt, Expr, ExprWrapper };
-use crate::program::Program;
+use crate::program::{ Program, Var };
 use crate::_type::Type;
 
 use std::cell::{ Cell, RefCell };
 
-const ARG_REG: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
+const ARG_REG1: [&str; 6] = ["dil", "sil", "dl", "cl", "r8b", "r9b"];
+const ARG_REG8: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
 
 pub struct CodeGenerator<'a> {
     prog: &'a Program,
@@ -108,7 +109,7 @@ impl<'a> CodeGenerator<'a> {
                 self.gen_addr(expr_wrapper);
                 match *expr_wrapper.ty {
                     Type::Array { .. } => {},
-                    _ => { load(); }
+                    _ => { load(&expr_wrapper.ty); }
                 }
 
                 return
@@ -120,7 +121,7 @@ impl<'a> CodeGenerator<'a> {
                 }
 
                 self.gen_expr(val);
-                store();
+                store(&expr_wrapper.ty);
 
                 return
             }
@@ -141,7 +142,7 @@ impl<'a> CodeGenerator<'a> {
                 // clang, gccでassemblyダンプしてみると何かわかるかもしれない
                 // cc -S -mllvm --x86-asm-syntax=intel assign.c -O0
                 for idx in (0..arg_size).rev() {
-                    println!("  pop {}", ARG_REG[idx])
+                    println!("  pop {}", ARG_REG8[idx])
                 }
 
                 // ABIの仕様で関数呼び出しの前にRSPを(16の倍数)にする必要がある
@@ -185,7 +186,7 @@ impl<'a> CodeGenerator<'a> {
                 self.gen_expr(operand);
                 match *expr_wrapper.ty {
                     Type::Array { .. } => {},
-                    _ => { load(); }
+                    _ => { load(&expr_wrapper.ty); }
                 }
                 return
             }
@@ -357,7 +358,7 @@ impl<'a> CodeGenerator<'a> {
             println!("  sub rsp, {}", func.stack_size);
 
             func.params.iter().enumerate().for_each(|(i, var)| {
-                println!("  mov [rbp-{}], {}", var.borrow().offset.value(), ARG_REG[i]);
+                load_arg(&*var.borrow(), i);
             });
 
             while let Some(node) = node_iter.next() {
@@ -374,15 +375,32 @@ impl<'a> CodeGenerator<'a> {
     }
 }
 
-fn load() {
+fn load_arg(var: &Var, idx: usize) {
+    let sz = var.ty.size();
+    if sz == 1 {
+        println!("  mov [rbp-{}], {}", var.offset.value(), ARG_REG1[idx]);
+    } else {
+        println!("  mov [rbp-{}], {}", var.offset.value(), ARG_REG8[idx]);
+    }
+}
+
+fn load(ty: &Type) {
     println!("  pop rax");
-    println!("  mov rax, [rax]");
+    if ty.size() == 1 {
+        println!("  movsx rax, byte ptr [rax]");
+    } else {
+        println!("  mov rax, [rax]");
+    }
     println!("  push rax");
 }
 
-fn store() {
+fn store(ty: &Type) {
     println!("  pop rdi");
     println!("  pop rax");
-    println!("  mov [rax], rdi");
+    if ty.size() == 1 {
+        println!("  mov [rax], dil");
+    } else {
+        println!("  mov [rax], rdi");
+    }
     println!("  push rdi");
 }
