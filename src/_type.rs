@@ -32,5 +32,19 @@ impl Type {
             _ => panic!("expect base type, but does not base type")
         }
     }
+
+    pub fn is_integer(&self) -> bool {
+        match self {
+            Type::Int | Type::Char => true,
+            _ => false
+        }
+    }
+
+    pub fn has_base(&self) -> bool {
+        match self {
+            Type::Ptr { .. } | Type::Array { .. } => true,
+            _ => false
+        }
+    }
 }
 

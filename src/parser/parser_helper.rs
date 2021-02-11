@@ -278,21 +278,15 @@ impl<'a> Parser<'a> {
 
     pub(in super) fn new_add(lhs: ExprWrapper, rhs: ExprWrapper) -> Result<Expr, String> {
         match (lhs.ty.as_ref(), rhs.ty.as_ref()) {
-            (Type::Int, Type::Int) => {
+            (l, r) if l.is_integer() && r.is_integer() => {
                 Ok(Expr::Add { lhs, rhs })
             },
-            (Type::Ptr { .. }, Type::Int) => {
+            (l, r) if l.has_base() && r.is_integer() => {
                 Ok(Expr::PtrAdd { lhs, rhs })
             },
-            (Type::Array { .. }, Type::Int) => {
-                Ok(Expr::PtrAdd { lhs, rhs })
-            },
-            (Type::Int, Type::Ptr { .. }) => {
+            (l, r) if l.is_integer() && r.has_base() => {
                 Ok(Expr::PtrAdd { lhs: rhs, rhs: lhs })
             },
-            (Type::Int, Type::Array { .. }) => {
-                Ok(Expr::PtrAdd { lhs: rhs, rhs: lhs })
-            }
             (_, _) => {
                 return Err("invalid operands at +".to_string());
             }
@@ -301,16 +295,13 @@ impl<'a> Parser<'a> {
 
     pub(in super) fn new_sub(lhs: ExprWrapper, rhs: ExprWrapper) -> Result<Expr, String> {
        match (lhs.ty.as_ref(), rhs.ty.as_ref()) {
-            (Type::Int, Type::Int) => {
+            (l, r) if l.is_integer() && r.is_integer() => {
                 Ok(Expr::Sub { lhs, rhs })
             },
-            (Type::Ptr { .. }, Type::Int) => {
+            (l, r) if l.has_base() && r.is_integer() => {
                 Ok(Expr::PtrSub { lhs, rhs })
             },
-            (Type::Array { .. }, Type::Int) => {
-                Ok(Expr::PtrSub { lhs, rhs })
-            },
-            (Type::Ptr { .. }, Type::Ptr { .. }) => {
+            (l, r) if l.has_base() && r.has_base() => {
                 Ok(Expr::PtrDiff { lhs, rhs })
             },
             (_, _) => {
