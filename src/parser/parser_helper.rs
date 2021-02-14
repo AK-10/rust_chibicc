@@ -6,6 +6,7 @@ use crate::_type::Type;
 
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::ffi::CString;
 
 impl<'a> Parser<'a> {
     // local変数 -> global変数の順に探す
@@ -232,7 +233,22 @@ impl<'a> Parser<'a> {
                     name: name.to_string(),
                     offset: Offset::Unset,
                     ty: Rc::clone(&ty),
-                    is_local
+                    is_local,
+                    contents: None
+                }
+            )
+        )
+    }
+
+    pub(in super) fn new_gvar_with_contents(&self, name: &String, ty: Rc<Type>, contents: &CString) -> Rc<RefCell<Var>> {
+        Rc::new(
+            RefCell::new(
+                Var {
+                    name: name.to_string(),
+                    offset: Offset::Unset,
+                    ty: Rc::clone(&ty),
+                    is_local: false,
+                    contents: Some(contents.clone())
                 }
             )
         )
@@ -335,5 +351,12 @@ impl<'a> Parser<'a> {
         self.peekable = cloned_peekable;
 
         is_fn
+    }
+
+    pub(in super) fn new_label(&mut self) -> String {
+        let label = format!(".L.data.{}", self.label_cnt);
+        self.label_cnt += 1;
+
+        return label;
     }
 }

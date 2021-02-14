@@ -2,6 +2,7 @@ use crate::node::Stmt;
 use crate::_type::Type;
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::ffi::CString;
 
 pub struct Program {
     pub fns: Vec<Function>,
@@ -75,6 +76,10 @@ pub struct Var {
     pub is_local: bool,
      // 構文解析の時点では0
     pub offset: Offset,
+    // global variables
+    // Vec<u8> とかで持ったほうが良いかも
+    // CStringも結局の所null文字をつかいたいだけなので
+    pub contents: Option<CString>
 }
 
 #[derive(Debug, Clone, PartialEq)]

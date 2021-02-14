@@ -1,6 +1,8 @@
 use crate::node::{ Stmt, Expr, ExprWrapper };
 use crate::token::Token;
 use crate::program::{ Function, Var, Program };
+use crate::_type::Type;
+
 use std::slice::Iter;
 use std::iter::Peekable;
 use std::rc::Rc;
@@ -21,7 +23,8 @@ pub struct Parser<'a> {
     peekable: Peekable<Iter<'a, Token>>,
     // 関数の引数，関数内で宣言された変数を保持する, 関数のスコープから外れたらリセットする
     pub locals: Vec<Rc<RefCell<Var>>>,
-    pub globals: Vec<Rc<RefCell<Var>>>
+    pub globals: Vec<Rc<RefCell<Var>>>,
+    pub label_cnt: usize
 }
 
 impl<'a> Parser<'a> {
@@ -30,7 +33,8 @@ impl<'a> Parser<'a> {
             input,
             peekable: input.iter().peekable(),
             locals: Vec::new(),
-            globals: Vec::new()
+            globals: Vec::new(),
+            label_cnt: 0
         }
     }
 
@@ -409,6 +413,19 @@ impl<'a> Parser<'a> {
                 } else {
                     Err(format!("undefined variable: {:?}", name).to_string())
                 }
+            }
+            Some(Token::Str(contents)) => {
+                self.peekable.next();
+                let ty = Type::Array {
+                    base: Rc::new(Type::Char),
+                    len: contents.as_bytes_with_nul().len()
+                };
+
+                let label = self.new_label();
+                let var = self.new_gvar_with_contents(&label, Rc::new(ty), &contents);
+                self.globals.push(Rc::clone(&var));
+
+                Ok(Expr::Var(var))
             }
             Some(Token::Reserved { op }) if op == "sizeof" => {
                 self.peekable.next();

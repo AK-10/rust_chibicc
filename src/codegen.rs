@@ -338,8 +338,14 @@ impl<'a> CodeGenerator<'a> {
         println!(".data");
         self.prog.globals.iter().for_each(|v| {
             let var = v.borrow();
-            println!("{:?}:", var.name);
-            println!("  .zero {}", var.ty.size());
+            println!("{}:", var.name);
+            if let Some(contents) = &var.contents {
+                contents.as_bytes_with_nul().iter().for_each(|ch| {
+                    println!("  .byte {}", ch);
+                });
+            } else {
+                println!("  .zero {}", var.ty.size());
+            }
         });
     }
 

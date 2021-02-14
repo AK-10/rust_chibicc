@@ -2,6 +2,7 @@ use crate::token::Token;
 
 use std::str::{Chars, FromStr};
 use std::iter::{Peekable, Enumerate};
+use  std::ffi::CString;
 
 // TODO: LexerErrorの定義
 
@@ -63,6 +64,24 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
                 tokens.push(token);
                 chars_with_index.next();
             },
+            '"' => {
+                chars_with_index.next();
+                let mut str_content = String::new();
+                while let Some((_, c)) = chars_with_index.next() {
+                    if c == '"' { break }
+                    str_content.push(c);
+                }
+                let c_str_content = CString::new(str_content);
+                match c_str_content {
+                    Ok(c_str) => {
+                        tokens.push(Token::Str(c_str));
+                    },
+                    Err(e) => {
+                        eprintln!("{:#?}", e);
+                        panic!("failed convert string to cstring")
+                    }
+                }
+            }
             '0'..='9' => {
                 // chars_with_index.peek()で可変な参照をしてるのでここでiの参照外しをする.
                 // そうしないとstrtol::<usize>(chars_with_index)ができない?(あんまりわかってない)

@@ -1,4 +1,5 @@
-// Todo: Symbolを追加する('(', ')', '{', '}'など)
+use std::ffi::CString;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Reserved {
@@ -12,6 +13,7 @@ pub enum Token {
         name: String,
     },
     Symbol(String),
+    Str(CString),
     Eof
 }
 
