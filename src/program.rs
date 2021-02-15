@@ -2,7 +2,6 @@ use crate::node::Stmt;
 use crate::_type::Type;
 use std::rc::Rc;
 use std::cell::RefCell;
-use std::ffi::CString;
 
 pub struct Program {
     pub fns: Vec<Function>,
@@ -79,7 +78,7 @@ pub struct Var {
     // global variables
     // Vec<u8> とかで持ったほうが良いかも
     // CStringも結局の所null文字をつかいたいだけなので
-    pub contents: Option<CString>
+    pub contents: Option<Vec<u8>>
 }
 
 #[derive(Debug, Clone, PartialEq)]

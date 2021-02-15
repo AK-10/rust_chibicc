@@ -6,7 +6,6 @@ use crate::_type::Type;
 
 use std::rc::Rc;
 use std::cell::RefCell;
-use std::ffi::CString;
 
 impl<'a> Parser<'a> {
     // local変数 -> global変数の順に探す
@@ -240,7 +239,7 @@ impl<'a> Parser<'a> {
         )
     }
 
-    pub(in super) fn new_gvar_with_contents(&self, name: &String, ty: Rc<Type>, contents: &CString) -> Rc<RefCell<Var>> {
+    pub(in super) fn new_gvar_with_contents(&self, name: &String, ty: Rc<Type>, contents: &Vec<u8>) -> Rc<RefCell<Var>> {
         Rc::new(
             RefCell::new(
                 Var {

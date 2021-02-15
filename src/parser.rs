@@ -418,7 +418,7 @@ impl<'a> Parser<'a> {
                 self.peekable.next();
                 let ty = Type::Array {
                     base: Rc::new(Type::Char),
-                    len: contents.as_bytes_with_nul().len()
+                    len: contents.len()
                 };
 
                 let label = self.new_label();

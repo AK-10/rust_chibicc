@@ -340,7 +340,7 @@ impl<'a> CodeGenerator<'a> {
             let var = v.borrow();
             println!("{}:", var.name);
             if let Some(contents) = &var.contents {
-                contents.as_bytes_with_nul().iter().for_each(|ch| {
+                contents.iter().for_each(|ch| {
                     println!("  .byte {}", ch);
                 });
             } else {

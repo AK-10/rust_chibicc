@@ -1,5 +1,3 @@
-use std::ffi::CString;
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Reserved {
@@ -13,7 +11,7 @@ pub enum Token {
         name: String,
     },
     Symbol(String),
-    Str(CString),
+    Str(Vec<u8>),
     Eof
 }
 

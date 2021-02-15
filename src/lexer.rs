@@ -2,7 +2,6 @@ use crate::token::Token;
 
 use std::str::{Chars, FromStr};
 use std::iter::{Peekable, Enumerate};
-use  std::ffi::CString;
 
 // TODO: LexerErrorの定義
 
@@ -65,23 +64,15 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
                 chars_with_index.next();
             },
             '"' => {
-                chars_with_index.next();
-                let mut str_content = String::new();
-                while let Some((_, c)) = chars_with_index.next() {
-                    if c == '"' { break }
-                    str_content.push(c);
-                }
-                let c_str_content = CString::new(str_content);
-                match c_str_content {
-                    Ok(c_str) => {
-                        tokens.push(Token::Str(c_str));
-                    },
+                let contents = read_string_literal(chars_with_index);
+                match contents {
+                    Ok(c) => tokens.push(Token::Str(c)),
                     Err(e) => {
-                        eprintln!("{:#?}", e);
-                        panic!("failed convert string to cstring")
+                        let msg  = format!("{:?}", e);
+                        panic!("{:?}", msg);
                     }
                 }
-            }
+             }
             '0'..='9' => {
                 // chars_with_index.peek()で可変な参照をしてるのでここでiの参照外しをする.
                 // そうしないとstrtol::<usize>(chars_with_index)ができない?(あんまりわかってない)
@@ -164,6 +155,43 @@ fn get_letter(chars: &mut Peekable<Enumerate<Chars>>) -> String {
     };
 
     letter
+}
+
+fn read_string_literal(chars: &mut Peekable<Enumerate<Chars>>) -> Result<Vec<u8>, String> {
+    // 最初の'"'を飛ばす
+    chars.next();
+
+    let mut str_content = Vec::<u8>::new();
+
+    while let Some((_, c)) = chars.next() {
+        match c {
+            '"' => {
+                str_content.push(0);
+                break
+            },
+            '\\' => { str_content.push(read_escaped_literal(chars)); },
+            _ => { str_content.push(c as u8); }
+        }
+    };
+
+    Ok(str_content)
+}
+
+fn read_escaped_literal(chars: &mut Peekable<Enumerate<Chars>>) -> u8 {
+    chars.next().map(|(_, ch)| {
+        match ch {
+            'a' => 7,
+            'b' => 8,
+            't' => 9,
+            'n' => 10,
+            'v' => 11,
+            'f' => 12,
+            'r' => 13,
+            'e' => 27,
+            '0' => 0,
+            _ => ch as u8 // 「escapeできない文字だよ」でもいい説ある
+        }
+    }).expect("failed read_escaped_literal")
 }
 
 fn tokenize_eq(chars_with_index: &mut Peekable<Enumerate<Chars>>) -> Token {
