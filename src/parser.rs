@@ -373,7 +373,12 @@ impl<'a> Parser<'a> {
     //     }
     // }
 
-    // primary = "(" expr ")" | "sizeof" unary | ident func-args? | num
+    // primary := "(" "{" stmt-expr-tail
+    //          | "(" expr ")"
+    //          | "sizeof" unary
+    //          | ident func-args?
+    //          | str
+    //          | num
     fn primary(&mut self) -> Result<Expr, String> {
         let token = self.peekable.peek();
 
@@ -383,6 +388,11 @@ impl<'a> Parser<'a> {
             // Some(Token::Reserved { op: String::from("(") }) => {}
             Some(Token::Symbol(op)) if op == "(" => {
                 self.peekable.next();
+
+                if self.expect_next_symbol("{".to_string()).is_ok() {
+                    return self.stmt_expr()
+                }
+
                 let expr = self.expr();
                 self.expect_next_symbol(")".to_string())?;
 

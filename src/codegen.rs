@@ -207,7 +207,16 @@ impl<'a> CodeGenerator<'a> {
                 println!("  mov rdi, {}", lhs.ty.base_size());
                 println!("  idiv rdi");
             }
-            Expr::Null => return
+            Expr::Null => return,
+            Expr::StmtExpr(stmts) => {
+                stmts.iter().for_each(|stmt| {
+                    match stmt {
+                        Stmt::ExprStmt { val } => self.gen_expr(val),
+                        _ => self.gen_stmt(stmt)
+                    }
+                });
+                return
+            }
         }
 
         println!("  push rax");

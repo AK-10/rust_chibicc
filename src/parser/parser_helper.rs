@@ -120,6 +120,22 @@ impl<'a> Parser<'a> {
         Ok(Stmt::ExprStmt { val: ExprWrapper::new(self.expr()?) })
     }
 
+    // statement expression is a GNU C extension
+    // stmt_expr := "(" "{" stmt stmt* "}" ")"
+    // 呼び出し側で "(" "{" はすでに消費されている
+    pub(in super) fn stmt_expr(&mut self) -> Result<Expr, String> {
+        let mut stmts = Vec::<Stmt>::new();
+        while let Err(_) = self.expect_next_symbol("}".to_string()) {
+            stmts.push(self.stmt()?);
+        }
+        self.expect_next_symbol(")".to_string())?;
+
+        match stmts.last() {
+            Some(Stmt::ExprStmt{ .. }) => Ok(Expr::StmtExpr(stmts)),
+            _ => Err("stmt expr returning void is not supported".to_string())
+        }
+    }
+
     pub(in super) fn expect_next_symbol(&mut self, word: String) -> Result<(), String> {
         let tk = self.peekable.peek();
 

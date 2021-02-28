@@ -166,6 +166,7 @@ fn read_string_literal(chars: &mut Peekable<Enumerate<Chars>>) -> Result<Vec<u8>
     while let Some((_, c)) = chars.next() {
         match c {
             '"' => {
+                // null文字の挿入
                 str_content.push(0);
                 break
             },

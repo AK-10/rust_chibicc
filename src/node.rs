@@ -30,7 +30,7 @@ use std::cell::RefCell;
 //          | "(" expr ")"
 // args := "(" ")"
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Stmt {
     Return {
         val: ExprWrapper
@@ -80,8 +80,7 @@ pub enum Expr {
         rhs: ExprWrapper
     },
     Neq {
-        lhs: ExprWrapper,
-        rhs: ExprWrapper
+        lhs: ExprWrapper, rhs: ExprWrapper
     },
     Gt {
         lhs: ExprWrapper,
@@ -100,11 +99,7 @@ pub enum Expr {
         rhs: ExprWrapper
     },
     Add {
-        lhs: ExprWrapper,
-        rhs: ExprWrapper
-    },
-    Sub {
-        lhs: ExprWrapper,
+        lhs: ExprWrapper, rhs: ExprWrapper }, Sub { lhs: ExprWrapper,
         rhs: ExprWrapper
     },
     Mul {
@@ -145,7 +140,8 @@ pub enum Expr {
         lhs: ExprWrapper,
         rhs: ExprWrapper
     },
-    Null
+    Null,
+    StmtExpr(Vec<Stmt>) // GNU C extension Null
 }
 
 impl Expr {
@@ -164,8 +160,7 @@ impl Expr {
             Expr::Num { .. } => Rc::new(Int),
             Expr::PtrDiff { .. } => Rc::new(Int),
             Expr::FnCall { .. } => Rc::new(Int),
-            Expr::PtrAdd { lhs, rhs: _ } => {
-                Rc::clone(&lhs.ty)
+            Expr::PtrAdd { lhs, rhs: _ } => { Rc::clone(&lhs.ty)
             },
             Expr::PtrSub { lhs, rhs: _ } => {
                 Rc::clone(&lhs.ty)
@@ -192,8 +187,14 @@ impl Expr {
             },
             Expr::Var(var) => {
                 Rc::clone(&var.borrow().ty)
-           },
-            Expr::Null => Rc::new(Int)
+            },
+            Expr::Null => Rc::new(Int),
+            Expr::StmtExpr(stmts) => { // stmt.lastはexpr_stmtのはず
+                match stmts.last() {
+                    Some(Stmt::ExprStmt { val }) => Rc::clone(&val.ty),
+                    _ => unreachable!("stmts.last can only be expr_stmt")
+                }
+            }
         }
     }
 
