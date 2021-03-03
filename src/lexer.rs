@@ -3,10 +3,9 @@ use crate::token::Token;
 use std::str::{Chars, FromStr};
 use std::iter::{Peekable, Enumerate};
 
-// TODO: LexerErrorの定義
 
-// 本当はimpl Iter<Item=Token>を返したい
-// pub fn tokenize(chars: &mut Peekable<Chars>) -> impl Iter<Item=Token>
+// TODO: LexerErrorの定義
+// Location structがほしい
 
 const KEYWORDS: [&str; 8] = ["return", "if", "while", "else", "for", "int", "char", "sizeof"];
 
