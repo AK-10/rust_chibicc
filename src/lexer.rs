@@ -51,12 +51,28 @@ pub fn tokenize(line: String) -> Result<Vec<Token>, String> {
                 chars_with_index.next();
                 tokens.push(tokenize_gt(chars_with_index));
             },
-            '+' | '-' | '*' | '/' | '&' => {
-                // Todo: Reserved -> Symbolに変更する
+            '+' | '-' | '*' | '&' => {
+                // TODO: Reserved -> Symbolに変更する
                 let token = Token::Reserved { op: ch.to_string() };
                 tokens.push(token);
                 chars_with_index.next();
             },
+           '/' => {
+                let ch = chars_with_index.next().unwrap().0;
+                if let Some((_, '/')) = chars_with_index.peek() {
+                    // skip line comments
+                    loop {
+                        if let Some((_, '\n')) = chars_with_index.next() {
+                            break
+                        }
+                    };
+                } else {
+                    let token = Token::Reserved { op: ch.to_string() };
+                    tokens.push(token);
+                }
+                println!("{:#?}", chars_with_index);
+                println!("{:?}", chars_with_index.peek());
+            }
             '(' | ')' | ';' | '{' | '}' | ',' | '[' | ']' => {
                 let token = Token::Symbol(ch.to_string());
                 tokens.push(token);
