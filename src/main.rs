@@ -1,5 +1,5 @@
 // extern crate rust_chibicc;
-use rust_chibicc::lexer::tokenize;
+use rust_chibicc::tokenizer::Tokenizer;
 use rust_chibicc::parser::Parser;
 use rust_chibicc::codegen::CodeGenerator;
 use std::env;
@@ -28,7 +28,14 @@ fn main() {
         .expect("第一引数が取得できませんでした");
 
     let user_input = read_file(arg1);
-    let tokens = tokenize(user_input).expect("compile failed");
+    let tokens = match Tokenizer::new(&*user_input).tokenize() {
+        Ok(tokens) => tokens,
+        Err(e) => {
+            eprintln!("{}", e);
+            return
+        }
+    };
+
     let mut parser = Parser::new(&tokens);
     let parsed = parser.parse();
 

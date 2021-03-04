@@ -1,5 +1,5 @@
 pub mod token;
-pub mod lexer;
+pub mod tokenizer;
 pub mod node;
 pub mod parser;
 pub mod codegen;
