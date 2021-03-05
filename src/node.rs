@@ -176,16 +176,10 @@ impl Expr {
                 }
             },
             Expr::Deref { operand } => {
-                 match operand.ty.as_ref() {
-                    Ptr { base } => {
-                        Rc::clone(base) },
-                    Type::Array { base, .. } => {
-                        Rc::clone(base)
-                    }
-                    ty => {
-                        eprintln!("type: {:#?}", ty);
-                        panic!("can not deref value")
-                    }
+                match operand.ty.as_ref() {
+                   Ptr { base } => Rc::clone(base),
+                   Type::Array { base, .. } => Rc::clone(base),
+                   _ => Rc::clone(&operand.ty)
                 }
             },
             Expr::Var(var) => {

@@ -243,6 +243,7 @@ impl<'a> Parser<'a> {
                 // "+" mul
                 Token::Reserved { op } if *op == "+" => {
                     self.peekable.next();
+
                     let lhs = ExprWrapper::new(node);
                     let rhs = ExprWrapper::new(self.mul()?);
 
