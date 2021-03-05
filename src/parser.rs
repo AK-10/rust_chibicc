@@ -24,6 +24,7 @@ pub struct Parser<'a> {
     // 関数の引数，関数内で宣言された変数を保持する, 関数のスコープから外れたらリセットする
     pub locals: Vec<Rc<RefCell<Var>>>,
     pub globals: Vec<Rc<RefCell<Var>>>,
+    pub scope: Vec<Rc<RefCell<Var>>>,
     pub label_cnt: usize
 }
 
@@ -34,6 +35,7 @@ impl<'a> Parser<'a> {
             peekable: input.iter().peekable(),
             locals: Vec::new(),
             globals: Vec::new(),
+            scope: Vec::new(),
             label_cnt: 0
         }
     }
@@ -52,7 +54,6 @@ impl<'a> Parser<'a> {
                 break
             }
             if self.is_function() {
-
                 nodes.push(self.function()?);
             } else {
                 let gvar = self.global_var()?;
@@ -348,31 +349,6 @@ impl<'a> Parser<'a> {
         Ok(node)
     }
 
-    // ERR: compile error
-    // error: expected `,`
-    //    --> src/parser.rs:106:39
-    //     |
-    // 106 |     if let Some(Token::Reserved { op: '('.to_string() }) = token {
-    //     |
-    // fn primary(peekable: &mut Peekable<Iter<Token>>) -> Result<Node, String> {
-    //     let token = peekable.next();
-
-    //     if let Some(Token::Reserved { op: '('.to_string() }) = token {
-    //         let expr = expr(peekable);
-    //         match peekable.next() {
-    //             Some(Token::Reserved { op: ')', .. }) =>  { return expr; },
-    //             _ => { return Err("fail primary".to_string()); }
-    //         };
-    //     // num
-    //     } else if let Some(Token::Num { val, .. }) = token {
-    //         return Ok(Node::Num { val: *val })
-
-    //     // unexpected
-    //     } else {
-    //         return Err("unexpected token at primary".to_string());
-    //     }
-    // }
-
     // primary := "(" "{" stmt-expr-tail
     //          | "(" expr ")"
     //          | "sizeof" unary
@@ -452,117 +428,3 @@ impl<'a> Parser<'a> {
     }
 }
 
-// #[test]
-// fn parse_arithmetic_test() {
-//     let input = vec![
-//         Token::Num { val: 1, t_str: "1".to_string() },
-//         Token::Reserved { op: "+".to_string() },
-//         Token::Num { val: 2, t_str: "2".to_string() },
-//         Token::Reserved { op: "*".to_string() },
-//         Token::Num { val: 3, t_str: "3".to_string() },
-//         Token::Reserved { op: "-".to_string() },
-//         Token::Num { val: 20, t_str: "20".to_string() },
-//         Token::Reserved { op: ";".to_string() },
-//         Token::Eof
-//     ];
-
-//     let mut parser = Parser::new(&input);
-//     let result = parser.parse().unwrap();
-
-//     let expect = vec![
-//         Stmt::ExprStmt {
-//             val: Expr::Sub {
-//                 lhs: Box::new(
-//                     Expr::Add {
-//                         lhs: Box::new(Expr::Num { val: 1 }),
-//                         rhs: Box::new(
-//                             Expr::Mul {
-//                                 lhs: Box::new(Expr::Num { val: 2 }),
-//                                 rhs: Box::new(Expr::Num { val: 3 })
-//                             }
-//                         )
-//                     }
-//                 ),
-//                 rhs: Box::new(Expr::Num {val: 20 })
-//             }
-//         }
-//     ];
-
-//     assert_eq!(result.first().unwrap().nodes, expect);
-// }
-
-// #[test]
-// fn parse_return_test() {
-//     let input = vec![
-//         Token::Ident { name: "foo".to_string() },
-//         Token::Reserved { op: "=".to_string() },
-//         Token::Num { val: 1, t_str: "1".to_string() },
-//         Token::Reserved { op: ";".to_string() },
-//         Token::Reserved { op: "return".to_string() },
-//         Token::Ident { name: "foo".to_string() },
-//         Token::Reserved { op: ";".to_string() },
-//         Token::Eof
-//     ];
-
-//     let mut parser = Parser::new(&input);
-//     let result = parser.parse().unwrap();
-//     let expect = vec![
-//         Stmt::ExprStmt {
-//             val: Expr::Assign {
-//                 var: Var {
-//                         name: "foo".to_string(),
-//                         offset: 8
-//                     },
-//                 val: Box::new(Expr::Num {val: 1 })
-//             }
-//         },
-//         Stmt::Return {
-//             val: Expr::Var {
-//                 var: Var {
-//                     name: "foo".to_string(),
-//                     offset: 8
-//                 }
-//             }
-//         }
-//     ];
-
-//     assert_eq!(result.first().unwrap().nodes, expect);
-// }
-
-// #[test]
-// fn parse_cmp_test() {
-//     let input = vec![
-//         Token::Num { val: 1, t_str: "1".to_string() },
-//         Token::Reserved { op: ">=".to_string() },
-//         Token::Num { val: 1, t_str: "1".to_string() },
-//         Token::Reserved { op: "<".to_string() },
-//         Token::Num { val: 1, t_str: "1".to_string() },
-//         Token::Reserved { op: "==".to_string() },
-//         Token::Num { val: 2, t_str: "2".to_string() },
-//         Token::Reserved { op: ";".to_string() },
-//         Token::Eof
-//     ];
-
-//     let mut parser = Parser::new(&input);
-//     let result = parser.parse().unwrap();
-//     let expect = vec![
-//         Stmt::ExprStmt {
-//             val: Expr::Eq {
-//                 lhs: Box::new(
-//                     Expr::Lt {
-//                         lhs: Box::new(
-//                             Expr::Ge {
-//                                 lhs: Box::new(Expr::Num { val: 1 }),
-//                                 rhs: Box::new(Expr::Num { val: 1 })
-//                             }
-//                         ),
-//                         rhs: Box::new(Expr::Num { val: 1 }),
-//                     }
-//                 ),
-//                 rhs: Box::new(Expr::Num {val: 2 })
-//             }
-//         }
-//     ];
-
-//     assert_eq!(result.first().unwrap().nodes, expect);
-// }

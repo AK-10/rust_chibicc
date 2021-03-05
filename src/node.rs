@@ -182,7 +182,10 @@ impl Expr {
                     Type::Array { base, .. } => {
                         Rc::clone(base)
                     }
-                    _ => panic!("can not deref value")
+                    ty => {
+                        eprintln!("type: {:#?}", ty);
+                        panic!("can not deref value")
+                    }
                 }
             },
             Expr::Var(var) => {

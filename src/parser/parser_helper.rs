@@ -10,13 +10,7 @@ use std::cell::RefCell;
 impl<'a> Parser<'a> {
     // local変数 -> global変数の順に探す
     pub(in super) fn find_var(&self, name: &String) -> Option<Rc<RefCell<Var>>> {
-        let local_var = self.locals.iter()
-            .find(|var| { var.borrow().name == *name })
-            .map(|var| Rc::clone(var)); // &Rc<RefCell<Var>> -> Rc<RefCell<Var>>にする
-
-        if local_var.is_some() { return local_var }
-
-        self.globals.iter()
+        self.scope.iter()
             .find(|var| { var.borrow().name == *name })
             .map(|var| Rc::clone(var)) // &Rc<RefCell<Var>> -> Rc<RefCell<Var>>にする
     }
@@ -241,8 +235,8 @@ impl<'a> Parser<'a> {
         Ok(Rc::new(ty))
     }
 
-    pub(in super) fn new_var(&self, name: &String, ty: Rc<Type>, is_local: bool) -> Rc<RefCell<Var>> {
-        Rc::new(
+    pub(in super) fn new_var(&mut self, name: &String, ty: Rc<Type>, is_local: bool) -> Rc<RefCell<Var>> {
+        let var = Rc::new(
             RefCell::new(
                 Var {
                     name: name.to_string(),
@@ -252,11 +246,15 @@ impl<'a> Parser<'a> {
                     contents: None
                 }
             )
-        )
+        );
+
+        self.scope.push(Rc::clone(&var));
+
+        var
     }
 
-    pub(in super) fn new_gvar_with_contents(&self, name: &String, ty: Rc<Type>, contents: &Vec<u8>) -> Rc<RefCell<Var>> {
-        Rc::new(
+    pub(in super) fn new_gvar_with_contents(&mut self, name: &String, ty: Rc<Type>, contents: &Vec<u8>) -> Rc<RefCell<Var>> {
+        let var = Rc::new(
             RefCell::new(
                 Var {
                     name: name.to_string(),
@@ -266,7 +264,11 @@ impl<'a> Parser<'a> {
                     contents: Some(contents.clone())
                 }
             )
-        )
+        );
+
+        self.scope.push(Rc::clone(&var));
+
+        var
     }
 
     pub(in super) fn global_var(&mut self) -> Result<Rc<RefCell<Var>>, String> {
