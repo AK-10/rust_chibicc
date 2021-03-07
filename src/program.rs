@@ -3,6 +3,7 @@ use crate::_type::Type;
 use std::rc::Rc;
 use std::cell::RefCell;
 
+#[derive(Debug)]
 pub struct Program {
     pub fns: Vec<Function>,
     pub globals: Vec<Rc<RefCell<Var>>>

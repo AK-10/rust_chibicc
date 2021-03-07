@@ -124,8 +124,17 @@ impl<'a> Parser<'a> {
         }
         self.expect_next_symbol(")".to_string())?;
 
-        match stmts.last() {
-            Some(Stmt::ExprStmt{ .. }) => Ok(Expr::StmtExpr(stmts)),
+        match stmts.last_mut(){
+            // 最後のExprStmtをPureExprに変換する
+            // StmtExprとして扱うと誤ったスタック操作になるため
+            Some(last) => {
+                if let Stmt::ExprStmt { val } = last {
+                    *last = Stmt::PureExpr(val.clone());
+                    Ok(Expr::StmtExpr(stmts))
+                } else {
+                    Err("stmt expr returning void is not supported".to_string())
+                }
+            }
             _ => Err("stmt expr returning void is not supported".to_string())
         }
     }

@@ -1,3 +1,6 @@
+// TODO: ExprStmt { Add { .. } } のような場合があり，無駄にadd rsp, 8をしている
+// これがバグの原因
+
 use crate::node::{ Stmt, Expr, ExprWrapper };
 use crate::program::{ Program, Var };
 use crate::_type::Type;
@@ -210,10 +213,7 @@ impl<'a> CodeGenerator<'a> {
             Expr::Null => return,
             Expr::StmtExpr(stmts) => {
                 stmts.iter().for_each(|stmt| {
-                    match stmt {
-                        Stmt::ExprStmt { val } => self.gen_expr(val),
-                        _ => self.gen_stmt(stmt)
-                    }
+                    self.gen_stmt(stmt);
                 });
                 return
             }
@@ -237,7 +237,6 @@ impl<'a> CodeGenerator<'a> {
                     println!("  add rsp, 8");
                 }
             }
-
             Stmt::If { cond, then, els } => {
                 // if (A) B else Cのアセンブリ疑似コード
                 //   Aをコンパイルしたコード(この式の結果はstackにpushされているはず)
@@ -310,7 +309,8 @@ impl<'a> CodeGenerator<'a> {
             }
             Stmt::Block { stmts } => {
                 stmts.iter().for_each(|stmt| self.gen_stmt(stmt));
-            }
+            },
+            Stmt::PureExpr(expr_wrapper) => self.gen_expr(expr_wrapper)
         };
     }
 

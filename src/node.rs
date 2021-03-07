@@ -4,7 +4,8 @@ use crate::_type::Type::{ Int, Ptr };
 
 use std::rc::Rc;
 use std::cell::RefCell;
-
+use std::fmt;
+use std::fmt::Display;
 
 // EBNF
 // program := stmt*
@@ -55,7 +56,8 @@ pub enum Stmt {
     },
     Block {
         stmts: Vec<Stmt>,
-    }
+    },
+    PureExpr(ExprWrapper)
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -186,9 +188,9 @@ impl Expr {
                 Rc::clone(&var.borrow().ty)
             },
             Expr::Null => Rc::new(Int),
-            Expr::StmtExpr(stmts) => { // stmt.lastはexpr_stmtのはず
+            Expr::StmtExpr(stmts) => { // stmt.lastはPureExprのはず
                 match stmts.last() {
-                    Some(Stmt::ExprStmt { val }) => Rc::clone(&val.ty),
+                    Some(Stmt::PureExpr(expr)) => Rc::clone(&expr.ty),
                     _ => unreachable!("stmts.last can only be expr_stmt")
                 }
             }
@@ -197,5 +199,47 @@ impl Expr {
 
     pub fn to_expr_wrapper(&self) -> ExprWrapper {
         ExprWrapper::new(self.clone())
+    }
+}
+
+impl Display for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
+        match self {
+            Expr::Eq { .. } => write!(f, "Eq"),
+            Expr::Neq { .. } => write!(f, "Neq"),
+            Expr::Gt { .. } => write!(f, "Gt"),
+            Expr::Ge { .. } => write!(f, "Ge"),
+            Expr::Lt { .. } => write!(f, "Lt"),
+            Expr::Le { .. } => write!(f, "Le"),
+            Expr::Add { .. } => write!(f, "Add"),
+            Expr::Sub { .. } => write!(f, "Sub"),
+            Expr::Mul { .. } => write!(f, "Mul"),
+            Expr::Div { .. } => write!(f, "Div"),
+            Expr::Num { .. } => write!(f, "Num"),
+            Expr::Var(_) => write!(f, "Var"),
+            Expr::Assign { .. } => write!(f, "Assign"),
+            Expr::FnCall { .. } => write!(f, "FnCall"),
+            Expr::Addr { .. } => write!(f, "Addr"),
+            Expr::Deref { .. } => write!(f, "Deref"),
+            Expr::PtrAdd { .. } => write!(f, "PtrAdd"),
+            Expr::PtrSub { .. } => write!(f, "PtrSub"),
+            Expr::PtrDiff { .. } => write!(f, "PtrDiff"),
+            Expr::StmtExpr(_) => write!(f, "StmtExpr"),
+            Expr::Null => write!(f, "Null"),
+        }
+    }
+}
+
+impl Display for Stmt {
+    fn fmt(&self, f: &mut fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
+        match self {
+            Stmt::Return { .. } => write!(f, "Return"),
+            Stmt::ExprStmt { .. } => write!(f, "ExprStmt"),
+            Stmt::If { .. } => write!(f, "If"),
+            Stmt::While { .. } => write!(f, "While"),
+            Stmt::For { .. } => write!(f, "For"),
+            Stmt::Block { .. } => write!(f, "Block"),
+            Stmt::PureExpr { .. } => write!(f, "PureExpr"),
+        }
     }
 }
