@@ -57,7 +57,7 @@ pub enum Stmt {
     Block {
         stmts: Vec<Stmt>,
     },
-    PureExpr(ExprWrapper)
+    PureExpr(ExprWrapper) // StmtExprの返り値のために作った
 }
 
 #[derive(PartialEq, Debug, Clone)]
