@@ -55,21 +55,21 @@ impl<'a> Parser<'a> {
         self.expect_next_symbol("(".to_string())?;
 
         // 初期化，条件，処理後はない場合がある
-        let init = self.assign().ok();
+        let init = self.expr_stmt()?;
         self.expect_next_symbol(";".to_string())?;
 
         let cond = self.expr().ok();
         self.expect_next_symbol(";".to_string())?;
 
-        let inc = self.assign().ok();
+        let inc = self.expr_stmt()?;
         self.expect_next_symbol(")".to_string())?;
 
         let then = self.stmt()?;
 
         Ok(Stmt::For {
-            init: init.map(|x| ExprWrapper::new(x)),
-            cond: cond.map(|x| ExprWrapper::new(x)),
-            inc: inc.map(|x| ExprWrapper::new(x)),
+            init: Some(Box::new(init)),
+            cond: cond.map(ExprWrapper::new),
+            inc: Some(Box::new(inc)),
             then: Box::new(then)
         })
     }

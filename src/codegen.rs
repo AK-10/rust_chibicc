@@ -291,7 +291,9 @@ impl<'a> CodeGenerator<'a> {
                 self.labelseq.set(self.labelseq.get() + 1);
                 let seq = self.labelseq.get();
 
-                init.as_ref().as_ref().map(|x| self.gen_expr(x));
+                init.as_ref()
+                    .as_ref()
+                    .map(|stmt| self.gen_stmt(stmt));
                 println!(".L.begin.{}:", seq);
 
                 cond.as_ref().as_ref().map(|x| {
@@ -303,7 +305,9 @@ impl<'a> CodeGenerator<'a> {
 
                 self.gen_stmt(then);
 
-                inc.as_ref().as_ref().map(|x| self.gen_expr(x));
+                inc.as_ref()
+                    .as_ref()
+                    .map(|x| self.gen_stmt(x));
                 println!("  jmp .L.begin.{}", seq);
                 println!(".L.end.{}:", seq);
             }
