@@ -118,11 +118,15 @@ impl<'a> Parser<'a> {
     // stmt_expr := "(" "{" stmt stmt* "}" ")"
     // 呼び出し側で "(" "{" はすでに消費されている
     pub(in super) fn stmt_expr(&mut self) -> Result<Expr, String> {
+        let sc = self.scope.clone();
+
         let mut stmts = Vec::<Stmt>::new();
         while let Err(_) = self.expect_next_symbol("}".to_string()) {
             stmts.push(self.stmt()?);
         }
         self.expect_next_symbol(")".to_string())?;
+
+        self.scope = sc;
 
         match stmts.last_mut(){
             // 最後のExprStmtをPureExprに変換する

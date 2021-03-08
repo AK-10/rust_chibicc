@@ -74,6 +74,9 @@ impl<'a> Parser<'a> {
         self.base_type()?;
 
         if let Some(Token::Ident{ name }) = self.peekable.next() {
+            // scopeを保存するため，コピーを持っておく
+            let sc = self.scope.clone();
+
             // parse params
             let params = self.parse_func_params()?;
             self.locals = params.clone();
@@ -85,6 +88,8 @@ impl<'a> Parser<'a> {
             while let Err(_) = self.expect_next_symbol("}".to_string()) {
                 nodes.push(self.stmt()?);
             };
+
+            self.scope = sc;
 
             let locals = self.locals.to_vec();
             self.locals.clear();
@@ -116,10 +121,12 @@ impl<'a> Parser<'a> {
                 self.peekable.next();
                 let mut stmts: Vec<Stmt> = Vec::new();
 
+                let sc = self.scope.clone();
                 while let Err(_) = self.expect_next_symbol("}".to_string()) {
                     let stmt = self.stmt()?;
                     stmts.push(stmt);
                 }
+                self.scope = sc;
 
                 Ok(Stmt::Block { stmts })
             }
