@@ -1,9 +1,8 @@
 use crate::node::{ Stmt, Expr, ExprWrapper };
-use crate::token::Token;
+use crate::token::{ Token, TokenIter, /* TokenIterErr */ };
 use crate::program::{ Function, Var, Program };
 use crate::_type::Type;
 
-use std::slice::Iter;
 use std::iter::Peekable;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -20,7 +19,7 @@ mod parser_helper;
 
 pub struct Parser<'a> {
     pub input: &'a Vec<Token>,
-    peekable: Peekable<Iter<'a, Token>>,
+    peekable: Peekable<TokenIter<'a>>,
     // 関数の引数，関数内で宣言された変数を保持する, 関数のスコープから外れたらリセットする
     pub locals: Vec<Rc<RefCell<Var>>>,
     pub globals: Vec<Rc<RefCell<Var>>>,
@@ -32,7 +31,7 @@ impl<'a> Parser<'a> {
     pub fn new(input: &'a Vec<Token>) -> Self {
         Self {
             input,
-            peekable: input.iter().peekable(),
+            peekable: TokenIter::new(input).peekable(),
             locals: Vec::new(),
             globals: Vec::new(),
             scope: Vec::new(),
