@@ -39,7 +39,7 @@ impl<'a> Iterator for TokenIter<'a> {
     type Item = &'a Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let tk = self.tokens.get(self.pos);
+        let tk = self.tokens.get(self.current_position());
 
         if let Some(_) = tk {
             self.pos += 1;
@@ -47,7 +47,6 @@ impl<'a> Iterator for TokenIter<'a> {
 
         tk
     }
-
 }
 
 impl<'a> TokenIter<'a> {
@@ -68,5 +67,13 @@ impl<'a> TokenIter<'a> {
         self.pos = n;
 
         Ok(())
+    }
+
+    pub fn current_position(&self) -> usize {
+        self.pos
+    }
+
+    pub fn peek(&self) -> Option<&'a Token> {
+        self.tokens.get(self.current_position())
     }
 }

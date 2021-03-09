@@ -368,17 +368,14 @@ impl<'a> Parser<'a> {
     // function := type ident "(" params* ")"
     // gvar := type ident ("=" expr ";")
     pub(in super) fn is_function(&mut self) -> bool {
-        // 単に確認がしたいので初期状態を保持
-        // TODO: 先頭だけコピーする
-        let cloned_peekable = self.peekable.clone();
-
+        let pos = self.peekable.current_position();
 
         let _ = self.base_type();
         let _ = self.expect_next_ident();
 
         let is_fn = self.expect_next_symbol("(".to_string()).is_ok();
 
-        self.peekable = cloned_peekable;
+        let _ = self.peekable.back_to(pos);
 
         is_fn
     }
