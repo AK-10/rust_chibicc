@@ -1,6 +1,3 @@
-// TODO: ExprStmt { Add { .. } } のような場合があり，無駄にadd rsp, 8をしている
-// これがバグの原因
-
 use crate::node::{ Stmt, Expr, ExprWrapper };
 use crate::program::{ Program, Var };
 use crate::_type::Type;
