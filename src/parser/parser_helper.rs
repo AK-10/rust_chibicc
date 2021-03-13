@@ -155,7 +155,7 @@ impl<'a> Parser<'a> {
                 Ok(())
             },
             _ => {
-                let msg = format!("expect {}, but different found", expected);
+                let msg = format!("expect symbol {}, but found {:?}", expected, tk);
                 Err(msg)
             }
         }
@@ -171,7 +171,7 @@ impl<'a> Parser<'a> {
                 Ok(())
             },
             _ => {
-                let msg = format!("expect {}, but different found", expected);
+                let msg = format!("expect reserved {}, but found {:?}", expected, tk);
                 Err(msg)
             }
         }
@@ -444,7 +444,7 @@ impl<'a> Parser<'a> {
 
         ty = self.read_type_suffix(ty)?;
 
-        let _ = self.expect_next_reserved(";")?;
+        let _ = self.expect_next_symbol(";")?;
 
         Ok(Member::new(ty, name, offset))
     }

@@ -137,12 +137,12 @@ impl<'a> Parser<'a> {
             Some(Token::Reserved { op }) if *op == "for" => {
                 self.for_stmt()
             }
-            Some(Token::Reserved { op }) if *op == "int" || *op == "char" => {
+            Some(Token::Reserved { op }) if *op == "int" || *op == "char" || *op == "struct" => {
                 self.declaration()
             }
             _ => {
                 let expr_stmt = self.expr_stmt();
-                self.expect_next_symbol(";".to_string())?;
+                self.expect_next_symbol(";")?;
 
                 expr_stmt
             }
