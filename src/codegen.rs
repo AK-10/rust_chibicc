@@ -213,6 +213,15 @@ impl<'a> CodeGenerator<'a> {
                     self.gen_stmt(stmt);
                 });
                 return
+            },
+            Expr::Member(_, __) => {
+                self.gen_addr(expr_wrapper);
+                match *expr_wrapper.ty {
+                    Type::Array { .. } => {},
+                    _ => { load(&expr_wrapper.ty); }
+                }
+
+                return
             }
         }
 
@@ -337,7 +346,13 @@ impl<'a> CodeGenerator<'a> {
                 } else {
                     println!("  push offset {}", var.borrow().name);
                 }
-            }
+            },
+            Expr::Member(ew, member) => {
+                self.gen_addr(ew);
+                println!("  pop rax");
+                println!("  add rax, {}", member.offset.value());
+                println!("   push rax");
+            },
             _ => {
                 panic!("unexpected operand {:?}", expr_wrapper);
             }

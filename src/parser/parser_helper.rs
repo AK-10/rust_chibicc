@@ -456,7 +456,7 @@ impl<'a> Parser<'a> {
 
     pub(in super) fn struct_ref(&mut self, expr: Expr) -> Result<Expr, String> {
         let ty = expr.detect_type();
-        if let Type::Struct { members } = *ty {
+        if let Type::Struct { members } = ty.as_ref() {
             let ident = self.expect_next_ident()?;
             let name = match ident {
                 Token::Ident { name } => name,
@@ -468,7 +468,7 @@ impl<'a> Parser<'a> {
                             .find(|mem| mem.name == name)
                             .ok_or_else(|| format!("no such member: {}", name))?;
 
-            Ok(Expr::Member(member.clone()))
+            Ok(Expr::Member(expr.to_expr_wrapper(), member.clone()))
         } else {
             Err("not_a struct".to_string())
         }

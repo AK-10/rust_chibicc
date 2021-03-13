@@ -144,7 +144,7 @@ pub enum Expr {
     },
     Null,
     StmtExpr(Vec<Stmt>), // GNU C extension Null
-    Member(Member) // struct member
+    Member(ExprWrapper, Member) // struct member
 }
 
 impl Expr {
@@ -195,15 +195,16 @@ impl Expr {
                     _ => unreachable!("stmts.last can only be expr_stmt")
                 }
             },
-            Expr::Member(member) => {
-                member.ty
+            Expr::Member(_, member) => {
+                Rc::clone(&member.ty)
             }
         }
     }
 
     pub fn to_expr_wrapper(&self) -> ExprWrapper {
         // TODO: cloneやめたい
-        // ExprWrapper.exprを&'a Exprにする
+        // ExprWrapper.exprを&'a Exprにする?
+        // もしくはRc
         ExprWrapper::new(self.clone())
     }
 }
@@ -232,7 +233,7 @@ impl Display for Expr {
             Expr::PtrDiff { .. } => write!(f, "PtrDiff"),
             Expr::StmtExpr(_) => write!(f, "StmtExpr"),
             Expr::Null => write!(f, "Null"),
-            Expr::Member(_) =>  write!(f, "Member")
+            Expr::Member(_, _) =>  write!(f, "Member")
         }
     }
 }
