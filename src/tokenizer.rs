@@ -4,7 +4,17 @@ use std::str::FromStr;
 // TODO: LexerErrorの定義
 // TODO: Location structがほしい
 
-const KEYWORDS: [&str; 8] = ["return", "if", "while", "else", "for", "int", "char", "sizeof"];
+const KEYWORDS: [&str; 9] = [
+    "return",
+    "if",
+    "while",
+    "else",
+    "for",
+    "int",
+    "char",
+    "sizeof",
+    "struct"
+];
 
 pub struct Tokenizer {
     user_input: Vec<char>,

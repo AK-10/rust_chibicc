@@ -2,10 +2,12 @@ use crate::parser::Parser;
 use crate::node::{ Stmt, ExprWrapper, Expr };
 use crate::token::Token;
 use crate::program::{ Var, Offset };
-use crate::_type::Type;
+use crate::_type::{ Type, Member };
 
 use std::rc::Rc;
 use std::cell::RefCell;
+
+const TYPE_NAMES: [&str; 3] = ["int", "char", "struct"];
 
 impl<'a> Parser<'a> {
     // local変数 -> global変数の順に探す
@@ -143,31 +145,33 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(in super) fn expect_next_symbol(&mut self, word: String) -> Result<(), String> {
+    pub(in super) fn expect_next_symbol(&mut self, word: impl Into<String>) -> Result<(), String> {
         let tk = self.peekable.peek();
+        let expected = word.into();
 
         match tk {
-            Some(Token::Symbol(op)) if *op == word => {
+            Some(Token::Symbol(op)) if *op == expected => {
                 self.peekable.next();
                 Ok(())
             },
             _ => {
-                let msg = format!("expect {}, but different found", word);
+                let msg = format!("expect {}, but different found", expected);
                 Err(msg)
             }
         }
     }
 
-    pub(in super) fn expect_next_reserved(&mut self, word: String) -> Result<(), String> {
+    pub(in super) fn expect_next_reserved(&mut self, word: impl Into<String>) -> Result<(), String> {
         let tk = self.peekable.peek();
+        let expected = word.into();
 
         match tk {
-            Some(Token::Reserved { op }) if *op == word => {
+            Some(Token::Reserved { op }) if *op == expected => {
                 self.peekable.next();
                 Ok(())
             },
             _ => {
-                let msg = format!("expect {}, but different found", word);
+                let msg = format!("expect {}, but different found", expected);
                 Err(msg)
             }
         }
@@ -226,14 +230,18 @@ impl<'a> Parser<'a> {
         Ok(params)
     }
 
-    // base_type = ("char" | "int") "*"*
+    // base_type = ("char" | "int" | struct-decl) "*"*
     pub(in super) fn base_type(&mut self) -> Result<Rc<Type>, String> {
+        if !self.is_typename() {
+            return Err("typename expected".to_string())
+        }
+
         let mut ty = if let Ok(_) = self.expect_next_reserved("int".to_string()) {
             Type::Int
         } else if let Ok(_) = self.expect_next_reserved("char".to_string()) {
             Type::Char
         } else {
-            return Err("unknown type".to_string())
+            self.struct_decl()?
         };
 
         while let Some(Token::Reserved { op }) = self.peekable.peek() {
@@ -370,14 +378,31 @@ impl<'a> Parser<'a> {
     pub(in super) fn is_function(&mut self) -> bool {
         let pos = self.peekable.current_position();
 
-        let _ = self.base_type();
-        let _ = self.expect_next_ident();
+        if !self.base_type().is_ok() {
+            let _ = self.peekable.back_to(pos);
+            return false
+        };
+
+        if !self.expect_next_ident().is_ok() {
+            let _ = self.peekable.back_to(pos);
+            return false
+        }
 
         let is_fn = self.expect_next_symbol("(".to_string()).is_ok();
-
         let _ = self.peekable.back_to(pos);
 
         is_fn
+    }
+
+    pub(in super) fn is_typename(&self) -> bool {
+        self.peekable.peek().map(|tk| {
+            if let Token::Reserved { op } = tk {
+                TYPE_NAMES.contains(&op.as_str())
+            } else {
+                false
+            }
+
+        }).unwrap_or(false)
     }
 
     pub(in super) fn new_label(&mut self) -> String {
@@ -385,5 +410,18 @@ impl<'a> Parser<'a> {
         self.label_cnt += 1;
 
         return label;
+    }
+
+    pub(in crate::parser) fn struct_decl(&mut self) -> Result<Type, String> {
+        let _ = self.expect_next_reserved("struct")?;
+        let _ = self.expect_next_symbol("{")?;
+
+        let mut members = Vec::<Member>::new();
+
+        while let Err(_) = self.expect_next_symbol("}") {
+            // push members
+        }
+
+        Ok(Type::Struct { members })
     }
 }

@@ -1,4 +1,23 @@
+use crate::program::Offset;
+
 use std::rc::Rc;
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct Member {
+    ty: Rc<Type>,
+    name: String,
+    offset: Offset
+}
+
+impl Member {
+    pub fn new(ty: Rc<Type>, name: &String, offset_value: usize) -> Self {
+        Self {
+            ty,
+            name: name.clone(),
+            offset: Offset::Value(offset_value)
+        }
+    }
+}
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Type {
@@ -10,18 +29,26 @@ pub enum Type {
         base: Rc<Type>,
         len: usize
     },
-    Char
+    Char,
+    Struct {
+        members: Vec<Member>,
+    }
 }
 
 impl Type {
     pub fn size(&self) -> usize {
         match self {
-            Type::Int => 8,
-            Type::Ptr { .. } => 8,
-            Type::Array { base, len } => {
+            Self::Int => 8,
+            Self::Ptr { .. } => 8,
+            Self::Array { base, len } => {
                 base.size() * len
             },
-            Type::Char => 1
+            Self::Char => 1,
+            Self::Struct { members } => {
+                members
+                    .iter()
+                    .fold(0, |acc, member| acc + member.ty.size())
+            }
         }
     }
 
@@ -29,7 +56,7 @@ impl Type {
         match self {
             Type::Ptr { base } => base.size(),
             Type::Array { base, .. } => base.size(),
-            _ => panic!("expect base type, but does not base type")
+            _ => panic!("expect base type, but does not have base type")
         }
     }
 
