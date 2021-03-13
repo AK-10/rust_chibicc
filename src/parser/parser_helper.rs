@@ -1,4 +1,4 @@
-use crate::parser::Parser;
+use crate::parser::{ Parser, TYPE_NAMES };
 use crate::node::{ Stmt, ExprWrapper, Expr };
 use crate::token::Token;
 use crate::program::{ Var, Offset };
@@ -7,7 +7,7 @@ use crate::_type::{ Type, Member };
 use std::rc::Rc;
 use std::cell::RefCell;
 
-const TYPE_NAMES: [&str; 3] = ["int", "char", "struct"];
+
 
 impl<'a> Parser<'a> {
     // local変数 -> global変数の順に探す

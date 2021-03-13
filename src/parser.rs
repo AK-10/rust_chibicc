@@ -15,6 +15,7 @@ mod parser_helper;
 // * /
 // 単項+ 単項-
 // ()
+const TYPE_NAMES: [&str; 3] = ["int", "char", "struct"];
 
 pub struct Parser<'a> {
     pub input: &'a Vec<Token>,
@@ -137,7 +138,7 @@ impl<'a> Parser<'a> {
             Some(Token::Reserved { op }) if *op == "for" => {
                 self.for_stmt()
             }
-            Some(Token::Reserved { op }) if *op == "int" || *op == "char" || *op == "struct" => {
+            Some(Token::Reserved { op }) if TYPE_NAMES.contains(&op.as_str()) => {
                 self.declaration()
             }
             _ => {
