@@ -1,5 +1,5 @@
 use crate::program::Var;
-use crate::_type::Type;
+use crate::_type::{ Type, Member };
 use crate::_type::Type::{ Int, Ptr };
 
 use std::rc::Rc;
@@ -143,7 +143,8 @@ pub enum Expr {
         rhs: ExprWrapper
     },
     Null,
-    StmtExpr(Vec<Stmt>) // GNU C extension Null
+    StmtExpr(Vec<Stmt>), // GNU C extension Null
+    Member(Member) // struct member
 }
 
 impl Expr {
@@ -193,11 +194,16 @@ impl Expr {
                     Some(Stmt::PureExpr(expr)) => Rc::clone(&expr.ty),
                     _ => unreachable!("stmts.last can only be expr_stmt")
                 }
+            },
+            Expr::Member(member) => {
+                member.ty
             }
         }
     }
 
     pub fn to_expr_wrapper(&self) -> ExprWrapper {
+        // TODO: cloneやめたい
+        // ExprWrapper.exprを&'a Exprにする
         ExprWrapper::new(self.clone())
     }
 }
@@ -226,6 +232,7 @@ impl Display for Expr {
             Expr::PtrDiff { .. } => write!(f, "PtrDiff"),
             Expr::StmtExpr(_) => write!(f, "StmtExpr"),
             Expr::Null => write!(f, "Null"),
+            Expr::Member(_) =>  write!(f, "Member")
         }
     }
 }

@@ -75,7 +75,7 @@ impl<'a> Tokenizer {
                     tokens.push(token);
                 },
                 // symbol
-                '(' | ')' | ';' | '{' | '}' | ',' | '[' | ']' => {
+                '(' | ')' | ';' | '{' | '}' | '.' | ',' | '[' | ']' => {
                     self.pos += 1;
                     let token = Token::Symbol(c.to_string());
                     tokens.push(token);

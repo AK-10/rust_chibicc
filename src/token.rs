@@ -1,4 +1,9 @@
 #[derive(Debug, Clone, PartialEq)]
+
+// TODO: new_type パターンに置き換えたい
+// op, nameなどのアクセスがかなりめんどくさい
+//
+//
 pub enum Token {
     Reserved {
         op: String, // lenはop.len()で代用

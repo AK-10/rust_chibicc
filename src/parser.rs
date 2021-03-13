@@ -337,22 +337,34 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // postfix := primary ("[" expr "]" | "." ident)*
     fn postfix(&mut self) -> Result<Expr, String> {
         let mut node = self.primary()?;
-        while let Ok(_) = self.expect_next_symbol("[".to_string()) {
-            // x[y] is short for *(x + y)
-            let expr = self.expr()?;
-            let exp = Parser::new_add(node.to_expr_wrapper(), expr.to_expr_wrapper())?;
 
-            match self.expect_next_symbol("]".to_string()) {
-                Ok(_) => {
-                    node = Expr::Deref { operand: exp.to_expr_wrapper() };
-                },
-                _ => return Err("expect ] after [ expr".to_string())
+        loop {
+            if let Ok(_) = self.expect_next_symbol("[") {
+                // x[y] is short for *(x + y)
+                let expr = self.expr()?;
+                let exp = Parser::new_add(node.to_expr_wrapper(), expr.to_expr_wrapper())?;
+
+                match self.expect_next_symbol("]".to_string()) {
+                    Ok(_) => {
+                        node = Expr::Deref { operand: exp.to_expr_wrapper() };
+                    },
+                    _ => return Err("expect ] after [ expr".to_string())
+                }
+
+                continue;
             }
-        }
 
-        Ok(node)
+            if let Ok(_) = self.expect_next_symbol(".") {
+                node = self.struct_ref(node)?;
+
+                continue;
+            }
+
+            return Ok(node);
+        }
     }
 
     // primary := "(" "{" stmt-expr-tail

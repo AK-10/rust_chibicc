@@ -412,16 +412,66 @@ impl<'a> Parser<'a> {
         return label;
     }
 
-    pub(in crate::parser) fn struct_decl(&mut self) -> Result<Type, String> {
+    // struct-decl := "struct" "{" struct-member "}"
+    pub(in super) fn struct_decl(&mut self) -> Result<Type, String> {
         let _ = self.expect_next_reserved("struct")?;
         let _ = self.expect_next_symbol("{")?;
 
         let mut members = Vec::<Member>::new();
+        let mut offset = 0;
 
         while let Err(_) = self.expect_next_symbol("}") {
-            // push members
+            let member = self.struct_member(offset)?;
+
+            // offsetのインクリメントとmembers.pushが逆の場合,pushが走った時点でmemberの所有権はmembersにあるためエラーになる
+            offset += member.ty.size();
+            members.push(member);
         }
 
         Ok(Type::Struct { members })
+    }
+
+    //  struct-member := basetype ident ("[" num "]") ";"
+    pub(in super) fn struct_member(&mut self, offset: usize) -> Result<Member, String> {
+        let mut ty = self.base_type()?;
+
+        // TODO: どうにかしたほうがいい
+        let ident = self.expect_next_ident()?;
+        let name = match ident {
+            Token::Ident { name } => name,
+            _ => unreachable!("ident is not Token::Ident")
+        };
+
+        ty = self.read_type_suffix(ty)?;
+
+        let _ = self.expect_next_reserved(";")?;
+
+        Ok(Member::new(ty, name, offset))
+    }
+
+    // TODO: AsRef<Type> Structに変えたい
+    // pub(in super) fn find_member(&mut self, node: impl AsRef<Struct>, name: impl Into<String>) -> Option<Member> {
+    //     node.members.find
+    // }
+
+    pub(in super) fn struct_ref(&mut self, expr: Expr) -> Result<Expr, String> {
+        let ty = expr.detect_type();
+        if let Type::Struct { members } = *ty {
+            let ident = self.expect_next_ident()?;
+            let name = match ident {
+                Token::Ident { name } => name,
+                _ => unreachable!("ident is not Token::Ident")
+            };
+
+            // TODO: self.find_memberに置き換える
+            let member = members.iter()
+                            .find(|mem| mem.name == name)
+                            .ok_or_else(|| format!("no such member: {}", name))?;
+
+            Ok(Expr::Member(member.clone()))
+        } else {
+            Err("not_a struct".to_string())
+        }
+
     }
 }

@@ -4,16 +4,16 @@ use std::rc::Rc;
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Member {
-    ty: Rc<Type>,
-    name: String,
-    offset: Offset
+    pub ty: Rc<Type>,
+    pub name: String,
+    pub offset: Offset
 }
 
 impl Member {
-    pub fn new(ty: Rc<Type>, name: &String, offset_value: usize) -> Self {
+    pub fn new(ty: Rc<Type>, name: impl Into<String>, offset_value: usize) -> Self {
         Self {
             ty,
-            name: name.clone(),
+            name: name.into(),
             offset: Offset::Value(offset_value)
         }
     }
