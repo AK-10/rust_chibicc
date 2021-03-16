@@ -1,7 +1,7 @@
 use crate::parser::{ Parser, TYPE_NAMES };
 use crate::node::{ Stmt, ExprWrapper, Expr };
 use crate::token::Token;
-use crate::program::{ Var, Offset };
+use crate::program::{ Var, Offset, align_to };
 use crate::_type::{ Type, Member };
 
 use std::rc::Rc;
@@ -419,16 +419,27 @@ impl<'a> Parser<'a> {
 
         let mut members = Vec::<Member>::new();
         let mut offset = 0;
+        let mut align = 0;
 
         while let Err(_) = self.expect_next_symbol("}") {
             let member = self.struct_member(offset)?;
 
+            offset = align_to(offset, member.ty.align());
             // offsetのインクリメントとmembers.pushが逆の場合,pushが走った時点でmemberの所有権はmembersにあるためエラーになる
             offset += member.ty.size();
+
+            if align < member.ty.align() {
+                align = member.ty.align();
+            }
+
             members.push(member);
         }
 
-        Ok(Type::Struct { members })
+        Ok(Type::Struct {
+           members,
+           size: align_to(offset, align),
+           align
+        })
     }
 
     //  struct-member := basetype ident ("[" num "]") ";"
@@ -456,7 +467,7 @@ impl<'a> Parser<'a> {
 
     pub(in super) fn struct_ref(&mut self, expr: Expr) -> Result<Expr, String> {
         let ty = expr.detect_type();
-        if let Type::Struct { members } = ty.as_ref() {
+        if let Type::Struct { members, .. } = ty.as_ref() {
             let ident = self.expect_next_ident()?;
             let name = match ident {
                 Token::Ident { name } => name,

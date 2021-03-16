@@ -32,6 +32,8 @@ pub enum Type {
     Char,
     Struct {
         members: Vec<Member>,
+        align: usize, // alignment sizeはこの値の倍数になる
+        size: usize
     }
 }
 
@@ -40,15 +42,14 @@ impl Type {
         match self {
             Self::Int => 8,
             Self::Ptr { .. } => 8,
-            Self::Array { base, len } => {
-                base.size() * len
-            },
+            Self::Array { base, len } => base.size() * len,
             Self::Char => 1,
-            Self::Struct { members } => {
-                members
-                    .iter()
-                    .fold(0, |acc, member| acc + member.ty.size())
-            }
+            Self::Struct { size, .. } => *size
+            // Self::Struct { members, .. } => {
+            //     members
+            //         .iter()
+            //         .fold(0, |acc, member| acc + member.ty.size())
+            // }
         }
     }
 
@@ -71,6 +72,16 @@ impl Type {
         match self {
             Type::Ptr { .. } | Type::Array { .. } => true,
             _ => false
+        }
+    }
+
+    pub fn align(&self) -> usize {
+        match self {
+            Type::Int => 8,
+            Type::Ptr { .. } => 8,
+            Type::Array { base, .. } => base.align(),
+            Type::Char => 1,
+            Type::Struct { align, .. } => *align
         }
     }
 }

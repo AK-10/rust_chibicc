@@ -3,6 +3,18 @@ use crate::_type::Type;
 use std::rc::Rc;
 use std::cell::RefCell;
 
+// alignの倍数に調整する
+// !はbitwise not
+// &はbitwise and
+//
+// n -> 17, align -> 8のとき 24になってほしい
+// n + align - 1 -> 17 + 8 - 1 -> 24 -> 00011000
+// !(align - 1) -> !(7) -> !(00000111) -> 11111000
+// (n + align - 1) & !(align - 1) -> 00011000 & 11111000 -> 00011000
+pub fn align_to(n: usize, align: usize) -> usize {
+    (n + align - 1) & !(align - 1)
+}
+
 #[derive(Debug)]
 pub struct Program {
     pub fns: Vec<Function>,
@@ -25,7 +37,7 @@ impl Function {
         Self {
             name,
             nodes,
-            stack_size: Self::align_to(offset, 8),
+            stack_size: align_to(offset, 8),
             locals: Self::calc_offsets(&locals),
             params
         }
@@ -48,17 +60,7 @@ impl Function {
         reversed
     }
 
-    // alignの倍数に調整する
-    // !はbitwise not
-    // &はbitwise and
-    //
-    // n -> 17, align -> 8のとき 24になってほしい
-    // n + align - 1 -> 17 + 8 - 1 -> 24 -> 00011000
-    // !(align - 1) -> !(7) -> !(00000111) -> 11111000
-    // (n + align - 1) & !(align - 1) -> 00011000 & 11111000 -> 00011000
-    fn align_to(n: usize, align: usize) -> usize {
-        (n + align - 1) & !(align - 1)
-    }
+
 
 }
 
