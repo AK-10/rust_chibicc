@@ -351,7 +351,7 @@ impl<'a> CodeGenerator<'a> {
                 self.gen_addr(ew);
                 println!("  pop rax");
                 println!("  add rax, {}", member.offset.value());
-                println!("   push rax");
+                println!("  push rax");
             },
             _ => {
                 panic!("unexpected operand {:?}", expr_wrapper);

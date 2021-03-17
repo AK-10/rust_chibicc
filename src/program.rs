@@ -32,32 +32,32 @@ pub struct Function {
 
 impl Function {
     pub fn new(name: String, nodes: Vec<Stmt>, locals: Vec<Rc<RefCell<Var>>>, params: Vec<Rc<RefCell<Var>>>) -> Self {
-        let offset = locals.iter().fold(0, |acc, var| acc + var.borrow().ty.size());
+        let (fixed_locals, offset) = Self::calc_offsets(&locals);
 
         Self {
             name,
             nodes,
             stack_size: align_to(offset, 8),
-            locals: Self::calc_offsets(&locals),
+            locals: fixed_locals,
             params
         }
     }
 
     // locals のoffset計算を行う.
     // localsの先頭はparamsが持つ要素のポインタなのでparamsも同時にoffset計算される
-    fn calc_offsets(locals: &Vec<Rc<RefCell<Var>>>) -> Vec<Rc<RefCell<Var>>> {
+    fn calc_offsets(locals: &Vec<Rc<RefCell<Var>>>) -> (Vec<Rc<RefCell<Var>>>, usize) {
         let mut reversed = locals.clone();
         let mut offset = 0;
         reversed.reverse();
 
-        // reversed.iter.map()はなんかうまく行かない
         reversed.iter().for_each(|v| {
             let mut var = v.borrow_mut();
+            offset = align_to(offset, var.ty.align());
             offset += var.ty.size();
             var.offset = Offset::Value(offset);
         });
 
-        reversed
+        (reversed, offset)
     }
 
 

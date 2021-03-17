@@ -423,7 +423,6 @@ impl<'a> Parser<'a> {
 
         while let Err(_) = self.expect_next_symbol("}") {
             let member = self.struct_member(offset)?;
-
             offset = align_to(offset, member.ty.align());
             // offsetのインクリメントとmembers.pushが逆の場合,pushが走った時点でmemberの所有権はmembersにあるためエラーになる
             offset += member.ty.size();
