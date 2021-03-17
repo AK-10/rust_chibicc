@@ -10,11 +10,11 @@ pub struct Member {
 }
 
 impl Member {
-    pub fn new(ty: Rc<Type>, name: impl Into<String>, offset_value: usize) -> Self {
+    pub fn new(ty: Rc<Type>, name: impl Into<String>) -> Self {
         Self {
             ty,
             name: name.into(),
-            offset: Offset::Value(offset_value)
+            offset: Offset::Unset
         }
     }
 }

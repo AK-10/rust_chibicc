@@ -422,8 +422,9 @@ impl<'a> Parser<'a> {
         let mut align = 0;
 
         while let Err(_) = self.expect_next_symbol("}") {
-            let member = self.struct_member(offset)?;
+            let mut member = self.struct_member()?;
             offset = align_to(offset, member.ty.align());
+            member.offset = Offset::Value(offset);
             // offsetのインクリメントとmembers.pushが逆の場合,pushが走った時点でmemberの所有権はmembersにあるためエラーになる
             offset += member.ty.size();
 
@@ -442,7 +443,7 @@ impl<'a> Parser<'a> {
     }
 
     //  struct-member := basetype ident ("[" num "]") ";"
-    pub(in super) fn struct_member(&mut self, offset: usize) -> Result<Member, String> {
+    pub(in super) fn struct_member(&mut self) -> Result<Member, String> {
         let mut ty = self.base_type()?;
 
         // TODO: どうにかしたほうがいい
@@ -456,7 +457,7 @@ impl<'a> Parser<'a> {
 
         let _ = self.expect_next_symbol(";")?;
 
-        Ok(Member::new(ty, name, offset))
+        Ok(Member::new(ty, name))
     }
 
     // TODO: AsRef<Type> Structに変えたい
