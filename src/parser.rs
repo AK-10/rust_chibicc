@@ -108,17 +108,17 @@ impl<'a> Parser<'a> {
     //       | declaration
     fn stmt(&mut self) -> Result<Stmt, String> {
         let tk = self.peekable.peek();
-        match tk.map(|t| t.tk_str().as_str()) {
-            Some(t) if t == "return" => {
+        match tk.map(|t| t.tk_str()) {
+            Some(t) if t.as_str() == "return" => {
             // Some(Token::Reserved { op }) if *op == "return" => {
                 self.peekable.next();
 
                 let expr = self.expr()?;
-                self.expect_next_symbol(";".to_string())?;
+                self.expect_next_symbol(";")?;
 
                 Ok(Stmt::Return { val: ExprWrapper::new(expr) })
             }
-            Some(t) if t == "{" => {
+            Some(t) if t.as_str() == "{" => {
             // Some(Token::Symbol(op)) if *op == "{" => {
                 self.peekable.next();
                 let mut stmts: Vec<Stmt> = Vec::new();
@@ -132,19 +132,19 @@ impl<'a> Parser<'a> {
 
                 Ok(Stmt::Block { stmts })
             }
-            Some(t) if t == "if" => {
+            Some(t) if t.as_str() == "if" => {
             // Some(Token::Reserved { op }) if *op == "if" => {
                 self.if_stmt()
             }
-            Some(t) if t == "while" => {
+            Some(t) if t.as_str() == "while" => {
             // Some(Token::Reserved { op }) if *op == "while" => {
                 self.while_stmt()
             }
-            Some(t) if t == "for" => {
+            Some(t) if t.as_str() == "for" => {
             // Some(Token::Reserved { op }) if *op == "for" => {
                 self.for_stmt()
             }
-            Some(t) if TYPE_NAMES.contains(&t) => {
+            Some(t) if TYPE_NAMES.contains(&t.as_str()) => {
             //Some(Token::Reserved { op }) if TYPE_NAMES.contains(&op.as_str()) => {
                 self.declaration()
             }

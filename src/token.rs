@@ -57,11 +57,11 @@ impl Token {
 
     pub fn tk_str(&self) -> Rc<String> {
         match self {
-            Token::Reserved(reserved) => reserved.tk_str,
-            Token::Num(num) => num.tk_str,
-            Token::Ident(ident) => ident.tk_str,
-            Token::Symbol(sym) => sym.tk_str,
-            Token::Str(str_content) => str_content.tk_str,
+            Token::Reserved(reserved) => Rc::clone(&reserved.tk_str),
+            Token::Num(num) => Rc::clone(&num.tk_str),
+            Token::Ident(ident) => Rc::clone(&ident.tk_str),
+            Token::Symbol(sym) => Rc::clone(&sym.tk_str),
+            Token::Str(str_content) => Rc::clone(&str_content.tk_str),
             Token::Eof => panic!("Eof does not have tk_str")
         }
     }

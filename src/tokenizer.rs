@@ -76,9 +76,10 @@ impl<'a> Tokenizer {
                     self.pos += 1;
 
                     let op = c.to_string();
+                    let rc_op = Rc::new(op);
                     let reserved = Reserved {
-                        op: Rc::new(op),
-                        tk_str: Rc::new(op)
+                        op: Rc::clone(&rc_op),
+                        tk_str: rc_op
                     };
                     let token = Token::Reserved(reserved);
                     tokens.push(token);
@@ -88,9 +89,10 @@ impl<'a> Tokenizer {
                     self.pos += 1;
 
                     let sym = c.to_string();
+                    let rc_sym = Rc::new(sym);
                     let symbol = Symbol {
-                        sym: Rc::new(sym),
-                        tk_str: Rc::new(sym)
+                        sym: Rc::clone(&rc_sym),
+                        tk_str: rc_sym
                     };
                     let token = Token::Symbol(symbol);
                     tokens.push(token);
@@ -100,11 +102,12 @@ impl<'a> Tokenizer {
                     let contents = self.read_string_literal();
                     match contents {
                         Ok(c) => {
+                            let bytes = c.clone();
                             let contents_string = String::from_utf8(c);
                             match contents_string {
                                 Ok(cs) => {
                                     let str_type = Str {
-                                        bytes: c,
+                                        bytes,
                                         tk_str: Rc::new(cs)
                                     };
 
@@ -137,17 +140,18 @@ impl<'a> Tokenizer {
                 // ident or reserved
                 'a' ..= 'z' | 'A' ..= 'Z' | '_' => {
                     let letter = self.get_letter();
-                    if KEYWORDS.contains(&&*letter) {
+                    let rc_letter = Rc::new(letter);
+                    if KEYWORDS.contains(&rc_letter.as_ref().as_str()) {
                         let reserved_type = Reserved {
-                            op: Rc::new(letter),
-                            tk_str: Rc::new(letter)
+                            op: Rc::clone(&rc_letter),
+                            tk_str: rc_letter
                         };
 
                         tokens.push(Token::Reserved(reserved_type));
                     } else {
                         let ident_type = Ident {
-                            name: Rc::new(letter),
-                            tk_str: Rc::new(letter)
+                            name: Rc::clone(&rc_letter),
+                            tk_str: rc_letter
                         };
 
                         tokens.push(Token::Ident(ident_type));
@@ -188,9 +192,10 @@ impl<'a> Tokenizer {
             _ => return Err("token must exist after =".to_string())
         };
 
+        let rc_op = Rc::new(op);
         let reserved_type = Reserved {
-            op: Rc::new(op),
-            tk_str: Rc::new(op)
+            op: Rc::clone(&rc_op),
+            tk_str: rc_op
         };
 
         Ok(Token::Reserved(reserved_type))
@@ -202,9 +207,11 @@ impl<'a> Tokenizer {
             Some('=') => {
                 self.pos += 1;
                 let op = "!=".to_string();
+                let rc_op = Rc::new(op);
+
                 let reserved_type = Reserved {
-                    op: Rc::new(op),
-                    tk_str: Rc::new(op)
+                    op: Rc::clone(&rc_op),
+                    tk_str: rc_op
                 };
 
                 Ok(Token::Reserved(reserved_type))
@@ -224,9 +231,10 @@ impl<'a> Tokenizer {
             _ => return Err("token must exist after <".to_string())
         };
 
+        let rc_op = Rc::new(op);
         let reserved_type = Reserved {
-            op: Rc::new(op),
-            tk_str: Rc::new(op)
+            op: Rc::clone(&rc_op),
+            tk_str: rc_op
         };
         Ok(Token::Reserved(reserved_type))
     }
@@ -242,12 +250,12 @@ impl<'a> Tokenizer {
             _ => return Err("token must exist after >".to_string())
         };
 
+        let rc_op = Rc::new(op);
         let reserved_type = Reserved {
-            op: Rc::new(op),
-            tk_str: Rc::new(op)
+            op: Rc::clone(&rc_op),
+            tk_str: rc_op
         };
         Ok(Token::Reserved(reserved_type))
-
     }
 
     fn read_string_literal(&mut self) -> Result<Vec<u8>, String> {
