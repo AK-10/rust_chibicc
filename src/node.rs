@@ -49,9 +49,9 @@ pub enum Stmt {
         then: Box<Stmt>
     },
     For {
-        init: Option<Box<Stmt>>, // only ExprStmt
+        init: Box<Option<Stmt>>, // only ExprStmt
         cond: Option<ExprWrapper>,
-        inc: Option<Box<Stmt>>, // only ExprStmt
+        inc: Box<Option<Stmt>>, // only ExprStmt
         then: Box<Stmt>,
     },
     Block {

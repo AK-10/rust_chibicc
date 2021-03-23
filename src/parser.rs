@@ -189,46 +189,44 @@ impl<'a> Parser<'a> {
     fn equality(&mut self) -> Result<Expr, String> {
         let mut node = self.relational()?;
 
-        // while let Some(token) = self.peekable.peek() {
-        //     match token {
-        //         Token::Reserved(Reserved { op, .. }) if op.as_str() == "==" => {
-        //             self.peekable.next();
+        while let Some(token) = self.peekable.peek() {
+            match token {
+                Token::Reserved(Reserved { op, .. }) if op.as_str() == "==" => {
+                    self.peekable.next();
 
-        //             let rhs = self.relational()?;
-        //             node = Expr::Eq { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
-        //         }
-        //         Token::Reserved(reserved) if  == "!=" => {
-        //             self.peekable.next();
+                    let rhs = self.relational()?;
+                    node = Expr::Eq { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
+                }
+                Token::Reserved(Reserved { op, .. }) if op.as_str() == "!=" => {
+                    self.peekable.next();
 
-        //             let rhs = self.relational()?;
-        //             node = Expr::Neq { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
-        //         }
-        //         _ => { return Ok(node); }
-        //     }
-        // }
-
-        // Ok(node)
-
-        while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
-            self.peekable.next();
-            let rhs = self.relational()?;
-
-            match op.as_str() {
-                "==" => {
-                    node = Expr::Eq {
-                        lhs: ExprWrapper::new(node),
-                        rhs: ExprWrapper::new(rhs)
-                    };
-                },
-                "!=" => {
-                    node = Expr::Neq {
-                        lhs: ExprWrapper::new(node),
-                        rhs: ExprWrapper::new(rhs)
-                    };
-                },
-                _ => break
+                    let rhs = self.relational()?;
+                    node = Expr::Neq { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
+                }
+                _ => { return Ok(node); }
             }
         }
+
+        // while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
+        //     self.peekable.next();
+        //     let rhs = self.relational()?;
+
+        //     match op.as_str() {
+        //         "==" => {
+        //             node = Expr::Eq {
+        //                 lhs: ExprWrapper::new(node),
+        //                 rhs: ExprWrapper::new(rhs)
+        //             };
+        //         },
+        //         "!=" => {
+        //             node = Expr::Neq {
+        //                 lhs: ExprWrapper::new(node),
+        //                 rhs: ExprWrapper::new(rhs)
+        //             };
+        //         },
+        //         _ => break
+        //     }
+        // }
 
         Ok(node)
     }
@@ -237,35 +235,35 @@ impl<'a> Parser<'a> {
     fn relational(&mut self) -> Result<Expr, String> {
         let mut node = self.add()?;
 
-        // while let Some(token) = self.peekable.peek() {
-        //     match token {
-        //         Token::Reserved { op } if *op == "<" => {
-        //             self.peekable.next();
+        while let Some(token) = self.peekable.peek() {
+            match token {
+                Token::Reserved(Reserved { op, .. }) if op.as_str() == "<" => {
+                    self.peekable.next();
 
-        //             let rhs = self.add()?;
-        //             node = Expr::Lt { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
-        //         }
-        //         Token::Reserved { op } if *op == "<=" => {
-        //             self.peekable.next();
+                    let rhs = self.add()?;
+                    node = Expr::Lt { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
+                }
+                Token::Reserved(Reserved { op, .. }) if op.as_str() == "<=" => {
+                    self.peekable.next();
 
-        //             let rhs = self.add()?;
-        //             node = Expr::Le { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
-        //         }
-        //         Token::Reserved { op } if *op == ">" => {
-        //             self.peekable.next();
+                    let rhs = self.add()?;
+                    node = Expr::Le { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
+                }
+                Token::Reserved(Reserved { op, .. }) if op.as_str() == ">" => {
+                    self.peekable.next();
 
-        //             let rhs = self.add()?;
-        //             node = Expr::Gt { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
-        //         }
-        //         Token::Reserved { op } if *op == ">=" => {
-        //             self.peekable.next();
+                    let rhs = self.add()?;
+                    node = Expr::Gt { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
+                }
+                Token::Reserved(Reserved { op, .. }) if op.as_str() == ">=" => {
+                    self.peekable.next();
 
-        //             let rhs = self.add()?;
-        //             node = Expr::Ge { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
-        //         }
-        //         _ => { return Ok(node); }
-        //     }
-        // }
+                    let rhs = self.add()?;
+                    node = Expr::Ge { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
+                }
+                _ => { return Ok(node); }
+            }
+        }
         while let Some(Token::Reserved(Reserved { op, .. })) =self.peekable.peek() {
             self.peekable.next();
             let rhs = self.add()?;
@@ -306,49 +304,49 @@ impl<'a> Parser<'a> {
     fn add(&mut self) -> Result<Expr, String> {
         let mut node = self.mul()?;
 
-        // while let Some(token) = self.peekable.peek() {
-        //     match token {
-        //         // "+" mul
-        //         Token::Reserved { op } if *op == "+" => {
-        //             self.peekable.next();
+        while let Some(token) = self.peekable.peek() {
+            match token {
+                // "+" mul
+                Token::Reserved(Reserved { op, .. }) if op.as_str() == "+" => {
+                    self.peekable.next();
 
-        //             let lhs = ExprWrapper::new(node);
-        //             let rhs = ExprWrapper::new(self.mul()?);
+                    let lhs = ExprWrapper::new(node);
+                    let rhs = ExprWrapper::new(self.mul()?);
 
-        //             node = Parser::new_add(lhs, rhs)?;
-        //         },
-        //         // "-" mul
-        //         Token::Reserved { op } if *op == "-" => {
-        //             self.peekable.next();
-        //             let lhs = ExprWrapper::new(node);
-        //             let rhs = ExprWrapper::new(self.mul()?);
-
-        //             node = Parser::new_sub(lhs, rhs)?;
-        //         },
-        //         // mul
-        //         _ => { return Ok(node); }
-        //     };
-        // }
-        while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
-            self.peekable.next();
-            let rhs = self.mul()?;
-
-            match op.as_str() {
-                "+" => {
-                    node = Parser::new_add(
-                        ExprWrapper::new(node),
-                        ExprWrapper::new(rhs)
-                    )?;
+                    node = Parser::new_add(lhs, rhs)?;
                 },
-                "-" => {
-                    node = Parser::new_sub(
-                        ExprWrapper::new(node),
-                        ExprWrapper::new(rhs)
-                    )?;
+                // "-" mul
+                Token::Reserved(Reserved { op, .. }) if op.as_str() == "-" => {
+                    self.peekable.next();
+                    let lhs = ExprWrapper::new(node);
+                    let rhs = ExprWrapper::new(self.mul()?);
+
+                    node = Parser::new_sub(lhs, rhs)?;
                 },
-                _ => break
-            }
+                // mul
+                _ => { return Ok(node); }
+            };
         }
+        // while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
+        //     self.peekable.next();
+        //     let rhs = self.mul()?;
+
+        //     match op.as_str() {
+        //         "+" => {
+        //             node = Parser::new_add(
+        //                 ExprWrapper::new(node),
+        //                 ExprWrapper::new(rhs)
+        //             )?;
+        //         },
+        //         "-" => {
+        //             node = Parser::new_sub(
+        //                 ExprWrapper::new(node),
+        //                 ExprWrapper::new(rhs)
+        //             )?;
+        //         },
+        //         _ => break
+        //     }
+        // }
 
         Ok(node)
     }
@@ -356,49 +354,49 @@ impl<'a> Parser<'a> {
     fn mul(&mut self) -> Result<Expr, String> {
         let mut node = self.unary()?;
 
-        // while let Some(token) = self.peekable.peek() {
-        //     match token {
-        //         // "*" primary
-        //         Token::Reserved { op } if *op == "*" => {
-        //             self.peekable.next();
+        while let Some(token) = self.peekable.peek() {
+            match token {
+                // "*" primary
+                Token::Reserved(Reserved { op, .. }) if op.as_str() == "*" => {
+                    self.peekable.next();
 
-        //             let rhs = self.unary()?;
-        //             node = Expr::Mul { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
-        //         },
-
-        //         // "/" primary
-        //         Token::Reserved { op } if *op == "/" => {
-        //             self.peekable.next();
-
-        //             let rhs = self.unary()?;
-        //             node = Expr::Div { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
-        //         },
-        //         _ => {
-        //             return Ok(node);
-        //         }
-        //     }
-        // }
-
-        while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
-            self.peekable.next();
-            let rhs = self.unary()?;
-
-            match op.as_str() {
-                "*" => {
-                    node = Expr::Mul {
-                        lhs: ExprWrapper::new(node),
-                        rhs: ExprWrapper::new(rhs)
-                    };
+                    let rhs = self.unary()?;
+                    node = Expr::Mul { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
                 },
-                "/" => {
-                    node = Expr::Div {
-                        lhs: ExprWrapper::new(node),
-                        rhs: ExprWrapper::new(rhs)
-                    };
+
+                // "/" primary
+                Token::Reserved(Reserved { op, .. }) if op.as_str() == "/" => {
+                    self.peekable.next();
+
+                    let rhs = self.unary()?;
+                    node = Expr::Div { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
                 },
-                _ => break
+                _ => {
+                    return Ok(node);
+                }
             }
         }
+
+        // while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
+        //     self.peekable.next();
+        //     let rhs = self.unary()?;
+
+        //     match op.as_str() {
+        //         "*" => {
+        //             node = Expr::Mul {
+        //                 lhs: ExprWrapper::new(node),
+        //                 rhs: ExprWrapper::new(rhs)
+        //             };
+        //         },
+        //         "/" => {
+        //             node = Expr::Div {
+        //                 lhs: ExprWrapper::new(node),
+        //                 rhs: ExprWrapper::new(rhs)
+        //             };
+        //         },
+        //         _ => break
+        //     }
+        // }
 
         Ok(node)
     }
@@ -562,8 +560,9 @@ impl<'a> Parser<'a> {
                 Ok(Expr::Num { val: size as isize })
             }
             // unexpected
-            _ => {
-                Err("unexpected token at primary".to_string())
+            unexpected => {
+                let msg = format!("{:?} is unexpected token at primary", unexpected);
+                Err(msg)
             }
         }
     }
