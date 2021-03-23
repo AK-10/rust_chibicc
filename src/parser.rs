@@ -408,11 +408,13 @@ impl<'a> Parser<'a> {
 
         match tk {
             Some(Token::Reserved(Reserved { op, .. })) => {
-                self.peekable.next();
-
                 match op.as_str() {
-                    "+" => self.primary(),
+                    "+" => {
+                        self.peekable.next();
+                        self.primary()
+                    },
                     "-" => {
+                        self.peekable.next();
                         let rhs = self.unary()?;
                         Ok(Expr::Sub {
                             lhs: ExprWrapper::new(Expr::Num { val: 0 }),
@@ -420,49 +422,19 @@ impl<'a> Parser<'a> {
                          })
                     },
                     "*" => {
+                        self.peekable.next();
                         let operand = self.unary()?;
                         Ok(Expr::Deref { operand: ExprWrapper::new(operand) })
                     },
                     "&" => {
+                        self.peekable.next();
                         let operand = self.unary()?;
                         Ok(Expr::Addr { operand: ExprWrapper::new(operand) })
                     },
-                    unsupported => {
-                        let msg = format!("unsupported unary operator: {}", unsupported);
-                        Err(msg)
-                    }
+                    _ => self.postfix()
                 }
             },
             _ => self.postfix()
-            // Some(Token::Reserved { op }) if *op == "+" => {
-            //     self.peekable.next();
-
-            //     self.primary()
-            // },
-            // Some(Token::Reserved { op }) if *op == "-" => {
-            //     self.peekable.next();
-
-            //     let rhs = self.unary()?;
-            //     Ok(Expr::Sub {
-            //         lhs: ExprWrapper::new(Expr::Num { val: 0 }),
-            //         rhs: ExprWrapper::new(rhs)
-            //     })
-            // },
-            // Some(Token::Reserved { op }) if *op == "*" => {
-            //     self.peekable.next();
-            //     let operand = self.unary()?;
-
-            //     Ok(Expr::Deref { operand: ExprWrapper::new(operand) })
-            // },
-            // Some(Token::Reserved { op }) if *op == "&" => {
-            //     self.peekable.next();
-            //     let operand = self.unary()?;
-
-            //     Ok(Expr::Addr { operand: ExprWrapper::new(operand) })
-            // }
-            // _ => {
-            //     self.postfix()
-            // }
         }
     }
 
