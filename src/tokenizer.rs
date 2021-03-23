@@ -1,5 +1,5 @@
 use crate::token::Token;
-use crate::token::token_type::{ Reserved, Num, Ident, Symbol, Str };
+use crate::token::token_type::*;
 
 use std::str::FromStr;
 use std::rc::Rc;

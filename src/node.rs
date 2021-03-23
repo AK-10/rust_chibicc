@@ -121,7 +121,7 @@ pub enum Expr {
         val: ExprWrapper
     },
     FnCall {
-        fn_name: String,
+        fn_name: Rc<String>,
         args: Vec<ExprWrapper>
     },
     Addr {
