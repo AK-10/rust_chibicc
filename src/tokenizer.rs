@@ -1,5 +1,8 @@
 use crate::token::Token;
+use crate::token::token_type::{ Reserved, Num, Ident, Symbol, Str };
+
 use std::str::FromStr;
+use std::rc::Rc;
 
 // TODO: LexerErrorの定義
 // TODO: Location structがほしい
@@ -71,20 +74,45 @@ impl<'a> Tokenizer {
                 // binary or unary oeprator
                 '+' | '-' | '*' | '&' | '/' => {
                     self.pos += 1;
-                    let token = Token::Reserved { op: c.to_string() };
+
+                    let op = c.to_string();
+                    let reserved = Reserved {
+                        op: Rc::new(op),
+                        tk_str: Rc::new(op)
+                    };
+                    let token = Token::Reserved(reserved);
                     tokens.push(token);
                 },
                 // symbol
                 '(' | ')' | ';' | '{' | '}' | '.' | ',' | '[' | ']' => {
                     self.pos += 1;
-                    let token = Token::Symbol(c.to_string());
+
+                    let sym = c.to_string();
+                    let symbol = Symbol {
+                        sym: Rc::new(sym),
+                        tk_str: Rc::new(sym)
+                    };
+                    let token = Token::Symbol(symbol);
                     tokens.push(token);
                 },
                 // string
                 '"' => {
                     let contents = self.read_string_literal();
                     match contents {
-                        Ok(c) => tokens.push(Token::Str(c)),
+                        Ok(c) => {
+                            let contents_string = String::from_utf8(c);
+                            match contents_string {
+                                Ok(cs) => {
+                                    let str_type = Str {
+                                        bytes: c,
+                                        tk_str: Rc::new(cs)
+                                    };
+
+                                    tokens.push(Token::Str(str_type));
+                                },
+                                Err(e) => return Err(e.to_string())
+                            }
+                        },
                         Err(e) => {
                             let msg = format!("error occured in tokenizing string: {}", e);
                             return Err(msg)
@@ -93,11 +121,12 @@ impl<'a> Tokenizer {
                 },
                 // num
                 '0' ..= '9' => {
-                    let num = self.strtol::<isize>()?;
-                    let token = Token::Num {
+                    let (num, tk_str) = self.strtol::<isize>()?;
+                    let num_type = Num {
                         val: num,
-                        t_str: num.to_string()
+                        tk_str: Rc::new(tk_str)
                     };
+                    let token = Token::Num(num_type);
 
                     tokens.push(token);
                 },
@@ -109,9 +138,19 @@ impl<'a> Tokenizer {
                 'a' ..= 'z' | 'A' ..= 'Z' | '_' => {
                     let letter = self.get_letter();
                     if KEYWORDS.contains(&&*letter) {
-                        tokens.push(Token::Reserved{ op: letter });
+                        let reserved_type = Reserved {
+                            op: Rc::new(letter),
+                            tk_str: Rc::new(letter)
+                        };
+
+                        tokens.push(Token::Reserved(reserved_type));
                     } else {
-                        tokens.push(Token::Ident { name: letter })
+                        let ident_type = Ident {
+                            name: Rc::new(letter),
+                            tk_str: Rc::new(letter)
+                        };
+
+                        tokens.push(Token::Ident(ident_type));
                     }
                 },
                 unsupported => {
@@ -139,14 +178,22 @@ impl<'a> Tokenizer {
 
     fn tokenize_eq(&mut self) -> Result<Token, String> {
         self.pos += 1;
-        match self.current() {
+
+        let op = match self.current() {
             Some('=') => {
                 self.pos += 1;
-                Ok(Token::Reserved { op: "==".to_string() })
+                "==".to_string()
             },
-            Some(_) => Ok(Token::Reserved { op: "=".to_string() }),
-            _ => Err("token must exist after =".to_string())
-        }
+            Some(_) => "=".to_string(),
+            _ => return Err("token must exist after =".to_string())
+        };
+
+        let reserved_type = Reserved {
+            op: Rc::new(op),
+            tk_str: Rc::new(op)
+        };
+
+        Ok(Token::Reserved(reserved_type))
     }
 
     fn tokenize_not(&mut self) -> Result<Token, String> {
@@ -154,7 +201,13 @@ impl<'a> Tokenizer {
         match self.current() {
             Some('=') => {
                 self.pos += 1;
-                Ok(Token::Reserved { op: "!=".to_string() })
+                let op = "!=".to_string();
+                let reserved_type = Reserved {
+                    op: Rc::new(op),
+                    tk_str: Rc::new(op)
+                };
+
+                Ok(Token::Reserved(reserved_type))
             },
             _ => Err("token must exist after !".to_string())
         }
@@ -162,26 +215,39 @@ impl<'a> Tokenizer {
 
     fn tokenize_lt(&mut self) -> Result<Token, String> {
         self.pos += 1;
-        match self.current() {
+        let op = match self.current() {
             Some('=') => {
                 self.pos += 1;
-                Ok(Token::Reserved { op: "<=".to_string() })
+                "<=".to_string()
             },
-            Some(_) => Ok(Token::Reserved { op: "<".to_string() }),
-            _ => Err("token must exist after >".to_string())
-        }
+            Some(_) => "<".to_string(),
+            _ => return Err("token must exist after <".to_string())
+        };
+
+        let reserved_type = Reserved {
+            op: Rc::new(op),
+            tk_str: Rc::new(op)
+        };
+        Ok(Token::Reserved(reserved_type))
     }
 
     fn tokenize_gt(&mut self) -> Result<Token, String> {
         self.pos += 1;
-        match self.current() {
+        let op = match self.current() {
             Some('=') => {
                 self.pos += 1;
-                Ok(Token::Reserved { op: ">=".to_string() })
+                ">=".to_string()
             },
-            Some(_) => Ok(Token::Reserved { op: ">".to_string() }),
-            _ => Err("token must exist after >".to_string())
-        }
+            Some(_) => ">".to_string(),
+            _ => return Err("token must exist after >".to_string())
+        };
+
+        let reserved_type = Reserved {
+            op: Rc::new(op),
+            tk_str: Rc::new(op)
+        };
+        Ok(Token::Reserved(reserved_type))
+
     }
 
     fn read_string_literal(&mut self) -> Result<Vec<u8>, String> {
@@ -236,7 +302,7 @@ impl<'a> Tokenizer {
         escaped.expect("failed read_escaped_literal")
     }
 
-    fn strtol<T: FromStr>(&mut self) -> Result<T, String> {
+    fn strtol<T: FromStr>(&mut self) -> Result<(T, String), String> {
         let mut num_str = String::new();
         while let Some(c) = self.current() {
             match c {
@@ -249,6 +315,7 @@ impl<'a> Tokenizer {
         }
 
         num_str.parse::<T>()
+            .map(|i| (i, num_str)) // Result<T, String> -> Result<(T, String), String>
             .or(Err("failed pasring num".to_string()))
     }
 
