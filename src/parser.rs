@@ -530,12 +530,7 @@ impl<'a> Parser<'a> {
                 // function call
                 self.peekable.next();
                 if let Ok(_) = self.expect_next_symbol("(") {
-                    // 引数なし
-                    if let Ok(_) = self.expect_next_symbol(")") {
-                        return Ok(Expr::FnCall { fn_name: Rc::clone(name), args: Vec::new() })
-                    }
                     let args = self.parse_args()?;
-                    self.expect_next_symbol(")")?;
 
                     return Ok(Expr::FnCall { fn_name: Rc::clone(name), args })
                 }
@@ -546,20 +541,20 @@ impl<'a> Parser<'a> {
                     Err(format!("undefined variable: {:?}", name).to_string())
                 }
             }
-            Some(Token::Str(contents)) => {
+            Some(Token::Str(Str { bytes, .. })) => {
                 self.peekable.next();
                 let ty = Type::Array {
                     base: Rc::new(Type::Char),
-                    len: contents.len()
+                    len: bytes.len()
                 };
 
                 let label = self.new_label();
-                let var = self.new_gvar_with_contents(&label, Rc::new(ty), &contents);
+                let var = self.new_gvar_with_contents(&label, Rc::new(ty), &bytes);
                 self.globals.push(Rc::clone(&var));
 
                 Ok(Expr::Var(var))
             }
-            Some(Token::Reserved(op)) if  == "sizeof" => {
+            Some(Token::Reserved(Reserved { op, .. })) if op.as_str() == "sizeof" => {
                 self.peekable.next();
                 let node = self.unary()?;
                 let size = node.detect_type().size();

@@ -179,11 +179,17 @@ impl<'a> Parser<'a> {
 
     // 関数呼び出しにおける引数をparseする
     pub(in super) fn parse_args(&mut self) -> Result<Vec<ExprWrapper>, String> {
+        // no arguments
+        if let Ok(_) = self.expect_next_symbol(")") {
+            return Ok(vec![])
+        }
         // 最初の一個だけ読んでおく
         let mut args = vec![ExprWrapper::new(self.expr()?)];
-        while let Ok(_) = self.expect_next_symbol(",".to_string()) {
+        while let Ok(_) = self.expect_next_symbol(",") {
             args.push(ExprWrapper::new(self.expr()?));
         }
+
+        self.expect_next_symbol(")")?;
 
         Ok(args)
     }
