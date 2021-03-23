@@ -3,36 +3,37 @@ pub mod token_type {
 
     #[derive(Debug, Clone, PartialEq)]
     pub struct Reserved {
-        op: Rc<String>,
-        tk_str: Rc<String>
+        pub op: Rc<String>,
+        pub tk_str: Rc<String>
     }
 
     #[derive(Debug, Clone, PartialEq)]
     pub struct Num {
-        val: isize,
-        tk_str: Rc<String>
+        pub val: isize,
+        pub tk_str: Rc<String>
     }
 
     #[derive(Debug, Clone, PartialEq)]
     pub struct Ident {
-        name: Rc<String>,
-        tk_str: Rc<String>
+        pub name: Rc<String>,
+        pub tk_str: Rc<String>
     }
 
     #[derive(Debug, Clone, PartialEq)]
     pub struct Symbol {
-        sym: Rc<String>,
-        tk_str: Rc<String>
+        pub sym: Rc<String>,
+        pub tk_str: Rc<String>
     }
 
     #[derive(Debug, Clone, PartialEq)]
     pub struct Str {
-        bytes: Vec<u8>,
-        tk_str: Rc<String>
+        pub bytes: Vec<u8>,
+        pub tk_str: Rc<String>
     }
 }
 
 use token_type::{ Reserved, Num, Ident, Symbol, Str };
+use std::rc::Rc;
 
 // TODO: new_type パターンに置き換えたい
 // op, nameなどのアクセスがかなりめんどくさい
@@ -51,6 +52,17 @@ impl Token {
         match self {
             Token::Eof => true,
             _ => false
+        }
+    }
+
+    pub fn tk_str(&self) -> Rc<String> {
+        match self {
+            Token::Reserved(reserved) => reserved.tk_str,
+            Token::Num(num) => num.tk_str,
+            Token::Ident(ident) => ident.tk_str,
+            Token::Symbol(sym) => sym.tk_str,
+            Token::Str(str_content) => str_content.tk_str,
+            Token::Eof => panic!("Eof does not have tk_str")
         }
     }
 }

@@ -2,6 +2,7 @@ use crate::node::{ Stmt, Expr, ExprWrapper };
 use crate::token::{ Token, TokenIter, /* TokenIterErr */ };
 use crate::program::{ Function, Var, Program };
 use crate::_type::Type;
+use crate::token::token_type::*;
 
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -72,7 +73,7 @@ impl<'a> Parser<'a> {
     fn function(&mut self) -> Result<Function, String> {
         self.base_type()?;
 
-        if let Some(Token::Ident{ name }) = self.peekable.next() {
+        if let Some(Token::Ident(ident)) = self.peekable.next() {
             // scopeを保存するため，コピーを持っておく
             let sc = self.scope.clone();
 
@@ -93,7 +94,7 @@ impl<'a> Parser<'a> {
             let locals = self.locals.to_vec();
             self.locals.clear();
 
-            Ok(Function::new(name.to_string(), nodes, locals, params))
+            Ok(Function::new(Rc::clone(&ident.name), nodes, locals, params))
         } else {
             Err("expect ident, but different".to_string())
         }
@@ -107,8 +108,9 @@ impl<'a> Parser<'a> {
     //       | declaration
     fn stmt(&mut self) -> Result<Stmt, String> {
         let tk = self.peekable.peek();
-        match tk {
-            Some(Token::Reserved { op }) if *op == "return" => {
+        match tk.map(|t| t.tk_str().as_str()) {
+            Some(t) if t == "return" => {
+            // Some(Token::Reserved { op }) if *op == "return" => {
                 self.peekable.next();
 
                 let expr = self.expr()?;
@@ -116,7 +118,8 @@ impl<'a> Parser<'a> {
 
                 Ok(Stmt::Return { val: ExprWrapper::new(expr) })
             }
-            Some(Token::Symbol(op)) if *op == "{" => {
+            Some(t) if t == "{" => {
+            // Some(Token::Symbol(op)) if *op == "{" => {
                 self.peekable.next();
                 let mut stmts: Vec<Stmt> = Vec::new();
 
@@ -129,16 +132,20 @@ impl<'a> Parser<'a> {
 
                 Ok(Stmt::Block { stmts })
             }
-            Some(Token::Reserved { op }) if *op == "if" => {
+            Some(t) if t == "if" => {
+            // Some(Token::Reserved { op }) if *op == "if" => {
                 self.if_stmt()
             }
-            Some(Token::Reserved { op }) if *op == "while" => {
+            Some(t) if t == "while" => {
+            // Some(Token::Reserved { op }) if *op == "while" => {
                 self.while_stmt()
             }
-            Some(Token::Reserved { op }) if *op == "for" => {
+            Some(t) if t == "for" => {
+            // Some(Token::Reserved { op }) if *op == "for" => {
                 self.for_stmt()
             }
-            Some(Token::Reserved { op }) if TYPE_NAMES.contains(&op.as_str()) => {
+            Some(t) if TYPE_NAMES.contains(&t) => {
+            //Some(Token::Reserved { op }) if TYPE_NAMES.contains(&op.as_str()) => {
                 self.declaration()
             }
             _ => {
@@ -182,25 +189,47 @@ impl<'a> Parser<'a> {
     fn equality(&mut self) -> Result<Expr, String> {
         let mut node = self.relational()?;
 
-        while let Some(token) = self.peekable.peek() {
-            match token {
-                Token::Reserved { op } if *op == "==" => {
-                    self.peekable.next();
+        while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
+            self.peekable.next();
+            let rhs = self.relational()?;
 
-                    let rhs = self.relational()?;
-                    node = Expr::Eq { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
-                }
-                Token::Reserved { op } if *op == "!=" => {
-                    self.peekable.next();
-
-                    let rhs = self.relational()?;
-                    node = Expr::Neq { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
-                }
-                _ => { return Ok(node); }
+            match op.as_str() {
+                "==" => {
+                    node = Expr::Eq {
+                        lhs: ExprWrapper::new(node),
+                        rhs: ExprWrapper::new(rhs)
+                    };
+                },
+                "!=" => {
+                    node = Expr::Neq {
+                        lhs: ExprWrapper::new(node),
+                        rhs: ExprWrapper::new(rhs)
+                    };
+                },
+                _ => break
             }
         }
 
         Ok(node)
+        // while let Some(token) = self.peekable.peek() {
+        //     match token {
+        //         Token::Reserved(Reserved { op, .. }) if op.as_str() == "==" => {
+        //             self.peekable.next();
+
+        //             let rhs = self.relational()?;
+        //             node = Expr::Eq { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
+        //         }
+        //         Token::Reserved(reserved) if  == "!=" => {
+        //             self.peekable.next();
+
+        //             let rhs = self.relational()?;
+        //             node = Expr::Neq { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
+        //         }
+        //         _ => { return Ok(node); }
+        //     }
+        // }
+
+        // Ok(node)
     }
 
     // relational := add ("<" add | "<=" add | ">" add | ">=" add)*
@@ -432,7 +461,7 @@ impl<'a> Parser<'a> {
 
                 Ok(Expr::Var(var))
             }
-            Some(Token::Reserved { op }) if op == "sizeof" => {
+            Some(Token::Reserved(op)) if  == "sizeof" => {
                 self.peekable.next();
                 let node = self.unary()?;
                 let size = node.detect_type().size();

@@ -23,7 +23,7 @@ pub struct Program {
 
 #[derive(Debug, PartialEq)]
 pub struct Function {
-    pub name: String,
+    pub name: Rc<String>,
     pub nodes: Vec<Stmt>,
     pub locals: Vec<Rc<RefCell<Var>>>, // Exprが持つVarと同じものを指したいためヒープにデータを置く
     pub params: Vec<Rc<RefCell<Var>>>,
@@ -31,7 +31,7 @@ pub struct Function {
 }
 
 impl Function {
-    pub fn new(name: String, nodes: Vec<Stmt>, locals: Vec<Rc<RefCell<Var>>>, params: Vec<Rc<RefCell<Var>>>) -> Self {
+    pub fn new(name: Rc<String>, nodes: Vec<Stmt>, locals: Vec<Rc<RefCell<Var>>>, params: Vec<Rc<RefCell<Var>>>) -> Self {
         let (fixed_locals, offset) = Self::calc_offsets(&locals);
 
         Self {
