@@ -1,6 +1,7 @@
 use crate::parser::{ Parser, TYPE_NAMES };
 use crate::node::{ Stmt, ExprWrapper, Expr };
 use crate::token::Token;
+use crate::token::token_type::*;
 use crate::program::{ Var, Offset, align_to };
 use crate::_type::{ Type, Member };
 
@@ -21,10 +22,11 @@ impl<'a> Parser<'a> {
         self.peekable.next();
 
         // primaryだと()なしでも動くようになるが, Cコンパイラではなくなる
+        // が面倒なので一旦これで(modern)
         let cond = self.primary()?;
         let then = self.stmt()?;
         let els = match self.peekable.peek() {
-            Some(Token::Reserved { op }) if *op == "else" => {
+            Some(Token::Reserved(Reserved { op, .. })) if op.as_str() == "else" => {
                 self.peekable.next();
 
                 Some(self.stmt()?)
@@ -82,7 +84,7 @@ impl<'a> Parser<'a> {
         let ty = self.base_type()?;
 
         match self.peekable.peek() {
-            Some(Token::Ident { name }) => {
+            Some(Token::Ident(Ident { name, .. })) => {
                 self.peekable.next();
                 let ty = self.read_type_suffix(ty)?;
 
@@ -150,7 +152,7 @@ impl<'a> Parser<'a> {
         let expected = word.into();
 
         match tk {
-            Some(Token::Symbol(op)) if *op == expected => {
+            Some(Token::Symbol(Symbol { sym, .. })) if sym.as_str() == expected => {
                 self.peekable.next();
                 Ok(())
             },
@@ -166,7 +168,7 @@ impl<'a> Parser<'a> {
         let expected = word.into();
 
         match tk {
-            Some(Token::Reserved { op }) if *op == expected => {
+            Some(Token::Reserved(Reserved { op, .. })) if op.as_str() == expected => {
                 self.peekable.next();
                 Ok(())
             },
@@ -206,7 +208,7 @@ impl<'a> Parser<'a> {
         let ty = self.base_type()?;
         let first_arg = self.peekable.peek();
 
-        if let Some(Token::Ident { name }) = first_arg {
+        if let Some(Token::Ident(Ident { name, .. })) = first_arg {
             self.peekable.next();
 
             params.push(self.new_var(name, ty, true));
@@ -217,7 +219,7 @@ impl<'a> Parser<'a> {
         while let Ok(_) = self.expect_next_symbol(",".to_string()) {
             let ty = self.base_type()?;
             match self.peekable.peek() {
-                Some(Token::Ident { name }) => {
+                Some(Token::Ident(Ident { name, .. })) => {
                     self.peekable.next();
 
                     params.push(self.new_var(name, ty, true));
@@ -250,8 +252,8 @@ impl<'a> Parser<'a> {
             self.struct_decl()?
         };
 
-        while let Some(Token::Reserved { op }) = self.peekable.peek() {
-            if op == "*" {
+        while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
+            if op.as_str() == "*" {
                 ty = Type::Ptr { base: Rc::new(ty) };
                 self.peekable.next();
             } else {
@@ -302,24 +304,17 @@ impl<'a> Parser<'a> {
         let base_ty = self.base_type()?;
         let ident = self.expect_next_ident()?;
 
-        match ident {
-            Token::Ident { name } => {
-                let ty = self.read_type_suffix(base_ty)?;
-                self.expect_next_symbol(";".to_string())?;
+        let ty = self.read_type_suffix(base_ty)?;
+        self.expect_next_symbol(";")?;
 
-                Ok(self.new_var(&name, ty, false))
-            },
-            _ => {
-                Err("".to_string())
-            }
-        }
+        Ok(self.new_var(ident.tk_str().as_ref(), ty, false))
     }
 
     pub(in super) fn read_type_suffix(&mut self, base: Rc<Type>) -> Result<Rc<Type>, String> {
         match self.expect_next_symbol("[".to_string()) {
             Ok(_) => {
                 match self.peekable.next() {
-                    Some(Token::Num { val, .. }) => {
+                    Some(Token::Num(Num { val, .. })) => {
                         if let Err(e) = self.expect_next_symbol("]".to_string()) {
                             Err(e)
                         } else {
@@ -402,7 +397,7 @@ impl<'a> Parser<'a> {
 
     pub(in super) fn is_typename(&self) -> bool {
         self.peekable.peek().map(|tk| {
-            if let Token::Reserved { op } = tk {
+            if let Token::Reserved(Reserved { op, .. }) = tk {
                 TYPE_NAMES.contains(&op.as_str())
             } else {
                 false
@@ -452,18 +447,12 @@ impl<'a> Parser<'a> {
     pub(in super) fn struct_member(&mut self) -> Result<Member, String> {
         let mut ty = self.base_type()?;
 
-        // TODO: どうにかしたほうがいい
         let ident = self.expect_next_ident()?;
-        let name = match ident {
-            Token::Ident { name } => name,
-            _ => unreachable!("ident is not Token::Ident")
-        };
-
         ty = self.read_type_suffix(ty)?;
 
         let _ = self.expect_next_symbol(";")?;
 
-        Ok(Member::new(ty, name))
+        Ok(Member::new(ty, ident.tk_str().as_str()))
     }
 
     // TODO: AsRef<Type> Structに変えたい
@@ -475,20 +464,15 @@ impl<'a> Parser<'a> {
         let ty = expr.detect_type();
         if let Type::Struct { members, .. } = ty.as_ref() {
             let ident = self.expect_next_ident()?;
-            let name = match ident {
-                Token::Ident { name } => name,
-                _ => unreachable!("ident is not Token::Ident")
-            };
-
+            let name = ident.tk_str();
             // TODO: self.find_memberに置き換える
             let member = members.iter()
-                            .find(|mem| mem.name == name)
+                            .find(|mem| mem.name == name.as_str())
                             .ok_or_else(|| format!("no such member: {}", name))?;
 
             Ok(Expr::Member(expr.to_expr_wrapper(), member.clone()))
         } else {
             Err("not_a struct".to_string())
         }
-
     }
 }
