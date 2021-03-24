@@ -386,7 +386,10 @@ impl<'a> Parser<'a> {
             if let Ok(_) = self.expect_next_symbol("[") {
                 // x[y] is short for *(x + y)
                 let expr = self.expr()?;
-                let exp = Parser::new_add(node.to_expr_wrapper(), expr.to_expr_wrapper())?;
+                let exp = Parser::new_add(
+                    node.to_expr_wrapper(),
+                    expr.to_expr_wrapper()
+                )?;
 
                 match self.expect_next_symbol("]".to_string()) {
                     Ok(_) => {
