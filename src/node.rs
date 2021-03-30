@@ -150,19 +150,19 @@ pub enum Expr {
 impl Expr {
     pub fn detect_type(&self) -> Rc<Type> {
         match self {
-            Expr::Eq { .. } => Rc::new(Int),
-            Expr::Neq { .. } => Rc::new(Int),
-            Expr::Gt { .. } => Rc::new(Int),
-            Expr::Ge { .. } => Rc::new(Int),
-            Expr::Lt { .. } => Rc::new(Int),
-            Expr::Le { .. } => Rc::new(Int),
-            Expr::Add { .. } => Rc::new(Int),
-            Expr::Sub { .. } => Rc::new(Int),
-            Expr::Mul { .. } => Rc::new(Int),
-            Expr::Div { .. } => Rc::new(Int),
-            Expr::Num { .. } => Rc::new(Int),
-            Expr::PtrDiff { .. } => Rc::new(Int),
-            Expr::FnCall { .. } => Rc::new(Int),
+            Expr::Eq { .. }
+            | Expr::Neq { .. }
+            | Expr::Gt { .. }
+            | Expr::Ge { .. }
+            | Expr::Lt { .. }
+            | Expr::Le { .. }
+            | Expr::Add { .. }
+            | Expr::Sub { .. }
+            | Expr::Mul { .. }
+            | Expr::Div { .. }
+            | Expr::Num { .. }
+            | Expr::PtrDiff { .. }
+            | Expr::FnCall { .. } => Rc::new(Int),
             Expr::PtrAdd { lhs, rhs: _ } => { Rc::clone(&lhs.ty)
             },
             Expr::PtrSub { lhs, rhs: _ } => {
