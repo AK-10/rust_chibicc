@@ -3,6 +3,7 @@ use crate::token::{ Token, TokenIter, /* TokenIterErr */ };
 use crate::program::{ Function, Var, Program };
 use crate::_type::Type;
 use crate::token::token_type::*;
+use crate::scopes::{ TagScope };
 
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -22,9 +23,12 @@ pub struct Parser<'a> {
     pub input: &'a Vec<Token>,
     peekable: TokenIter<'a>,
     // 関数の引数，関数内で宣言された変数を保持する, 関数のスコープから外れたらリセットする
+    // All local variable instances created during parsing are accumelated to this list
     pub locals: Vec<Rc<RefCell<Var>>>,
+    // Likewise, global variable are accumulated to this list
     pub globals: Vec<Rc<RefCell<Var>>>,
-    pub scope: Vec<Rc<RefCell<Var>>>,
+    pub var_scope: Vec<Rc<RefCell<Var>>>,
+    pub tag_scope: Vec<TagScope>,
     pub label_cnt: usize
 }
 
@@ -35,7 +39,8 @@ impl<'a> Parser<'a> {
             peekable: TokenIter::new(input),
             locals: Vec::new(),
             globals: Vec::new(),
-            scope: Vec::new(),
+            var_scope: Vec::new(),
+            tag_scope: Vec::new(),
             label_cnt: 0
         }
     }
@@ -75,7 +80,7 @@ impl<'a> Parser<'a> {
 
         if let Some(Token::Ident(ident)) = self.peekable.next() {
             // scopeを保存するため，コピーを持っておく
-            let sc = self.scope.clone();
+            let sc = self.var_scope.clone();
 
             // parse params
             let params = self.parse_func_params()?;
@@ -89,7 +94,7 @@ impl<'a> Parser<'a> {
                 nodes.push(self.stmt()?);
             };
 
-            self.scope = sc;
+            self.var_scope = sc;
 
             let locals = self.locals.to_vec();
             self.locals.clear();
@@ -123,12 +128,12 @@ impl<'a> Parser<'a> {
                 self.peekable.next();
                 let mut stmts: Vec<Stmt> = Vec::new();
 
-                let sc = self.scope.clone();
+                let sc = self.var_scope.clone();
                 while let Err(_) = self.expect_next_symbol("}".to_string()) {
                     let stmt = self.stmt()?;
                     stmts.push(stmt);
                 }
-                self.scope = sc;
+                self.var_scope = sc;
 
                 Ok(Stmt::Block { stmts })
             }

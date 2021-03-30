@@ -13,7 +13,7 @@ use std::cell::RefCell;
 impl<'a> Parser<'a> {
     // local変数 -> global変数の順に探す
     pub(in super) fn find_var(&self, name: &String) -> Option<Rc<RefCell<Var>>> {
-        self.scope.iter()
+        self.var_scope.iter()
             .find(|var| { var.borrow().name == *name })
             .map(|var| Rc::clone(var)) // &Rc<RefCell<Var>> -> Rc<RefCell<Var>>にする
     }
@@ -122,7 +122,7 @@ impl<'a> Parser<'a> {
     // stmt_expr := "(" "{" stmt stmt* "}" ")"
     // 呼び出し側で "(" "{" はすでに消費されている
     pub(in super) fn stmt_expr(&mut self) -> Result<Expr, String> {
-        let sc = self.scope.clone();
+        let sc = self.var_scope.clone();
 
         let mut stmts = Vec::<Stmt>::new();
         while let Err(_) = self.expect_next_symbol("}".to_string()) {
@@ -130,7 +130,7 @@ impl<'a> Parser<'a> {
         }
         self.expect_next_symbol(")".to_string())?;
 
-        self.scope = sc;
+        self.var_scope = sc;
 
         match stmts.last_mut(){
             // 最後のExprStmtをPureExprに変換する
@@ -277,7 +277,7 @@ impl<'a> Parser<'a> {
             )
         );
 
-        self.scope.push(Rc::clone(&var));
+        self.var_scope.push(Rc::clone(&var));
 
         var
     }
@@ -295,7 +295,7 @@ impl<'a> Parser<'a> {
             )
         );
 
-        self.scope.push(Rc::clone(&var));
+        self.var_scope.push(Rc::clone(&var));
 
         var
     }
