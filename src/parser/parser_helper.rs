@@ -4,6 +4,7 @@ use crate::token::Token;
 use crate::token::token_type::*;
 use crate::program::{ Var, Offset, align_to };
 use crate::_type::{ Type, Member };
+use crate::scopes::{ TagScope, Scope };
 
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -16,6 +17,11 @@ impl<'a> Parser<'a> {
         self.var_scope.iter()
             .find(|var| { var.borrow().name == *name })
             .map(|var| Rc::clone(var)) // &Rc<RefCell<Var>> -> Rc<RefCell<Var>>にする
+    }
+
+    pub(in super) fn find_tag(&self, tag_name: impl AsRef<String>) -> Option<&TagScope> {
+        self.tag_scope.iter()
+            .find(|tag| tag.name.as_str() == tag_name.as_ref().as_str())
     }
 
     pub(in super) fn if_stmt(&mut self) -> Result<Stmt, String> {
@@ -80,8 +86,12 @@ impl<'a> Parser<'a> {
 
     // variable declaration
     // declaration := basetype ident ("[" num "]")* ("=" expr) ";"
+    //              | basetype ";"
     pub(in super) fn declaration(&mut self) -> Result<Stmt, String> {
         let ty = self.base_type()?;
+        if let Ok(()) = self.expect_next_symbol(";") {
+            return Ok(Stmt::ExprStmt { val: Expr::Null.to_expr_wrapper() })
+        }
 
         match self.peekable.peek() {
             Some(Token::Ident(Ident { name, .. })) => {
@@ -122,7 +132,7 @@ impl<'a> Parser<'a> {
     // stmt_expr := "(" "{" stmt stmt* "}" ")"
     // 呼び出し側で "(" "{" はすでに消費されている
     pub(in super) fn stmt_expr(&mut self) -> Result<Expr, String> {
-        let sc = self.var_scope.clone();
+        let sc = self.enter_scope();
 
         let mut stmts = Vec::<Stmt>::new();
         while let Err(_) = self.expect_next_symbol("}".to_string()) {
@@ -130,7 +140,7 @@ impl<'a> Parser<'a> {
         }
         self.expect_next_symbol(")".to_string())?;
 
-        self.var_scope = sc;
+        self.leave_scope(sc);
 
         match stmts.last_mut(){
             // 最後のExprStmtをPureExprに変換する
@@ -244,12 +254,12 @@ impl<'a> Parser<'a> {
             return Err("typename expected".to_string())
         }
 
-        let mut ty = if let Ok(_) = self.expect_next_reserved("int".to_string()) {
+        let mut ty = if let Ok(_) = self.expect_next_reserved("int") {
             Type::Int
-        } else if let Ok(_) = self.expect_next_reserved("char".to_string()) {
+        } else if let Ok(_) = self.expect_next_reserved("char") {
             Type::Char
         } else {
-            self.struct_decl()?
+            self.struct_decl()?.as_ref().clone()
         };
 
         while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
@@ -413,10 +423,29 @@ impl<'a> Parser<'a> {
         return label;
     }
 
-    // struct-decl := "struct" "{" struct-member "}"
-    pub(in super) fn struct_decl(&mut self) -> Result<Type, String> {
+    // struct-decl := "struct" ident
+    // struct-decl := "struct" ident? "{" struct-member "}"
+    //
+    // struct ident
+    // struct ident { .. }
+    // struct {}
+    pub(in super) fn struct_decl(&mut self) -> Result<Rc<Type>, String> {
         let _ = self.expect_next_reserved("struct")?;
-        let _ = self.expect_next_symbol("{")?;
+
+        // read a struct tag.
+        let tag = self.expect_next_ident().ok();
+
+        let lbrace = self.expect_next_symbol("{").ok();
+        match (&tag, lbrace) {
+            (Some(t), None) => {
+                let sc = self.find_tag(t.tk_str());
+
+                return sc
+                    .map(|scope_tag| scope_tag.ty.clone())
+                    .ok_or("unknown struct type".to_string())
+            },
+            _ => {}
+        }
 
         let mut members = Vec::<Member>::new();
         let mut offset = 0;
@@ -436,11 +465,19 @@ impl<'a> Parser<'a> {
             members.push(member);
         }
 
-        Ok(Type::Struct {
-           members,
-           size: align_to(offset, align),
-           align
-        })
+        let ty = Rc::new(
+            Type::Struct {
+               members,
+               size: align_to(offset, align),
+               align
+            }
+        );
+
+        if let Some(t) = tag {
+            self.push_tag_scope(&t, Rc::clone(&ty));
+        }
+
+        Ok(ty)
     }
 
     //  struct-member := basetype ident ("[" num "]") ";"
@@ -474,5 +511,21 @@ impl<'a> Parser<'a> {
         } else {
             Err("not_a struct".to_string())
         }
+    }
+
+    // begin a block scope
+    pub(in super) fn enter_scope(&self) -> Scope {
+        Scope::new(self.var_scope.clone(), self.tag_scope.clone())
+    }
+
+    // end a block scope
+    pub(in super) fn leave_scope(&mut self, sc: Scope) {
+        self.var_scope = sc.0;
+        self.tag_scope = sc.1;
+    }
+
+    pub(in super) fn push_tag_scope(&mut self, token: &Token, ty: Rc<Type>) {
+        let sc = TagScope::new(token.tk_str(), ty);
+        self.tag_scope.push(sc);
     }
 }

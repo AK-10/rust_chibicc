@@ -80,7 +80,7 @@ impl<'a> Parser<'a> {
 
         if let Some(Token::Ident(ident)) = self.peekable.next() {
             // scopeを保存するため，コピーを持っておく
-            let sc = self.var_scope.clone();
+            let sc = self.enter_scope();
 
             // parse params
             let params = self.parse_func_params()?;
@@ -94,7 +94,7 @@ impl<'a> Parser<'a> {
                 nodes.push(self.stmt()?);
             };
 
-            self.var_scope = sc;
+            self.leave_scope(sc);
 
             let locals = self.locals.to_vec();
             self.locals.clear();
@@ -128,12 +128,13 @@ impl<'a> Parser<'a> {
                 self.peekable.next();
                 let mut stmts: Vec<Stmt> = Vec::new();
 
-                let sc = self.var_scope.clone();
+                let sc = self.enter_scope();
                 while let Err(_) = self.expect_next_symbol("}".to_string()) {
                     let stmt = self.stmt()?;
                     stmts.push(stmt);
                 }
-                self.var_scope = sc;
+
+                self.leave_scope(sc);
 
                 Ok(Stmt::Block { stmts })
             }

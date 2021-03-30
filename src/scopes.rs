@@ -16,13 +16,12 @@ impl TagScope {
     }
 }
 
-pub struct Scope {
-    pub var_scope: Vec<Rc<RefCell<Var>>>,
-    pub tag_scope: Vec<TagScope>
-}
+#[derive(Clone)]
+pub struct Scope(pub Vec<Rc<RefCell<Var>>>, pub Vec<TagScope>);
 
 impl Scope {
     pub fn new(var_scope: Vec<Rc<RefCell<Var>>>, tag_scope: Vec<TagScope>) -> Self {
-        Self { var_scope, tag_scope }
+        Self(var_scope, tag_scope)
     }
 }
+
