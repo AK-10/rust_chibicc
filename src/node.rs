@@ -168,8 +168,8 @@ impl Expr {
             Expr::PtrSub { lhs, rhs: _ } => {
                 Rc::clone(&lhs.ty)
             },
-            Expr::Assign { val, .. } => {
-                Rc::clone(&val.ty)
+            Expr::Assign { var, .. } => {
+                Rc::clone(&var.ty)
             },
             Expr::Addr { operand } => {
                 let ty = operand.ty.as_ref();
