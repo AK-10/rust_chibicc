@@ -384,7 +384,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // postfix := primary ("[" expr "]" | "." ident)*
+    // postfix := primary ("[" expr "]" | "." ident | "->" ident)*
     fn postfix(&mut self) -> Result<Expr, String> {
         let mut node = self.primary()?;
 
@@ -411,6 +411,11 @@ impl<'a> Parser<'a> {
                 node = self.struct_ref(node)?;
 
                 continue;
+            }
+
+            if let Ok(_) = self.expect_next_reserved("->") {
+                node = Expr::Deref { operand: node.to_expr_wrapper() };
+                node = self.struct_ref(node)?;
             }
 
             return Ok(node);

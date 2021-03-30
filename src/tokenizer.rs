@@ -51,7 +51,14 @@ impl<'a> Tokenizer {
                     .map(|block_comment| block_comment == ['/', '*'])
                     .unwrap_or(false) => {
                         self.block_comment()?;
-                }
+                },
+                // arrow operator
+                _ if self.multi_get(2)
+                    .map(|block_comment| block_comment == ['-', '>'])
+                    .unwrap_or(false) => {
+                        let tk = self.arrow()?;
+                        tokens.push(tk);
+                },
                 // "=" or "=="
                 '=' => {
                     let token = self.tokenize_eq()?;
@@ -356,6 +363,16 @@ impl<'a> Tokenizer {
         }
 
         Ok(())
+    }
+
+    fn arrow(&mut self) -> Result<Token, String> {
+        let arrow_str = Rc::new("->".to_string());
+        self.pos += 2;
+
+        Ok(Token::Reserved(Reserved {
+            op: Rc::clone(&arrow_str),
+            tk_str: arrow_str
+        }))
     }
 }
 
