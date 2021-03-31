@@ -163,11 +163,8 @@ impl Expr {
             | Expr::Num { .. }
             | Expr::PtrDiff { .. }
             | Expr::FnCall { .. } => Rc::new(Int),
-            Expr::PtrAdd { lhs, rhs: _ } => { Rc::clone(&lhs.ty)
-            },
-            Expr::PtrSub { lhs, rhs: _ } => {
-                Rc::clone(&lhs.ty)
-            },
+            Expr::PtrAdd { lhs, rhs: _ }
+            | Expr::PtrSub { lhs, rhs: _ } => Rc::clone(&lhs.ty),
             Expr::Assign { var, .. } => {
                 Rc::clone(&var.ty)
             },
@@ -180,8 +177,8 @@ impl Expr {
             },
             Expr::Deref { operand } => {
                 match operand.ty.as_ref() {
-                   Ptr { base } => Rc::clone(base),
-                   Type::Array { base, .. } => Rc::clone(base),
+                   Type::Ptr { base }
+                   | Type::Array { base, .. } => Rc::clone(base),
                    _ => Rc::clone(&operand.ty)
                 }
             },

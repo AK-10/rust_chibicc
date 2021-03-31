@@ -25,7 +25,12 @@ pub struct Program {
 pub struct Function {
     pub name: Rc<String>,
     pub nodes: Vec<Stmt>,
-    pub locals: Vec<Rc<RefCell<Var>>>, // Exprが持つVarと同じものを指したいためヒープにデータを置く
+    // Exprが持つVarと同じものを指したいためヒープにデータを置く
+    // RefCellはFunctionの作成時にvarのオフセットを修正したいために使っている
+    // RefCellを消したい. 実体をlocalsにおいて，Exprにはその参照をもたせるようにする？
+    // Functionのインスタンス生成で，オフセットのセットが必要なので多分実体はlocalsに持たせたほうが良さそう
+    // parser.parse()でParser.locals -- move --> Function.locals的な気持ち
+    pub locals: Vec<Rc<RefCell<Var>>>,
     pub params: Vec<Rc<RefCell<Var>>>,
     pub stack_size: usize
 }
