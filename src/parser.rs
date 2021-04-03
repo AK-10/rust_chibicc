@@ -150,10 +150,12 @@ impl<'a> Parser<'a> {
             Some(t) if t.as_str() == "for" => {
                 self.for_stmt()
             }
-            Some(t) if TYPE_NAMES.contains(&t.as_str()) => {
+            Some(_) if self.is_typename() => {
                 self.declaration()
             }
             Some(t) if t.as_str() == "typedef" => {
+                self.peekable.next();
+
                 let mut ty = self.base_type()?;
                 let name = self.expect_next_ident()?.tk_str();
                 ty = self.read_type_suffix(ty)?;

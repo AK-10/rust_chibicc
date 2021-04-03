@@ -274,7 +274,7 @@ impl<'a> Parser<'a> {
             self.struct_decl()?.as_ref().clone()
         } else {
             let tk = self.expect_next_ident()?;
-            self.find_typedef(&tk).ok_or("type not found")?.as_ref().clone()
+            self.find_typedef(&tk).ok_or(format!("{:?} is not type", tk.tk_str()))?.as_ref().clone()
         };
 
         while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
@@ -439,13 +439,10 @@ impl<'a> Parser<'a> {
 
     // struct-decl := "struct" ident
     // struct-decl := "struct" ident? "{" struct-member "}"
-    //
-    // struct ident
-    // struct ident { .. }
-    // struct {}
+    //              | struct ident
+    //              | struct ident { .. }
+    //              | struct {}
     pub(in super) fn struct_decl(&mut self) -> Result<Rc<Type>, String> {
-        let _ = self.expect_next_reserved("struct")?;
-
         // read a struct tag.
         let tag = self.expect_next_ident().ok();
 
