@@ -7,7 +7,7 @@ use std::rc::Rc;
 // TODO: LexerErrorの定義
 // TODO: Location structがほしい
 
-const KEYWORDS: [&str; 9] = [
+const KEYWORDS: [&str; 10] = [
     "return",
     "if",
     "while",
@@ -16,7 +16,8 @@ const KEYWORDS: [&str; 9] = [
     "int",
     "char",
     "sizeof",
-    "struct"
+    "struct",
+    "typedef"
 ];
 
 pub struct Tokenizer {

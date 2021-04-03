@@ -3,7 +3,7 @@ use crate::token::{ Token, TokenIter, /* TokenIterErr */ };
 use crate::program::{ Function, Var, Program };
 use crate::_type::Type;
 use crate::token::token_type::*;
-use crate::scopes::{ TagScope };
+use crate::scopes::{ TagScope, VarScope, VarOrTypeDef };
 
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -27,7 +27,9 @@ pub struct Parser<'a> {
     pub locals: Vec<Rc<RefCell<Var>>>,
     // Likewise, global variable are accumulated to this list
     pub globals: Vec<Rc<RefCell<Var>>>,
-    pub var_scope: Vec<Rc<RefCell<Var>>>,
+    // C has two block scopes; one is for variables/typedefs and
+    // the other is for struct tags.
+    pub var_scope: Vec<VarScope>,
     pub tag_scope: Vec<TagScope>,
     pub label_cnt: usize
 }
@@ -110,6 +112,8 @@ impl<'a> Parser<'a> {
     //       | "if" "(" expr ")" stmt ("else" stmt)?
     //       | "while" "(" expr ")" stmt
     //       | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+    //       | "{" stmt "}"
+    //       | "typedef" basetype ident ("[" num "]")* ";"
     //       | declaration
     fn stmt(&mut self) -> Result<Stmt, String> {
         let tk = self.peekable.peek();
@@ -124,7 +128,6 @@ impl<'a> Parser<'a> {
                 Ok(Stmt::Return { val: ExprWrapper::new(expr) })
             }
             Some(t) if t.as_str() == "{" => {
-            // Some(Token::Symbol(op)) if *op == "{" => {
                 self.peekable.next();
                 let mut stmts: Vec<Stmt> = Vec::new();
 
@@ -139,20 +142,30 @@ impl<'a> Parser<'a> {
                 Ok(Stmt::Block { stmts })
             }
             Some(t) if t.as_str() == "if" => {
-            // Some(Token::Reserved { op }) if *op == "if" => {
                 self.if_stmt()
             }
             Some(t) if t.as_str() == "while" => {
-            // Some(Token::Reserved { op }) if *op == "while" => {
                 self.while_stmt()
             }
             Some(t) if t.as_str() == "for" => {
-            // Some(Token::Reserved { op }) if *op == "for" => {
                 self.for_stmt()
             }
             Some(t) if TYPE_NAMES.contains(&t.as_str()) => {
-            //Some(Token::Reserved { op }) if TYPE_NAMES.contains(&op.as_str()) => {
                 self.declaration()
+            }
+            Some(t) if t.as_str() == "typedef" => {
+                let mut ty = self.base_type()?;
+                let name = self.expect_next_ident()?.tk_str();
+                ty = self.read_type_suffix(ty)?;
+                self.expect_next_symbol(";")?;
+
+                self.push_scope_with_typedef(&name, &ty);
+
+                Ok(Stmt::ExprStmt {
+                    val: ExprWrapper::new(
+                        Expr::Null
+                    )
+                })
             }
             _ => {
                 let expr_stmt = self.expr_stmt();
@@ -459,10 +472,15 @@ impl<'a> Parser<'a> {
                     return Ok(Expr::FnCall { fn_name: Rc::clone(name), args })
                 }
                 // variable
-                if let Some(ref var) = self.find_var(&name) {
-                    Ok(Expr::Var(Rc::clone(var)))
+                if let Some(VarScope { target, .. }) = self.find_var(&name) {
+                    if let VarOrTypeDef::Var(var) = target {
+                        Ok(Expr::Var(Rc::clone(var)))
+                    } else {
+                        let msg = format!("undefined variable: {}", name);
+                        Err(msg)
+                    }
                 } else {
-                    Err(format!("undefined variable: {:?}", name).to_string())
+                    Err(format!("undefined variable: {}", name))
                 }
             }
             Some(Token::Str(Str { bytes, .. })) => {

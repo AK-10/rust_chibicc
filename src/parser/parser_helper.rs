@@ -4,19 +4,31 @@ use crate::token::Token;
 use crate::token::token_type::*;
 use crate::program::{ Var, Offset, align_to };
 use crate::_type::{ Type, Member };
-use crate::scopes::{ TagScope, Scope };
+use crate::scopes::{ TagScope, VarScope, Scope, VarOrTypeDef };
 
 use std::rc::Rc;
 use std::cell::RefCell;
 
-
-
 impl<'a> Parser<'a> {
     // local変数 -> global変数の順に探す
-    pub(in super) fn find_var(&self, name: &String) -> Option<Rc<RefCell<Var>>> {
+    pub(in super) fn find_var(&self, name: &String) -> Option<&VarScope> {
         self.var_scope.iter()
-            .find(|var| { var.borrow().name == *name })
-            .map(|var| Rc::clone(var)) // &Rc<RefCell<Var>> -> Rc<RefCell<Var>>にする
+            .find(|vsc| { vsc.name.as_str() == *name })
+            .map(|vsc| vsc)
+    }
+
+    pub(in super) fn find_typedef(&self, tk: &Token) -> Option<Rc<Type>> {
+        if let Token::Ident(Ident { name, .. }) = tk {
+            self.find_var(name).and_then(|sc| {
+                if let VarOrTypeDef::TypeDef(ref ty) = sc.target {
+                    Some(Rc::clone(ty))
+                } else {
+                    None
+                }
+            })
+        } else {
+            None
+        }
     }
 
     pub(in super) fn find_tag(&self, tag_name: impl AsRef<String>) -> Option<&TagScope> {
@@ -258,8 +270,11 @@ impl<'a> Parser<'a> {
             Type::Int
         } else if let Ok(_) = self.expect_next_reserved("char") {
             Type::Char
-        } else {
+        } else if let Ok(_) = self.expect_next_reserved("struct") {
             self.struct_decl()?.as_ref().clone()
+        } else {
+            let tk = self.expect_next_ident()?;
+            self.find_typedef(&tk).ok_or("type not found")?.as_ref().clone()
         };
 
         while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
@@ -287,7 +302,7 @@ impl<'a> Parser<'a> {
             )
         );
 
-        self.var_scope.push(Rc::clone(&var));
+        self.push_scope_with_var(&Rc::new(name.to_string()), &var);
 
         var
     }
@@ -305,7 +320,7 @@ impl<'a> Parser<'a> {
             )
         );
 
-        self.var_scope.push(Rc::clone(&var));
+        self.push_scope_with_var(&Rc::new(name.to_string()), &var);
 
         var
     }
@@ -410,9 +425,8 @@ impl<'a> Parser<'a> {
             if let Token::Reserved(Reserved { op, .. }) = tk {
                 TYPE_NAMES.contains(&op.as_str())
             } else {
-                false
+                self.find_typedef(tk).is_some()
             }
-
         }).unwrap_or(false)
     }
 
@@ -527,5 +541,15 @@ impl<'a> Parser<'a> {
     pub(in super) fn push_tag_scope(&mut self, token: &Token, ty: Rc<Type>) {
         let sc = TagScope::new(token.tk_str(), ty);
         self.tag_scope.push(sc);
+    }
+
+    pub(in super) fn push_scope_with_var(&mut self, name: &Rc<String>, var: &Rc<RefCell<Var>>) {
+        let vsc = VarScope::new_var(name, var);
+        self.var_scope.push(vsc);
+    }
+
+    pub(in super) fn push_scope_with_typedef(&mut self, name: &Rc<String>, ty: &Rc<Type>) {
+        let vsc = VarScope::new_typedef(name, ty);
+        self.var_scope.push(vsc);
     }
 }
