@@ -12,7 +12,8 @@ use std::cell::RefCell;
 impl<'a> Parser<'a> {
     // local変数 -> global変数の順に探す
     pub(in super) fn find_var(&self, name: &String) -> Option<&VarScope> {
-        self.var_scope.iter()
+        // 参考実装に倣って，スコープへの追加が遅い順に走査する
+        self.var_scope.iter().rev()
             .find(|vsc| { vsc.name.as_str() == *name })
             .map(|vsc| vsc)
     }
