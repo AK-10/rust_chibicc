@@ -40,7 +40,7 @@ pub enum Type {
 impl Type {
     pub fn size(&self) -> usize {
         match self {
-            Self::Int => 8,
+            Self::Int => 4,
             Self::Ptr { .. } => 8,
             Self::Array { base, len } => base.size() * len,
             Self::Char => 1,
@@ -77,7 +77,7 @@ impl Type {
 
     pub fn align(&self) -> usize {
         match self {
-            Type::Int => 8,
+            Type::Int => 4,
             Type::Ptr { .. } => 8,
             Type::Array { base, .. } => base.align(),
             Type::Char => 1,
