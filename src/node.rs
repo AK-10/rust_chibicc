@@ -162,7 +162,7 @@ impl Expr {
             | Expr::Div { .. }
             | Expr::Num { .. }
             | Expr::PtrDiff { .. }
-            | Expr::FnCall { .. } => Rc::new(Int),
+            | Expr::FnCall { .. } => Rc::new(Type::Long),
             Expr::PtrAdd { lhs, rhs: _ }
             | Expr::PtrSub { lhs, rhs: _ } => Rc::clone(&lhs.ty),
             Expr::Assign { var, .. } => {

@@ -269,13 +269,20 @@ impl<'a> Parser<'a> {
 
         let mut ty = if let Ok(_) = self.expect_next_reserved("int") {
             Type::Int
+        } else if let Ok(_) = self.expect_next_reserved("short") {
+            Type::Short
+        } else if let Ok(_) = self.expect_next_reserved("long") {
+            Type::Long
         } else if let Ok(_) = self.expect_next_reserved("char") {
             Type::Char
         } else if let Ok(_) = self.expect_next_reserved("struct") {
             self.struct_decl()?.as_ref().clone()
         } else {
             let tk = self.expect_next_ident()?;
-            self.find_typedef(&tk).ok_or(format!("{:?} is not type", tk.tk_str()))?.as_ref().clone()
+            self.find_typedef(&tk)
+                .ok_or(format!("{:?} is not type", tk.tk_str()))?
+                .as_ref()
+                .clone()
         };
 
         while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {

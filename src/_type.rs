@@ -22,6 +22,8 @@ impl Member {
 #[derive(PartialEq, Debug, Clone)]
 pub enum Type {
     Int,
+    Short,
+    Long,
     Ptr {
         base: Rc<Type>
     },
@@ -41,6 +43,8 @@ impl Type {
     pub fn size(&self) -> usize {
         match self {
             Self::Int => 4,
+            Self::Short => 2,
+            Self::Long => 8,
             Self::Ptr { .. } => 8,
             Self::Array { base, len } => base.size() * len,
             Self::Char => 1,
@@ -63,7 +67,10 @@ impl Type {
 
     pub fn is_integer(&self) -> bool {
         match self {
-            Type::Int | Type::Char => true,
+            Type::Int
+            | Type::Short
+            | Type::Long
+            | Type::Char => true,
             _ => false
         }
     }
@@ -78,6 +85,8 @@ impl Type {
     pub fn align(&self) -> usize {
         match self {
             Type::Int => 4,
+            Type::Short => 2,
+            Type::Long => 8,
             Type::Ptr { .. } => 8,
             Type::Array { base, .. } => base.align(),
             Type::Char => 1,

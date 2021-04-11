@@ -7,13 +7,15 @@ use std::rc::Rc;
 // TODO: LexerErrorの定義
 // TODO: Location structがほしい
 
-const KEYWORDS: [&str; 10] = [
+const KEYWORDS: [&str; 12] = [
     "return",
     "if",
     "while",
     "else",
     "for",
     "int",
+    "short",
+    "long",
     "char",
     "sizeof",
     "struct",

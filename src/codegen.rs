@@ -5,6 +5,7 @@ use crate::_type::Type;
 use std::cell::{ Cell, RefCell };
 
 const ARG_REG1: [&str; 6] = ["dil", "sil", "dl", "cl", "r8b", "r9b"];
+const ARG_REG2: [&str; 6] = ["di", "si", "dx", "cx", "r8w", "r9w"];
 const ARG_REG4: [&str; 6] = ["edi", "esi", "edx", "ecx", "r8d", "r9d"];
 const ARG_REG8: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
 
@@ -410,6 +411,7 @@ impl<'a> CodeGenerator<'a> {
 fn load_arg(var: &Var, idx: usize) {
     match var.ty.size() {
         1 => println!("  mov [rbp-{}], {}", var.offset.value(), ARG_REG1[idx]),
+        2 => println!("  mov [rbp-{}], {}", var.offset.value(), ARG_REG2[idx]),
         4 => println!("  mov [rbp-{}], {}", var.offset.value(), ARG_REG4[idx]),
         8 => println!("  mov [rbp-{}], {}", var.offset.value(), ARG_REG8[idx]),
         x => unreachable!(format!("{} is unexpected byte size of type", x))
@@ -420,6 +422,7 @@ fn load(ty: &Type) {
     println!("  pop rax");
     match ty.size() {
         1 => println!("  movsx rax, byte ptr [rax]"),
+        2 => println!("  movsx rax, word ptr [rax]"),
         4 => println!("  movsxd rax, dword ptr [rax]"),
         8 => println!("  mov rax, [rax]"),
         x => unreachable!(format!("{} is unexpected byte size of type", x))
@@ -434,6 +437,7 @@ fn store(ty: &Type) {
 
     match ty.size() {
         1 => println!("  mov [rax], dil"),
+        2 => println!("  mov [rax], di"),
         4 => println!("  mov [rax], edi"),
         8 => println!("  mov [rax], rdi"),
         x => unreachable!(format!("{} is unexpected byte size of type", x))
