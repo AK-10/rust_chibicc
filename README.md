@@ -1,3 +1,6 @@
+> Note:
+> このリポジトリは[historical/old](https://github.com/rui314/chibicc/tree/historical/old)のブランチを参考にしています
+
 # Dockerイメージの作成
 ```bash
 $ docker build -t compilerbook ${dockerfileのあるdir}
