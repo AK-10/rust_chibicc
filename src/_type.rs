@@ -1,16 +1,14 @@
 use crate::program::Offset;
 
-use std::rc::Rc;
-
 #[derive(PartialEq, Debug, Clone)]
 pub struct Member {
-    pub ty: Rc<Type>,
+    pub ty: Box<Type>,
     pub name: String,
     pub offset: Offset
 }
 
 impl Member {
-    pub fn new(ty: Rc<Type>, name: impl Into<String>) -> Self {
+    pub fn new(ty: Box<Type>, name: impl Into<String>) -> Self {
         Self {
             ty,
             name: name.into(),
@@ -25,10 +23,10 @@ pub enum Type {
     Short,
     Long,
     Ptr {
-        base: Rc<Type>
+        base: Box<Type>
     },
     Array {
-        base: Rc<Type>,
+        base: Box<Type>,
         len: usize
     },
     Char,

@@ -79,7 +79,7 @@ impl Function {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Var {
     pub name: String,
-    pub ty: Rc<Type>,
+    pub ty: Box<Type>,
     pub is_local: bool,
      // 構文解析の時点では0
     pub offset: Offset,

@@ -488,12 +488,12 @@ impl<'a> Parser<'a> {
             Some(Token::Str(Str { bytes, .. })) => {
                 self.peekable.next();
                 let ty = Type::Array {
-                    base: Rc::new(Type::Char),
+                    base: Box::new(Type::Char),
                     len: bytes.len()
                 };
 
                 let label = self.new_label();
-                let var = self.new_gvar_with_contents(&label, Rc::new(ty), &bytes);
+                let var = self.new_gvar_with_contents(&label, Box::new(ty), &bytes);
                 self.globals.push(Rc::clone(&var));
 
                 Ok(Expr::Var(var))

@@ -62,7 +62,7 @@ pub enum Stmt {
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct ExprWrapper {
-    pub ty: Rc<Type>,
+    pub ty: Box<Type>,
     pub expr: Box<Expr>
 }
 
@@ -148,7 +148,7 @@ pub enum Expr {
 }
 
 impl Expr {
-    pub fn detect_type(&self) -> Rc<Type> {
+    pub fn detect_type(&self) -> Box<Type> {
         match self {
             Expr::Eq { .. }
             | Expr::Neq { .. }
@@ -162,38 +162,38 @@ impl Expr {
             | Expr::Div { .. }
             | Expr::Num { .. }
             | Expr::PtrDiff { .. }
-            | Expr::FnCall { .. } => Rc::new(Type::Long),
+            | Expr::FnCall { .. } => Box::new(Type::Long),
             Expr::PtrAdd { lhs, rhs: _ }
-            | Expr::PtrSub { lhs, rhs: _ } => Rc::clone(&lhs.ty),
+            | Expr::PtrSub { lhs, rhs: _ } => Box::clone(&lhs.ty),
             Expr::Assign { var, .. } => {
-                Rc::clone(&var.ty)
+                Box::clone(&var.ty)
             },
             Expr::Addr { operand } => {
                 let ty = operand.ty.as_ref();
                 match ty {
-                    Type::Array { base, .. } => Rc::clone(base),
-                    _ => Rc::new(Ptr { base: Rc::clone(&operand.ty) })
+                    Type::Array { base, .. } => Box::clone(base),
+                    _ => Box::new(Ptr { base: Box::clone(&operand.ty) })
                 }
             },
             Expr::Deref { operand } => {
                 match operand.ty.as_ref() {
                    Type::Ptr { base }
-                   | Type::Array { base, .. } => Rc::clone(base),
-                   _ => Rc::clone(&operand.ty)
+                   | Type::Array { base, .. } => Box::clone(base),
+                   _ => Box::clone(&operand.ty)
                 }
             },
             Expr::Var(var) => {
-                Rc::clone(&var.borrow().ty)
+                Box::clone(&var.borrow().ty)
             },
-            Expr::Null => Rc::new(Int),
+            Expr::Null => Box::new(Int),
             Expr::StmtExpr(stmts) => { // stmt.lastはPureExprのはず
                 match stmts.last() {
-                    Some(Stmt::PureExpr(expr)) => Rc::clone(&expr.ty),
+                    Some(Stmt::PureExpr(expr)) => Box::clone(&expr.ty),
                     _ => unreachable!("stmts.last can only be expr_stmt")
                 }
             },
             Expr::Member(_, member) => {
-                Rc::clone(&member.ty)
+                Box::clone(&member.ty)
             }
         }
     }

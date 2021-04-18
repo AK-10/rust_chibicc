@@ -19,7 +19,7 @@ impl TagScope {
 #[derive(Clone)]
 pub enum VarOrTypeDef {
     Var(Rc<RefCell<Var>>),
-    TypeDef(Rc<Type>)
+    TypeDef(Box<Type>)
 }
 
 // Scope for local variables, global variables or typedefs
@@ -45,10 +45,10 @@ impl VarScope {
         }
     }
 
-    pub fn new_typedef(name: &Rc<String>, ty: &Rc<Type>) -> Self {
+    pub fn new_typedef(name: &Rc<String>, ty: &Box<Type>) -> Self {
         Self {
             name: Rc::clone(name),
-            target: VarOrTypeDef::TypeDef(Rc::clone(ty))
+            target: VarOrTypeDef::TypeDef(Box::clone(ty))
         }
     }
 }

@@ -18,11 +18,11 @@ impl<'a> Parser<'a> {
             .map(|vsc| vsc)
     }
 
-    pub(in super) fn find_typedef(&self, tk: &Token) -> Option<Rc<Type>> {
+    pub(in super) fn find_typedef(&self, tk: &Token) -> Option<Box<Type>> {
         if let Token::Ident(Ident { name, .. }) = tk {
             self.find_var(name).and_then(|sc| {
                 if let VarOrTypeDef::TypeDef(ref ty) = sc.target {
-                    Some(Rc::clone(ty))
+                    Some(Box::clone(ty))
                 } else {
                     None
                 }
@@ -114,13 +114,13 @@ impl<'a> Parser<'a> {
                 let expr =
                     if let Err(_) = self.expect_next_reserved("=".to_string()) {
                         // int a; みたいな場合はローカル変数への追加だけ行う. (push rax, 3 みたいなのはしない)
-                        let var = self.new_var(name, Rc::clone(&ty), true);
+                        let var = self.new_var(name, Box::clone(&ty), true);
                         self.locals.push(var);
                         self.expect_next_symbol(";".to_string())?;
 
                         Expr::Null
                     } else {
-                        let lhs = self.new_var(name, Rc::clone(&ty), true);
+                        let lhs = self.new_var(name, Box::clone(&ty), true);
                         self.locals.push(Rc::clone(&lhs));
 
                         let rhs = self.expr()?;
@@ -129,7 +129,7 @@ impl<'a> Parser<'a> {
                         Expr::Assign { var: Expr::Var(Rc::clone(&lhs)).to_expr_wrapper(), val: rhs.to_expr_wrapper() }
                     };
 
-                Ok(Stmt::ExprStmt { val: ExprWrapper { ty: Rc::clone(&ty), expr: Box::new(expr) } })
+                Ok(Stmt::ExprStmt { val: ExprWrapper { ty: Box::clone(&ty), expr: Box::new(expr) } })
             }
             _ => {
                 return Err("expect ident, but not found".to_string())
@@ -262,7 +262,7 @@ impl<'a> Parser<'a> {
     }
 
     // base_type = ("char" | "int" | struct-decl) "*"*
-    pub(in super) fn base_type(&mut self) -> Result<Rc<Type>, String> {
+    pub(in super) fn base_type(&mut self) -> Result<Box<Type>, String> {
         if !self.is_typename() {
             return Err("typename expected".to_string())
         }
@@ -287,23 +287,23 @@ impl<'a> Parser<'a> {
 
         while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
             if op.as_str() == "*" {
-                ty = Type::Ptr { base: Rc::new(ty) };
+                ty = Type::Ptr { base: Box::new(ty) };
                 self.peekable.next();
             } else {
                 break
             }
         }
 
-        Ok(Rc::new(ty))
+        Ok(Box::new(ty))
     }
 
-    pub(in super) fn new_var(&mut self, name: &String, ty: Rc<Type>, is_local: bool) -> Rc<RefCell<Var>> {
+    pub(in super) fn new_var(&mut self, name: &String, ty: Box<Type>, is_local: bool) -> Rc<RefCell<Var>> {
         let var = Rc::new(
             RefCell::new(
                 Var {
                     name: name.to_string(),
                     offset: Offset::Unset,
-                    ty: Rc::clone(&ty),
+                    ty: Box::clone(&ty),
                     is_local,
                     contents: None
                 }
@@ -315,13 +315,13 @@ impl<'a> Parser<'a> {
         var
     }
 
-    pub(in super) fn new_gvar_with_contents(&mut self, name: &String, ty: Rc<Type>, contents: &Vec<u8>) -> Rc<RefCell<Var>> {
+    pub(in super) fn new_gvar_with_contents(&mut self, name: &String, ty: Box<Type>, contents: &Vec<u8>) -> Rc<RefCell<Var>> {
         let var = Rc::new(
             RefCell::new(
                 Var {
                     name: name.to_string(),
                     offset: Offset::Unset,
-                    ty: Rc::clone(&ty),
+                    ty: Box::clone(&ty),
                     is_local: false,
                     contents: Some(contents.clone())
                 }
@@ -343,7 +343,7 @@ impl<'a> Parser<'a> {
         Ok(self.new_var(ident.tk_str().as_ref(), ty, false))
     }
 
-    pub(in super) fn read_type_suffix(&mut self, base: Rc<Type>) -> Result<Rc<Type>, String> {
+    pub(in super) fn read_type_suffix(&mut self, base: Box<Type>) -> Result<Box<Type>, String> {
         match self.expect_next_symbol("[".to_string()) {
             Ok(_) => {
                 match self.peekable.next() {
@@ -352,7 +352,7 @@ impl<'a> Parser<'a> {
                             Err(e)
                         } else {
                             let nested_base = self.read_type_suffix(base)?;
-                            Ok(Rc::new(Type::Array { base: nested_base, len: *val as usize }))
+                            Ok(Box::new(Type::Array { base: nested_base, len: *val as usize }))
                         }
                     },
                     _ => {
@@ -553,7 +553,7 @@ impl<'a> Parser<'a> {
         self.var_scope.push(vsc);
     }
 
-    pub(in super) fn push_scope_with_typedef(&mut self, name: &Rc<String>, ty: &Rc<Type>) {
+    pub(in super) fn push_scope_with_typedef(&mut self, name: &Rc<String>, ty: &Box<Type>) {
         let vsc = VarScope::new_typedef(name, ty);
         self.var_scope.push(vsc);
     }
