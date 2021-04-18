@@ -98,43 +98,67 @@ impl<'a> Parser<'a> {
     }
 
     // variable declaration
-    // declaration := basetype ident ("[" num "]")* ("=" expr) ";"
+    // declaration := basetype declarator type-suffix ("=" expr)? ";"
     //              | basetype ";"
     pub(in super) fn declaration(&mut self) -> Result<Stmt, String> {
-        let ty = self.base_type()?;
+        let mut ty = self.base_type()?;
+
         if let Ok(()) = self.expect_next_symbol(";") {
             return Ok(Stmt::ExprStmt { val: Expr::Null.to_expr_wrapper() })
         }
 
-        match self.peekable.peek() {
-            Some(Token::Ident(Ident { name, .. })) => {
-                self.peekable.next();
-                let ty = self.read_type_suffix(ty)?;
+        let name = &mut String::new();
 
-                let expr =
-                    if let Err(_) = self.expect_next_reserved("=".to_string()) {
-                        // int a; みたいな場合はローカル変数への追加だけ行う. (push rax, 3 みたいなのはしない)
-                        let var = self.new_var(name, Box::clone(&ty), true);
-                        self.locals.push(var);
-                        self.expect_next_symbol(";".to_string())?;
+        ty = self.declarator(&mut ty, name)?;
+        ty = self.read_type_suffix(ty)?;
 
-                        Expr::Null
-                    } else {
-                        let lhs = self.new_var(name, Box::clone(&ty), true);
-                        self.locals.push(Rc::clone(&lhs));
+        let expr =
+            if let Err(_) = self.expect_next_reserved("=") {
+                let var = self.new_var(name, Box::clone(&ty), true);
+                self.locals.push(var);
+                self.expect_next_symbol(";".to_string())?;
 
-                        let rhs = self.expr()?;
-                        self.expect_next_symbol(";".to_string())?;
+                Expr::Null
+            } else {
+                let lhs = self.new_var(name, Box::clone(&ty), true);
+                self.locals.push(Rc::clone(&lhs));
 
-                        Expr::Assign { var: Expr::Var(Rc::clone(&lhs)).to_expr_wrapper(), val: rhs.to_expr_wrapper() }
-                    };
+                let rhs = self.expr()?;
+                self.expect_next_symbol(";".to_string())?;
 
-                Ok(Stmt::ExprStmt { val: ExprWrapper { ty: Box::clone(&ty), expr: Box::new(expr) } })
-            }
-            _ => {
-                return Err("expect ident, but not found".to_string())
-            }
-        }
+                Expr::Assign { var: Expr::Var(Rc::clone(&lhs)).to_expr_wrapper(), val: rhs.to_expr_wrapper() }
+            };
+
+        Ok(Stmt::ExprStmt { val: ExprWrapper { ty: Box::clone(&ty), expr: Box::new(expr) } })
+        //match self.peekable.peek() {
+        //    Some(Token::Ident(Ident { name, .. })) => {
+        //        self.peekable.next();
+        //        let ty = self.read_type_suffix(ty)?;
+
+        //        let expr =
+        //            if let Err(_) = self.expect_next_reserved("=".to_string()) {
+        //                // int a; みたいな場合はローカル変数への追加だけ行う. (push rax, 3 みたいなのはしない)
+        //                let var = self.new_var(name, Box::clone(&ty), true);
+        //                self.locals.push(var);
+        //                self.expect_next_symbol(";".to_string())?;
+
+        //                Expr::Null
+        //            } else {
+        //                let lhs = self.new_var(name, Box::clone(&ty), true);
+        //                self.locals.push(Rc::clone(&lhs));
+
+        //                let rhs = self.expr()?;
+        //                self.expect_next_symbol(";".to_string())?;
+
+        //                Expr::Assign { var: Expr::Var(Rc::clone(&lhs)).to_expr_wrapper(), val: rhs.to_expr_wrapper() }
+        //            };
+
+        //        Ok(Stmt::ExprStmt { val: ExprWrapper { ty: Box::clone(&ty), expr: Box::new(expr) } })
+        //    }
+        //    _ => {
+        //        return Err("expect ident, but not found".to_string())
+        //    }
+        //}
     }
 
     pub(in super) fn expr_stmt(&mut self) -> Result<Stmt, String> {
@@ -228,30 +252,24 @@ impl<'a> Parser<'a> {
         if self.expect_next_symbol(")".to_string()).is_ok() {
             return Ok(params)
         }
-        let ty = self.base_type()?;
-        let first_arg = self.peekable.peek();
+        let ty = &mut self.base_type()?;
+        let name = &mut String::new();
 
-        if let Some(Token::Ident(Ident { name, .. })) = first_arg {
-            self.peekable.next();
-
-            params.push(self.new_var(name, ty, true));
+        if let Ok(_) = self.declarator(ty, name) {
+            params.push(self.new_var(name, Box::clone(&ty), true));
         } else {
             return Err("token not found".to_string())
         }
 
         while let Ok(_) = self.expect_next_symbol(",".to_string()) {
-            let ty = self.base_type()?;
-            match self.peekable.peek() {
-                Some(Token::Ident(Ident { name, .. })) => {
-                    self.peekable.next();
-
-                    params.push(self.new_var(name, ty, true));
-                },
-                Some(token) => {
-                    return Err(format!("expect ident, result: {:?}", token))
+            let ty = &mut self.base_type()?;
+            let name = &mut String::new();
+            match self.declarator(ty, name) {
+                Ok(_) => {
+                    params.push(self.new_var(name, Box::clone(&ty), true));
                 }
                 _ => {
-                    return Err("token not found".to_string())
+                    return Err("error occured at parse_func_params".to_string())
                 }
             }
         }
@@ -261,7 +279,8 @@ impl<'a> Parser<'a> {
         Ok(params)
     }
 
-    // base_type = ("char" | "int" | struct-decl) "*"*
+    // base-type = buildin-type | struct-decl | typedef-name
+    // builtin-type = "char" | "int" | "short" | "long"
     pub(in super) fn base_type(&mut self) -> Result<Box<Type>, String> {
         if !self.is_typename() {
             return Err("typename expected".to_string())
@@ -284,26 +303,15 @@ impl<'a> Parser<'a> {
         };
 
         Ok(ty)
-
-        //while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
-        //    if op.as_str() == "*" {
-        //        ty = Type::Ptr { base: Box::new(ty) };
-        //        self.peekable.next();
-        //    } else {
-        //        break
-        //    }
-        //}
-
-        //Ok(Box::new(ty))
     }
+
     // 😵
     // this function is hard for me.
     // original is https://github.com/rui314/chibicc/commit/d51097dc0f7049e3e1fd00f9021e95686ecfddf3
     pub(in super) fn declarator(&mut self, ty: &mut Box<Type>, name: &mut String) -> Result<Box<Type>, String> {
         while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
             if op.as_str() == "*" {
-                let inner = ty.clone();
-                *ty = Box::new(Type::Ptr { base: inner });
+                *ty = Box::new(Type::Ptr { base: Box::clone(&ty) });
                 self.peekable.next();
             } else {
                 break
@@ -364,14 +372,16 @@ impl<'a> Parser<'a> {
         var
     }
 
+    // global-var := basetype declarator type-suffix ";"
     pub(in super) fn global_var(&mut self) -> Result<Rc<RefCell<Var>>, String> {
-        let base_ty = self.base_type()?;
-        let ident = self.expect_next_ident()?;
+        let mut base_ty = self.base_type()?;
+        let name = &mut String::new();
+        let base_ty = self.declarator(&mut base_ty, name)?;
 
         let ty = self.read_type_suffix(base_ty)?;
         self.expect_next_symbol(";")?;
 
-        Ok(self.new_var(ident.tk_str().as_ref(), ty, false))
+        Ok(self.new_var(name, ty, false))
     }
 
     pub(in super) fn read_type_suffix(&mut self, base: Box<Type>) -> Result<Box<Type>, String> {
@@ -443,17 +453,23 @@ impl<'a> Parser<'a> {
     pub(in super) fn is_function(&mut self) -> bool {
         let pos = self.peekable.current_position();
 
-        if !self.base_type().is_ok() {
+        let base = &mut if let Ok(ty) = self.base_type() {
+            ty
+        } else {
             let _ = self.peekable.back_to(pos);
             return false
         };
+        let name = &mut String::new();
 
-        if !self.expect_next_ident().is_ok() {
-            let _ = self.peekable.back_to(pos);
-            return false
-        }
+        match self.declarator(base, name) {
+            Err(_) => {
+                let _ = self.peekable.back_to(pos);
+                return false
+            },
+            _ => {}
+        };
 
-        let is_fn = self.expect_next_symbol("(".to_string()).is_ok();
+        let is_fn = !name.is_empty() && self.expect_next_symbol("(".to_string()).is_ok();
         let _ = self.peekable.back_to(pos);
 
         is_fn
@@ -532,27 +548,22 @@ impl<'a> Parser<'a> {
 
     //  struct-member := basetype ident ("[" num "]") ";"
     pub(in super) fn struct_member(&mut self) -> Result<Member, String> {
-        let mut ty = self.base_type()?;
+        let ty = &mut self.base_type()?;
+        let name = &mut String::new();
 
-        let ident = self.expect_next_ident()?;
-        ty = self.read_type_suffix(ty)?;
+        let declarator = &mut self.declarator(ty, name)?;
+        let ty_with_suffix = &mut self.read_type_suffix(Box::clone(&declarator))?;
 
         let _ = self.expect_next_symbol(";")?;
 
-        Ok(Member::new(ty, ident.tk_str().as_str()))
+        Ok(Member::new(Box::clone(&ty_with_suffix), name.as_str()))
     }
-
-    // TODO: AsRef<Type> Structに変えたい
-    // pub(in super) fn find_member(&mut self, node: impl AsRef<Struct>, name: impl Into<String>) -> Option<Member> {
-    //     node.members.find
-    // }
 
     pub(in super) fn struct_ref(&mut self, expr: Expr) -> Result<Expr, String> {
         let ty = expr.detect_type();
         if let Type::Struct { members, .. } = ty.as_ref() {
             let ident = self.expect_next_ident()?;
             let name = ident.tk_str();
-            // TODO: self.find_memberに置き換える
             let member = members.iter()
                             .find(|mem| mem.name == name.as_str())
                             .ok_or_else(|| format!("no such member: {}", name))?;

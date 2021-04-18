@@ -74,9 +74,9 @@ impl<'a> Parser<'a> {
         })
     }
 
-    // function := basetype ident "(" params ")" "{" stmt* "}"
+    // function := basetype declarator "(" params ")" "{" stmt* "}"
     // params := param ("," param)*
-    // param := basetype ident
+    // param := basetype declarator type-suffix
     fn function(&mut self) -> Result<Function, String> {
         self.base_type()?;
 
@@ -113,7 +113,7 @@ impl<'a> Parser<'a> {
     //       | "while" "(" expr ")" stmt
     //       | "for" "(" expr? ";" expr? ";" expr? ")" stmt
     //       | "{" stmt "}"
-    //       | "typedef" basetype ident ("[" num "]")* ";"
+    //       | "typedef" basetype declarator ("[" num "]")* ";"
     //       | declaration
     fn stmt(&mut self) -> Result<Stmt, String> {
         let tk = self.peekable.peek();
@@ -157,11 +157,13 @@ impl<'a> Parser<'a> {
                 self.peekable.next();
 
                 let mut ty = self.base_type()?;
-                let name = self.expect_next_ident()?.tk_str();
+                let name = &mut String::new();
+                ty = self.declarator(&mut ty, name)?;
                 ty = self.read_type_suffix(ty)?;
+
                 self.expect_next_symbol(";")?;
 
-                self.push_scope_with_typedef(&name, &ty);
+                self.push_scope_with_typedef(&Rc::new(name.to_string()), &ty);
 
                 Ok(Stmt::ExprStmt {
                     val: ExprWrapper::new(
