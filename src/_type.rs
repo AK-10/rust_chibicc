@@ -89,5 +89,14 @@ impl Type {
             Type::Dummy => 0
         }
     }
+
+    pub fn replace_ptr_to(&mut self, dist: Type) {
+        match self {
+            Type::Ptr { base, .. } => {
+                    base.replace_ptr_to(dist);
+            },
+            _ => *self = dist
+        }
+    }
 }
 

@@ -267,34 +267,65 @@ impl<'a> Parser<'a> {
             return Err("typename expected".to_string())
         }
 
-        let mut ty = if let Ok(_) = self.expect_next_reserved("int") {
-            Type::Int
+        let ty = if let Ok(_) = self.expect_next_reserved("int") {
+            Box::new(Type::Int)
         } else if let Ok(_) = self.expect_next_reserved("short") {
-            Type::Short
+            Box::new(Type::Short)
         } else if let Ok(_) = self.expect_next_reserved("long") {
-            Type::Long
+            Box::new(Type::Long)
         } else if let Ok(_) = self.expect_next_reserved("char") {
-            Type::Char
+            Box::new(Type::Char)
         } else if let Ok(_) = self.expect_next_reserved("struct") {
-            self.struct_decl()?.as_ref().clone()
+            self.struct_decl()?
         } else {
             let tk = self.expect_next_ident()?;
             self.find_typedef(&tk)
                 .ok_or(format!("{:?} is not type", tk.tk_str()))?
-                .as_ref()
-                .clone()
         };
 
+        Ok(ty)
+
+        //while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
+        //    if op.as_str() == "*" {
+        //        ty = Type::Ptr { base: Box::new(ty) };
+        //        self.peekable.next();
+        //    } else {
+        //        break
+        //    }
+        //}
+
+        //Ok(Box::new(ty))
+    }
+    // 😵
+    // this function is hard for me.
+    // original is https://github.com/rui314/chibicc/commit/d51097dc0f7049e3e1fd00f9021e95686ecfddf3
+    pub(in super) fn declarator(&mut self, ty: &mut Box<Type>, name: &mut String) -> Result<Box<Type>, String> {
         while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
             if op.as_str() == "*" {
-                ty = Type::Ptr { base: Box::new(ty) };
+                let inner = ty.clone();
+                *ty = Box::new(Type::Ptr { base: inner });
                 self.peekable.next();
             } else {
                 break
             }
         }
 
-        Ok(Box::new(ty))
+        if let Ok(_) = self.expect_next_symbol("(") {
+            let dummy = &mut Box::new(Type::Dummy);
+            let new_ty = self.declarator(dummy, name);
+            self.expect_next_symbol(")")?;
+
+            // replace from dummy to type_suffix(ty)
+            dummy.replace_ptr_to(*self.read_type_suffix(Box::clone(&ty))?);
+
+            new_ty
+        } else {
+            let tk = self.expect_next_ident()?;
+            *name = tk.tk_str().to_string();
+
+            self.read_type_suffix(Box::clone(&ty))
+        }
+
     }
 
     pub(in super) fn new_var(&mut self, name: &String, ty: Box<Type>, is_local: bool) -> Rc<RefCell<Var>> {
