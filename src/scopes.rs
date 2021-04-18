@@ -7,11 +7,11 @@ use std::cell::RefCell;
 #[derive(Clone)]
 pub struct TagScope {
     pub name: Rc<String>,
-    pub ty: Rc<Type>
+    pub ty: Box<Type>
 }
 
 impl TagScope {
-    pub fn new(name: Rc<String>, ty: Rc<Type>) -> Self {
+    pub fn new(name: Rc<String>, ty: Box<Type>) -> Self {
         Self { name, ty }
     }
 }

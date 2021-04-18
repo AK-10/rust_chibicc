@@ -450,7 +450,7 @@ impl<'a> Parser<'a> {
     //              | struct ident
     //              | struct ident { .. }
     //              | struct {}
-    pub(in super) fn struct_decl(&mut self) -> Result<Rc<Type>, String> {
+    pub(in super) fn struct_decl(&mut self) -> Result<Box<Type>, String> {
         // read a struct tag.
         let tag = self.expect_next_ident().ok();
 
@@ -484,7 +484,7 @@ impl<'a> Parser<'a> {
             members.push(member);
         }
 
-        let ty = Rc::new(
+        let ty = Box::new(
             Type::Struct {
                members,
                size: align_to(offset, align),
@@ -493,7 +493,7 @@ impl<'a> Parser<'a> {
         );
 
         if let Some(t) = tag {
-            self.push_tag_scope(&t, Rc::clone(&ty));
+            self.push_tag_scope(&t, Box::clone(&ty));
         }
 
         Ok(ty)
@@ -543,7 +543,7 @@ impl<'a> Parser<'a> {
         self.tag_scope = sc.1;
     }
 
-    pub(in super) fn push_tag_scope(&mut self, token: &Token, ty: Rc<Type>) {
+    pub(in super) fn push_tag_scope(&mut self, token: &Token, ty: Box<Type>) {
         let sc = TagScope::new(token.tk_str(), ty);
         self.tag_scope.push(sc);
     }
