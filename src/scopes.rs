@@ -16,7 +16,7 @@ impl TagScope {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum VarOrTypeDef {
     Var(Rc<RefCell<Var>>),
     TypeDef(Box<Type>)
@@ -31,7 +31,7 @@ pub enum VarOrTypeDef {
 // "x" -> Var { name: x }
 // "t" -> Type::Struct { member: [y(int), z(char)] }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VarScope {
     pub name: Rc<String>,
     pub target: VarOrTypeDef

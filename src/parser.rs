@@ -230,27 +230,6 @@ impl<'a> Parser<'a> {
             }
         }
 
-        // while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
-        //     self.peekable.next();
-        //     let rhs = self.relational()?;
-
-        //     match op.as_str() {
-        //         "==" => {
-        //             node = Expr::Eq {
-        //                 lhs: ExprWrapper::new(node),
-        //                 rhs: ExprWrapper::new(rhs)
-        //             };
-        //         },
-        //         "!=" => {
-        //             node = Expr::Neq {
-        //                 lhs: ExprWrapper::new(node),
-        //                 rhs: ExprWrapper::new(rhs)
-        //             };
-        //         },
-        //         _ => break
-        //     }
-        // }
-
         Ok(node)
     }
 

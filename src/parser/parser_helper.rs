@@ -75,17 +75,17 @@ impl<'a> Parser<'a> {
     pub(in super) fn for_stmt(&mut self) -> Result<Stmt, String> {
         self.peekable.next();
 
-        self.expect_next_symbol("(".to_string())?;
+        self.expect_next_symbol("(")?;
 
         // 初期化，条件，処理後はない場合がある
         let init = self.expr_stmt().ok();
-        self.expect_next_symbol(";".to_string())?;
+        self.expect_next_symbol(";")?;
 
         let cond = self.expr().ok();
-        self.expect_next_symbol(";".to_string())?;
+        self.expect_next_symbol(";")?;
 
         let inc = self.expr_stmt().ok();
-        self.expect_next_symbol(")".to_string())?;
+        self.expect_next_symbol(")")?;
 
         let then = self.stmt()?;
 
@@ -320,20 +320,19 @@ impl<'a> Parser<'a> {
 
         if let Ok(_) = self.expect_next_symbol("(") {
             let dummy = &mut Box::new(Type::Dummy);
-            let new_ty = self.declarator(dummy, name);
+            let new_ty = &mut self.declarator(dummy, name)?;
+
             self.expect_next_symbol(")")?;
 
-            // replace from dummy to type_suffix(ty)
-            dummy.replace_ptr_to(*self.read_type_suffix(Box::clone(&ty))?);
+            new_ty.replace_ptr_to(*self.read_type_suffix(Box::clone(&ty))?);
 
-            new_ty
+            Ok(Box::clone(&new_ty))
         } else {
             let tk = self.expect_next_ident()?;
             *name = tk.tk_str().to_string();
 
             self.read_type_suffix(Box::clone(&ty))
         }
-
     }
 
     pub(in super) fn new_var(&mut self, name: &String, ty: Box<Type>, is_local: bool) -> Rc<RefCell<Var>> {
