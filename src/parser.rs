@@ -137,7 +137,7 @@ impl<'a> Parser<'a> {
                 let expr = self.expr()?;
                 self.expect_next_symbol(";")?;
 
-                Ok(Stmt::Return { val: ExprWrapper::new(expr) })
+                Ok(Stmt::Return { val: expr })
             }
             Some(t) if t.as_str() == "{" => {
                 self.peekable.next();
@@ -193,15 +193,15 @@ impl<'a> Parser<'a> {
     }
 
     // expr := assign
-    fn expr(&mut self) -> Result<Expr, String> {
+    fn expr(&mut self) -> Result<ExprWrapper, String> {
         self.assign()
     }
 
     // assign := equality ("=" assign)?
-    fn assign(&mut self) -> Result<Expr, String> {
+    fn assign(&mut self) -> Result<ExprWrapper, String> {
         let node = self.equality();
         (&node).as_ref().ok().and_then(|nd| {
-            if let Expr::Var(var) = nd {
+            if let Expr::Var(var) = nd.expr.as_ref() {
                 return Some(var)
             }
 
@@ -212,16 +212,16 @@ impl<'a> Parser<'a> {
         if let Ok(_) = is_assign {
             let val = self.expr()?;
             return Ok(Expr::Assign {
-                var: ExprWrapper::new(node?),
-                val: ExprWrapper::new(val)
-            })
+                var: node?,
+                val
+            }.to_expr_wrapper())
         }
 
         node
     }
 
     // equality := relational ("==" relational | "!=" relational)*
-    fn equality(&mut self) -> Result<Expr, String> {
+    fn equality(&mut self) -> Result<ExprWrapper, String> {
         let mut node = self.relational()?;
 
         while let Some(token) = self.peekable.peek() {
@@ -230,13 +230,19 @@ impl<'a> Parser<'a> {
                     self.peekable.next();
 
                     let rhs = self.relational()?;
-                    node = Expr::Eq { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
+                    node = Expr::Eq {
+                        lhs: node,
+                        rhs
+                    }.to_expr_wrapper();
                 }
                 Token::Reserved(Reserved { op, .. }) if op.as_str() == "!=" => {
                     self.peekable.next();
 
                     let rhs = self.relational()?;
-                    node = Expr::Neq { lhs: ExprWrapper::new(node), rhs: ExprWrapper::new(rhs) };
+                    node = Expr::Neq {
+                        lhs: node,
+                        rhs
+                    }.to_expr_wrapper();
                 }
                 _ => { return Ok(node); }
             }
@@ -246,7 +252,7 @@ impl<'a> Parser<'a> {
     }
 
     // relational := add ("<" add | "<=" add | ">" add | ">=" add)*
-    fn relational(&mut self) -> Result<Expr, String> {
+    fn relational(&mut self) -> Result<ExprWrapper, String> {
         let mut node = self.add()?;
 
         while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
@@ -256,36 +262,36 @@ impl<'a> Parser<'a> {
                     let rhs = self.add()?;
 
                     node = Expr::Lt {
-                        lhs: ExprWrapper::new(node),
-                        rhs: ExprWrapper::new(rhs)
-                    };
+                        lhs: node,
+                        rhs
+                    }.to_expr_wrapper();
                 },
                 "<=" => {
                     self.peekable.next();
                     let rhs = self.add()?;
 
                     node = Expr::Le {
-                        lhs: ExprWrapper::new(node),
-                        rhs: ExprWrapper::new(rhs)
-                    };
+                        lhs: node,
+                        rhs
+                    }.to_expr_wrapper();
                 },
                 ">" => {
                     self.peekable.next();
                     let rhs = self.add()?;
 
                     node = Expr::Gt {
-                        lhs: ExprWrapper::new(node),
-                        rhs: ExprWrapper::new(rhs)
-                    };
+                        lhs: node,
+                        rhs
+                    }.to_expr_wrapper();
                 },
                 ">=" => {
                     self.peekable.next();
                     let rhs = self.add()?;
 
                     node = Expr::Ge {
-                        lhs: ExprWrapper::new(node),
-                        rhs: ExprWrapper::new(rhs)
-                    };
+                        lhs: node,
+                        rhs
+                    }.to_expr_wrapper();
                 },
                 _ => break
             }
@@ -295,7 +301,7 @@ impl<'a> Parser<'a> {
     }
 
     // add := mul ("+" | "-")*
-    fn add(&mut self) -> Result<Expr, String> {
+    fn add(&mut self) -> Result<ExprWrapper, String> {
         let mut node = self.mul()?;
 
         while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
@@ -305,8 +311,8 @@ impl<'a> Parser<'a> {
                     let rhs = self.mul()?;
 
                     node = Parser::new_add(
-                        ExprWrapper::new(node),
-                        ExprWrapper::new(rhs)
+                        node,
+                        rhs
                     )?;
                 },
                 "-" => {
@@ -314,8 +320,8 @@ impl<'a> Parser<'a> {
                     let rhs = self.mul()?;
 
                     node = Parser::new_sub(
-                        ExprWrapper::new(node),
-                        ExprWrapper::new(rhs)
+                        node,
+                        rhs
                     )?;
                 },
                 _ => break
@@ -325,7 +331,7 @@ impl<'a> Parser<'a> {
         Ok(node)
     }
 
-    fn mul(&mut self) -> Result<Expr, String> {
+    fn mul(&mut self) -> Result<ExprWrapper, String> {
         let mut node = self.unary()?;
 
         while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
@@ -335,18 +341,18 @@ impl<'a> Parser<'a> {
                     let rhs = self.unary()?;
 
                     node = Expr::Mul {
-                        lhs: ExprWrapper::new(node),
-                        rhs: ExprWrapper::new(rhs)
-                    };
+                        lhs: node,
+                        rhs
+                    }.to_expr_wrapper();
                 },
                 "/" => {
                     self.peekable.next();
                     let rhs = self.unary()?;
 
                    node = Expr::Div {
-                        lhs: ExprWrapper::new(node),
-                        rhs: ExprWrapper::new(rhs)
-                    };
+                        lhs: node,
+                        rhs
+                    }.to_expr_wrapper();
                 },
                 _ => break
             }
@@ -357,7 +363,7 @@ impl<'a> Parser<'a> {
 
     // unary := ("+" | "-" | "*" | "&")? unary
     //        | postfix
-    fn unary(&mut self) -> Result<Expr, String> {
+    fn unary(&mut self) -> Result<ExprWrapper, String> {
         let tk = self.peekable.peek();
 
         match tk {
@@ -371,19 +377,19 @@ impl<'a> Parser<'a> {
                         self.peekable.next();
                         let rhs = self.unary()?;
                         Ok(Expr::Sub {
-                            lhs: ExprWrapper::new(Expr::Num { val: 0 }),
-                            rhs: ExprWrapper::new(rhs)
-                         })
+                            lhs: Expr::Num { val: 0 }.to_expr_wrapper(),
+                            rhs
+                         }.to_expr_wrapper())
                     },
                     "*" => {
                         self.peekable.next();
                         let operand = self.unary()?;
-                        Ok(Expr::Deref { operand: ExprWrapper::new(operand) })
+                        Ok(Expr::Deref { operand }.to_expr_wrapper())
                     },
                     "&" => {
                         self.peekable.next();
                         let operand = self.unary()?;
-                        Ok(Expr::Addr { operand: ExprWrapper::new(operand) })
+                        Ok(Expr::Addr { operand }.to_expr_wrapper())
                     },
                     _ => self.postfix()
                 }
@@ -393,7 +399,7 @@ impl<'a> Parser<'a> {
     }
 
     // postfix := primary ("[" expr "]" | "." ident | "->" ident)*
-    fn postfix(&mut self) -> Result<Expr, String> {
+    fn postfix(&mut self) -> Result<ExprWrapper, String> {
         let mut node = self.primary()?;
 
         loop {
@@ -401,13 +407,13 @@ impl<'a> Parser<'a> {
                 // x[y] is short for *(x + y)
                 let expr = self.expr()?;
                 let exp = Parser::new_add(
-                    node.to_expr_wrapper(),
-                    expr.to_expr_wrapper()
+                    node,
+                    expr
                 )?;
 
                 match self.expect_next_symbol("]".to_string()) {
                     Ok(_) => {
-                        node = Expr::Deref { operand: exp.to_expr_wrapper() };
+                        node = Expr::Deref { operand: exp }.to_expr_wrapper();
                     },
                     _ => return Err("expect ] after [ expr".to_string())
                 }
@@ -422,7 +428,7 @@ impl<'a> Parser<'a> {
             }
 
             if let Ok(_) = self.expect_next_reserved("->") {
-                node = Expr::Deref { operand: node.to_expr_wrapper() };
+                node = Expr::Deref { operand: node }.to_expr_wrapper();
                 node = self.struct_ref(node)?;
             }
 
@@ -436,7 +442,7 @@ impl<'a> Parser<'a> {
     //          | ident func-args?
     //          | str
     //          | num
-    fn primary(&mut self) -> Result<Expr, String> {
+    fn primary(&mut self) -> Result<ExprWrapper, String> {
         let token = self.peekable.peek();
 
         match token {
@@ -455,7 +461,7 @@ impl<'a> Parser<'a> {
             // num
             Some(Token::Num(Num { val, .. })) => {
                 self.peekable.next();
-                Ok(Expr::Num { val: *val })
+                Ok(Expr::Num { val: *val }.to_expr_wrapper())
             }
             // local var
             Some(Token::Ident(Ident { name, .. })) => {
@@ -463,13 +469,22 @@ impl<'a> Parser<'a> {
                 self.peekable.next();
                 if let Ok(_) = self.expect_next_symbol("(") {
                     let args = self.parse_args()?;
+                    let sc = self.find_var(name);
+                    match sc {
+                        Some() => {
+                        },
+                        _ => {
+                            // print warning for "implicit declarartion of a function"
 
-                    return Ok(Expr::FnCall { fn_name: Rc::clone(name), args })
+                        }
+                    }
+
+                    //return Ok(Expr::FnCall { fn_name: Rc::clone(name), args })
                 }
                 // variable
                 if let Some(VarScope { target, .. }) = self.find_var(&name) {
                     if let VarOrTypeDef::Var(var) = target {
-                        Ok(Expr::Var(Rc::clone(var)))
+                        Ok(Expr::Var(Rc::clone(var)).to_expr_wrapper())
                     } else {
                         let msg = format!("undefined variable: {}", name);
                         Err(msg)
@@ -487,17 +502,16 @@ impl<'a> Parser<'a> {
 
                 let label = self.new_label();
                 // bytesはmoveして良さげだが，やり方がわからずcloneしている
-                let var = self.new_gvar(&label, Box::new(ty), Some(bytes.clone()), false);
-                //self.globals.push(Rc::clone(&var));
+                let var = self.new_gvar(&label, Box::new(ty), Some(bytes.clone()), true);
 
-                Ok(Expr::Var(var))
+                Ok(Expr::Var(var).to_expr_wrapper())
             }
             Some(Token::Reserved(Reserved { op, .. })) if op.as_str() == "sizeof" => {
                 self.peekable.next();
                 let node = self.unary()?;
-                let size = node.detect_type().size();
+                let size = node.ty.size();
 
-                Ok(Expr::Num { val: size as isize })
+                Ok(Expr::Num { val: size as isize }.to_expr_wrapper())
             }
             // unexpected
             unexpected => {

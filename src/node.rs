@@ -101,7 +101,11 @@ pub enum Expr {
         rhs: ExprWrapper
     },
     Add {
-        lhs: ExprWrapper, rhs: ExprWrapper }, Sub { lhs: ExprWrapper,
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
+    },
+    Sub {
+        lhs: ExprWrapper,
         rhs: ExprWrapper
     },
     Mul {
@@ -198,11 +202,8 @@ impl Expr {
         }
     }
 
-    pub fn to_expr_wrapper(&self) -> ExprWrapper {
-        // TODO: cloneやめたい
-        // ExprWrapper.exprを&'a Exprにする?
-        // もしくはRc
-        ExprWrapper::new(self.clone())
+    pub fn to_expr_wrapper(self) -> ExprWrapper {
+        ExprWrapper::new(self)
     }
 }
 

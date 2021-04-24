@@ -54,7 +54,7 @@ impl<'a> Parser<'a> {
         };
 
         Ok(Stmt::If {
-            cond: ExprWrapper::new(cond),
+            cond,
             then: Box::new(then),
             els: els.map(|x| Box::new(x)),
         })
@@ -67,7 +67,7 @@ impl<'a> Parser<'a> {
         let then = self.stmt()?;
 
         Ok(Stmt::While {
-            cond: ExprWrapper::new(cond),
+            cond,
             then: Box::new(then)
         })
     }
@@ -91,7 +91,7 @@ impl<'a> Parser<'a> {
 
         Ok(Stmt::For {
             init: Box::new(init),
-            cond: cond.map(ExprWrapper::new),
+            cond,
             inc: Box::new(inc),
             then: Box::new(then)
         })
@@ -126,7 +126,7 @@ impl<'a> Parser<'a> {
                 let rhs = self.expr()?;
                 self.expect_next_symbol(";".to_string())?;
 
-                Expr::Assign { var: Expr::Var(Rc::clone(&lhs)).to_expr_wrapper(), val: rhs.to_expr_wrapper() }
+                Expr::Assign { var: Expr::Var(Rc::clone(&lhs)).to_expr_wrapper(), val: rhs }
             };
 
         Ok(Stmt::ExprStmt { val: ExprWrapper { ty: Box::clone(&ty), expr: Box::new(expr) } })
@@ -162,13 +162,13 @@ impl<'a> Parser<'a> {
     }
 
     pub(in super) fn expr_stmt(&mut self) -> Result<Stmt, String> {
-        Ok(Stmt::ExprStmt { val: ExprWrapper::new(self.expr()?) })
+        Ok(Stmt::ExprStmt { val: self.expr()? })
     }
 
     // statement expression is a GNU C extension
     // stmt_expr := "(" "{" stmt stmt* "}" ")"
     // 呼び出し側で "(" "{" はすでに消費されている
-    pub(in super) fn stmt_expr(&mut self) -> Result<Expr, String> {
+    pub(in super) fn stmt_expr(&mut self) -> Result<ExprWrapper, String> {
         let sc = self.enter_scope();
 
         let mut stmts = Vec::<Stmt>::new();
@@ -185,7 +185,7 @@ impl<'a> Parser<'a> {
             Some(last) => {
                 if let Stmt::ExprStmt { val } = last {
                     *last = Stmt::PureExpr(val.clone());
-                    Ok(Expr::StmtExpr(stmts))
+                    Ok(Expr::StmtExpr(stmts).to_expr_wrapper())
                 } else {
                     Err("stmt expr returning void is not supported".to_string())
                 }
@@ -233,9 +233,9 @@ impl<'a> Parser<'a> {
             return Ok(vec![])
         }
         // 最初の一個だけ読んでおく
-        let mut args = vec![ExprWrapper::new(self.expr()?)];
+        let mut args = vec![self.expr()?];
         while let Ok(_) = self.expect_next_symbol(",") {
-            args.push(ExprWrapper::new(self.expr()?));
+            args.push(self.expr()?);
         }
 
         self.expect_next_symbol(")")?;
@@ -408,16 +408,16 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(in super) fn new_add(lhs: ExprWrapper, rhs: ExprWrapper) -> Result<Expr, String> {
+    pub(in super) fn new_add(lhs: ExprWrapper, rhs: ExprWrapper) -> Result<ExprWrapper, String> {
         match (lhs.ty.as_ref(), rhs.ty.as_ref()) {
             (l, r) if l.is_integer() && r.is_integer() => {
-                Ok(Expr::Add { lhs, rhs })
+                Ok(Expr::Add { lhs, rhs }.to_expr_wrapper())
             },
             (l, r) if l.has_base() && r.is_integer() => {
-                Ok(Expr::PtrAdd { lhs, rhs })
+                Ok(Expr::PtrAdd { lhs, rhs }.to_expr_wrapper())
             },
             (l, r) if l.is_integer() && r.has_base() => {
-                Ok(Expr::PtrAdd { lhs: rhs, rhs: lhs })
+                Ok(Expr::PtrAdd { lhs: rhs, rhs: lhs }.to_expr_wrapper())
             },
             (_, _) => {
                 return Err("invalid operands at +".to_string());
@@ -425,16 +425,16 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(in super) fn new_sub(lhs: ExprWrapper, rhs: ExprWrapper) -> Result<Expr, String> {
+    pub(in super) fn new_sub(lhs: ExprWrapper, rhs: ExprWrapper) -> Result<ExprWrapper, String> {
        match (lhs.ty.as_ref(), rhs.ty.as_ref()) {
             (l, r) if l.is_integer() && r.is_integer() => {
-                Ok(Expr::Sub { lhs, rhs })
+                Ok(Expr::Sub { lhs, rhs }.to_expr_wrapper())
             },
             (l, r) if l.has_base() && r.is_integer() => {
-                Ok(Expr::PtrSub { lhs, rhs })
+                Ok(Expr::PtrSub { lhs, rhs }.to_expr_wrapper())
             },
             (l, r) if l.has_base() && r.has_base() => {
-                Ok(Expr::PtrDiff { lhs, rhs })
+                Ok(Expr::PtrDiff { lhs, rhs }.to_expr_wrapper())
             },
             (_, _) => {
                 return Err("invalid operands at -".to_string());
@@ -562,8 +562,8 @@ impl<'a> Parser<'a> {
         Ok(Member::new(Box::clone(&ty_with_suffix), name.as_str()))
     }
 
-    pub(in super) fn struct_ref(&mut self, expr: Expr) -> Result<Expr, String> {
-        let ty = expr.detect_type();
+    pub(in super) fn struct_ref(&mut self, expr_wrapper: ExprWrapper) -> Result<ExprWrapper, String> {
+        let ty = expr_wrapper.expr.detect_type();
         if let Type::Struct { members, .. } = ty.as_ref() {
             let ident = self.expect_next_ident()?;
             let name = ident.tk_str();
@@ -571,7 +571,7 @@ impl<'a> Parser<'a> {
                             .find(|mem| mem.name == name.as_str())
                             .ok_or_else(|| format!("no such member: {}", name))?;
 
-            Ok(Expr::Member(expr.to_expr_wrapper(), member.clone()))
+            Ok(Expr::Member(expr_wrapper, member.clone()).to_expr_wrapper())
         } else {
             Err("not_a struct".to_string())
         }
