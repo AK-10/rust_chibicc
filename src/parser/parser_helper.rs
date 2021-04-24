@@ -319,14 +319,14 @@ impl<'a> Parser<'a> {
         }
 
         if let Ok(_) = self.expect_next_symbol("(") {
-            let dummy = &mut Box::new(Type::Dummy);
-            let new_ty = &mut self.declarator(dummy, name)?;
+            let mut dummy = Box::new(Type::Dummy);
+            dummy = self.declarator(&mut dummy, name)?;
 
             self.expect_next_symbol(")")?;
 
-            new_ty.replace_ptr_to(*self.read_type_suffix(Box::clone(&ty))?);
+            dummy.replace_ptr_to(*self.read_type_suffix(Box::clone(&ty))?);
 
-            Ok(Box::clone(&new_ty))
+            Ok(Box::clone(&dummy))
         } else {
             let tk = self.expect_next_ident()?;
             *name = tk.tk_str().to_string();
@@ -547,11 +547,11 @@ impl<'a> Parser<'a> {
 
     //  struct-member := basetype ident ("[" num "]") ";"
     pub(in super) fn struct_member(&mut self) -> Result<Member, String> {
-        let ty = &mut self.base_type()?;
+        let mut ty = self.base_type()?;
         let name = &mut String::new();
 
-        let declarator = &mut self.declarator(ty, name)?;
-        let ty_with_suffix = &mut self.read_type_suffix(Box::clone(&declarator))?;
+        ty = self.declarator(&mut ty, name)?;
+        let ty_with_suffix = &mut self.read_type_suffix(Box::clone(&ty))?;
 
         let _ = self.expect_next_symbol(";")?;
 
