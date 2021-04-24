@@ -61,7 +61,9 @@ impl<'a> Parser<'a> {
                 break
             }
             if self.is_function() {
-                nodes.push(self.function()?);
+                if let Some(f) = self.function()? {
+                    nodes.push(f);
+                }
             } else {
                 let gvar = self.global_var()?;
                 self.globals.push(gvar);
@@ -74,10 +76,10 @@ impl<'a> Parser<'a> {
         })
     }
 
-    // function := basetype declarator "(" params ")" "{" stmt* "}"
+    // function := basetype declarator "(" params? ")" ("{" stmt* "}" | ";")
     // params := param ("," param)*
     // param := basetype declarator type-suffix
-    fn function(&mut self) -> Result<Function, String> {
+    fn function(&mut self) -> Result<Option<Function>, String> {
         self.base_type()?;
 
         if let Some(Token::Ident(ident)) = self.peekable.next() {
@@ -87,6 +89,12 @@ impl<'a> Parser<'a> {
             // parse params
             let params = self.parse_func_params()?;
             self.locals = params.clone();
+
+            // prototype declaration
+            if let Ok(_) = self.expect_next_symbol(";") {
+                self.leave_scope(sc);
+                return Ok(None)
+            }
 
             self.expect_next_symbol("{".to_string())?;
 
@@ -101,7 +109,7 @@ impl<'a> Parser<'a> {
             let locals = self.locals.to_vec();
             self.locals.clear();
 
-            Ok(Function::new(Rc::clone(&ident.name), nodes, locals, params))
+            Ok(Some(Function::new(Rc::clone(&ident.name), nodes, locals, params)))
         } else {
             Err("expect ident, but different".to_string())
         }
