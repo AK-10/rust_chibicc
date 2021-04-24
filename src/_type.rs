@@ -17,6 +17,8 @@ impl Member {
     }
 }
 
+// TODO: Strを追加
+// codegenとかでchar * に変換する?
 #[derive(PartialEq, Debug, Clone)]
 pub enum Type {
     Int,
@@ -35,20 +37,22 @@ pub enum Type {
         align: usize, // alignment sizeはこの値の倍数になる
         size: usize
     },
+    Func(Box<Type>),
     Dummy
 }
 
 impl Type {
     pub fn size(&self) -> usize {
         match self {
-            Self::Int => 4,
-            Self::Short => 2,
-            Self::Long => 8,
-            Self::Ptr { .. } => 8,
-            Self::Array { base, len } => base.size() * len,
-            Self::Char => 1,
-            Self::Struct { size, .. } => *size,
-            Self::Dummy => 0
+            Type::Int => 4,
+            Type::Short => 2,
+            Type::Long => 8,
+            Type::Ptr { .. } => 8,
+            Type::Array { base, len } => base.size() * len,
+            Type::Char => 1,
+            Type::Struct { size, .. } => *size,
+            Type::Func(_) => 1,
+            Type::Dummy => 0
         }
     }
 
@@ -86,6 +90,7 @@ impl Type {
             Type::Array { base, .. } => base.align(),
             Type::Char => 1,
             Type::Struct { align, .. } => *align,
+            Type::Func(_) => 1,
             Type::Dummy => 0
         }
     }

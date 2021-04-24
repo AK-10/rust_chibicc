@@ -353,7 +353,7 @@ impl<'a> Parser<'a> {
         var
     }
 
-    pub(in super) fn new_gvar_with_contents(&mut self, name: &String, ty: Box<Type>, contents: &Vec<u8>) -> Rc<RefCell<Var>> {
+    pub(in super) fn new_gvar(&mut self, name: &String, ty: Box<Type>, contents: Option<Vec<u8>>, emit: bool) -> Rc<RefCell<Var>> {
         let var = Rc::new(
             RefCell::new(
                 Var {
@@ -361,10 +361,14 @@ impl<'a> Parser<'a> {
                     offset: Offset::Unset,
                     ty: Box::clone(&ty),
                     is_local: false,
-                    contents: Some(contents.clone())
+                    contents
                 }
             )
         );
+
+        if emit {
+            self.globals.push(Rc::clone(&var))
+        }
 
         self.push_scope_with_var(&Rc::new(name.to_string()), &var);
 
@@ -380,7 +384,7 @@ impl<'a> Parser<'a> {
         let ty = self.read_type_suffix(base_ty)?;
         self.expect_next_symbol(";")?;
 
-        Ok(self.new_var(name, ty, false))
+        Ok(self.new_gvar(name, ty, None, true))
     }
 
     pub(in super) fn read_type_suffix(&mut self, base: Box<Type>) -> Result<Box<Type>, String> {

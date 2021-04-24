@@ -65,8 +65,7 @@ impl<'a> Parser<'a> {
                     nodes.push(f);
                 }
             } else {
-                let gvar = self.global_var()?;
-                self.globals.push(gvar);
+                let _ = self.global_var()?;
             }
         };
 
@@ -80,39 +79,44 @@ impl<'a> Parser<'a> {
     // params := param ("," param)*
     // param := basetype declarator type-suffix
     fn function(&mut self) -> Result<Option<Function>, String> {
-        self.base_type()?;
+        self.locals.clear();
 
-        if let Some(Token::Ident(ident)) = self.peekable.next() {
-            // scopeを保存するため，コピーを持っておく
-            let sc = self.enter_scope();
+        let mut ty = self.base_type()?;
+        let name = &mut String::new();
 
-            // parse params
-            let params = self.parse_func_params()?;
-            self.locals = params.clone();
+        ty = self.declarator(&mut ty, name)?;
 
-            // prototype declaration
-            if let Ok(_) = self.expect_next_symbol(";") {
-                self.leave_scope(sc);
-                return Ok(None)
-            }
+        // add function type to the scope
+        self.new_gvar(name, Box::new(Type::Func(ty)), None, false);
 
-            self.expect_next_symbol("{".to_string())?;
+        // clone scope for saving current scope
+        let sc = self.enter_scope();
 
-            let mut nodes = Vec::new();
+        // parse params
+        let params = self.parse_func_params()?;
+        self.locals = params.clone();
 
-            while let Err(_) = self.expect_next_symbol("}".to_string()) {
-                nodes.push(self.stmt()?);
-            };
-
+        // prototype declaration
+        if let Ok(_) = self.expect_next_symbol(";") {
             self.leave_scope(sc);
-
-            let locals = self.locals.to_vec();
-            self.locals.clear();
-
-            Ok(Some(Function::new(Rc::clone(&ident.name), nodes, locals, params)))
-        } else {
-            Err("expect ident, but different".to_string())
+            return Ok(None)
         }
+
+        // read function body
+        self.expect_next_symbol("{".to_string())?;
+
+        let mut nodes = Vec::new();
+
+        while let Err(_) = self.expect_next_symbol("}".to_string()) {
+            nodes.push(self.stmt()?);
+        };
+
+        self.leave_scope(sc);
+
+        let locals = self.locals.to_vec();
+
+        // construct function object
+        Ok(Some(Function::new(Rc::new(name.to_string()), nodes, locals, params)))
     }
 
     // stmt := expr ";"
@@ -482,8 +486,9 @@ impl<'a> Parser<'a> {
                 };
 
                 let label = self.new_label();
-                let var = self.new_gvar_with_contents(&label, Box::new(ty), &bytes);
-                self.globals.push(Rc::clone(&var));
+                // bytesはmoveして良さげだが，やり方がわからずcloneしている
+                let var = self.new_gvar(&label, Box::new(ty), Some(bytes.clone()), false);
+                //self.globals.push(Rc::clone(&var));
 
                 Ok(Expr::Var(var))
             }
