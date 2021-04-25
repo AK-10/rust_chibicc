@@ -292,6 +292,7 @@ impl<'a> Parser<'a> {
         } else if let Ok(_) = self.expect_next_reserved("short") {
             Box::new(Type::Short)
         } else if let Ok(_) = self.expect_next_reserved("long") {
+            let _ = self.expect_next_reserved("long");
             Box::new(Type::Long)
         } else if let Ok(_) = self.expect_next_reserved("char") {
             Box::new(Type::Char)
