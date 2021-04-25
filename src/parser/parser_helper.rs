@@ -4,7 +4,7 @@ use crate::token::Token;
 use crate::token::token_type::*;
 use crate::program::{ Var, Offset, align_to };
 use crate::_type::{ Type, Member };
-use crate::scopes::{ TagScope, VarScope, Scope, VarOrTypeDef };
+use crate::scopes::{ TagScope, VarScope, Scope, ScopeElement };
 
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -21,7 +21,7 @@ impl<'a> Parser<'a> {
     pub(in super) fn find_typedef(&self, tk: &Token) -> Option<Box<Type>> {
         if let Token::Ident(Ident { name, .. }) = tk {
             self.find_var(name).and_then(|sc| {
-                if let VarOrTypeDef::TypeDef(ref ty) = sc.target {
+                if let ScopeElement::TypeDef(ref ty) = sc.target {
                     Some(Box::clone(ty))
                 } else {
                     None
@@ -29,6 +29,32 @@ impl<'a> Parser<'a> {
             })
         } else {
             None
+        }
+    }
+
+    // TODO: refactor, use `and_then`, `map` etc
+    // return 'return type' of a function
+    // 3 patterns
+    //   - get function -> return Ok(ret_type)
+    //   - fail find var -> return Ok(None)
+    //   - success find var but not function Err
+    pub(in super) fn find_func(&self, name: &String) -> Result<Option<Box<Type>>, String> {
+        let func = self.find_var(name);
+        match func {
+            Some(vsc) => {
+                match vsc.target {
+                    ScopeElement::Var(ref var) => {
+                        match var.borrow().ty.as_ref() {
+                            Type::Func(ret_type) => {
+                                Ok(Some(Box::clone(ret_type)))
+                            },
+                            _ => Err(format!("{} is not a function", name))
+                        }
+                    },
+                    _ => Ok(None)
+                }
+            },
+            _ => Ok(None)
         }
     }
 

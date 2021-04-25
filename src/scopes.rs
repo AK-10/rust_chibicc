@@ -17,7 +17,7 @@ impl TagScope {
 }
 
 #[derive(Clone, Debug)]
-pub enum VarOrTypeDef {
+pub enum ScopeElement {
     Var(Rc<RefCell<Var>>),
     TypeDef(Box<Type>)
 }
@@ -34,21 +34,21 @@ pub enum VarOrTypeDef {
 #[derive(Clone, Debug)]
 pub struct VarScope {
     pub name: Rc<String>,
-    pub target: VarOrTypeDef
+    pub target: ScopeElement
 }
 
 impl VarScope {
     pub fn new_var(name: &Rc<String>, var: &Rc<RefCell<Var>>) -> Self {
         Self {
             name: Rc::clone(name),
-            target: VarOrTypeDef::Var(Rc::clone(var))
+            target: ScopeElement::Var(Rc::clone(var))
         }
     }
 
     pub fn new_typedef(name: &Rc<String>, ty: &Box<Type>) -> Self {
         Self {
             name: Rc::clone(name),
-            target: VarOrTypeDef::TypeDef(Box::clone(ty))
+            target: ScopeElement::TypeDef(Box::clone(ty))
         }
     }
 }

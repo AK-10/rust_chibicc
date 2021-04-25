@@ -3,7 +3,7 @@ use crate::token::{ Token, TokenIter, /* TokenIterErr */ };
 use crate::program::{ Function, Var, Program };
 use crate::_type::Type;
 use crate::token::token_type::*;
-use crate::scopes::{ TagScope, VarScope, VarOrTypeDef };
+use crate::scopes::{ TagScope, VarScope, ScopeElement };
 
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -469,21 +469,23 @@ impl<'a> Parser<'a> {
                 self.peekable.next();
                 if let Ok(_) = self.expect_next_symbol("(") {
                     let args = self.parse_args()?;
-                    let sc = self.find_var(name);
-                    match sc {
-                        Some() => {
+                    let expr = Box::new(Expr::FnCall { fn_name: Rc::clone(name), args });
+
+                    let ty = match self.find_func(name)? {
+                        Some(ret_type) => {
+                            ret_type
                         },
-                        _ => {
-                            // print warning for "implicit declarartion of a function"
+                        _ => Box::new(Type::Int)
+                    };
 
-                        }
-                    }
-
-                    //return Ok(Expr::FnCall { fn_name: Rc::clone(name), args })
-                }
+                    return Ok(ExprWrapper {
+                        ty,
+                        expr
+                    })
+                 }
                 // variable
                 if let Some(VarScope { target, .. }) = self.find_var(&name) {
-                    if let VarOrTypeDef::Var(var) = target {
+                    if let ScopeElement::Var(var) = target {
                         Ok(Expr::Var(Rc::clone(var)).to_expr_wrapper())
                     } else {
                         let msg = format!("undefined variable: {}", name);
