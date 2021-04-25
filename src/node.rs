@@ -183,6 +183,7 @@ impl Expr {
                 match operand.ty.as_ref() {
                    Type::Ptr { base }
                    | Type::Array { base, .. } => Box::clone(base),
+                   Type::Void => panic!("derefierencing a void pointer"),
                    _ => Box::clone(&operand.ty)
                 }
             },

@@ -38,6 +38,7 @@ pub enum Type {
         size: usize
     },
     Func(Box<Type>),
+    Void,
     Dummy
 }
 
@@ -50,6 +51,7 @@ impl Type {
             Type::Ptr { .. } => 8,
             Type::Array { base, len } => base.size() * len,
             Type::Char => 1,
+            Type::Void => 1,
             Type::Struct { size, .. } => *size,
             Type::Func(_) => 1,
             Type::Dummy => 0
@@ -89,6 +91,7 @@ impl Type {
             Type::Ptr { .. } => 8,
             Type::Array { base, .. } => base.align(),
             Type::Char => 1,
+            Type::Void => 1,
             Type::Struct { align, .. } => *align,
             Type::Func(_) => 1,
             Type::Dummy => 0

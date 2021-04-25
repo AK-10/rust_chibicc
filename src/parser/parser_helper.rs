@@ -138,53 +138,28 @@ impl<'a> Parser<'a> {
         ty = self.declarator(&mut ty, name)?;
         ty = self.read_type_suffix(ty)?;
 
+        if let Type::Void = ty.as_ref() {
+            return Err("variable declared void".to_string())
+        }
+
+        let var = self.new_var(name, Box::clone(&ty), true);
+
         let expr =
             if let Err(_) = self.expect_next_reserved("=") {
-                let var = self.new_var(name, Box::clone(&ty), true);
                 self.locals.push(var);
                 self.expect_next_symbol(";".to_string())?;
 
                 Expr::Null
             } else {
-                let lhs = self.new_var(name, Box::clone(&ty), true);
-                self.locals.push(Rc::clone(&lhs));
+                self.locals.push(Rc::clone(&var));
 
                 let rhs = self.expr()?;
                 self.expect_next_symbol(";".to_string())?;
 
-                Expr::Assign { var: Expr::Var(Rc::clone(&lhs)).to_expr_wrapper(), val: rhs }
+                Expr::Assign { var: Expr::Var(var).to_expr_wrapper(), val: rhs }
             };
 
         Ok(Stmt::ExprStmt { val: ExprWrapper { ty: Box::clone(&ty), expr: Box::new(expr) } })
-        //match self.peekable.peek() {
-        //    Some(Token::Ident(Ident { name, .. })) => {
-        //        self.peekable.next();
-        //        let ty = self.read_type_suffix(ty)?;
-
-        //        let expr =
-        //            if let Err(_) = self.expect_next_reserved("=".to_string()) {
-        //                // int a; みたいな場合はローカル変数への追加だけ行う. (push rax, 3 みたいなのはしない)
-        //                let var = self.new_var(name, Box::clone(&ty), true);
-        //                self.locals.push(var);
-        //                self.expect_next_symbol(";".to_string())?;
-
-        //                Expr::Null
-        //            } else {
-        //                let lhs = self.new_var(name, Box::clone(&ty), true);
-        //                self.locals.push(Rc::clone(&lhs));
-
-        //                let rhs = self.expr()?;
-        //                self.expect_next_symbol(";".to_string())?;
-
-        //                Expr::Assign { var: Expr::Var(Rc::clone(&lhs)).to_expr_wrapper(), val: rhs.to_expr_wrapper() }
-        //            };
-
-        //        Ok(Stmt::ExprStmt { val: ExprWrapper { ty: Box::clone(&ty), expr: Box::new(expr) } })
-        //    }
-        //    _ => {
-        //        return Err("expect ident, but not found".to_string())
-        //    }
-        //}
     }
 
     pub(in super) fn expr_stmt(&mut self) -> Result<Stmt, String> {
@@ -320,6 +295,8 @@ impl<'a> Parser<'a> {
             Box::new(Type::Long)
         } else if let Ok(_) = self.expect_next_reserved("char") {
             Box::new(Type::Char)
+        } else if let Ok(_) = self.expect_next_reserved("void") {
+            Box::new(Type::Void)
         } else if let Ok(_) = self.expect_next_reserved("struct") {
             self.struct_decl()?
         } else {
