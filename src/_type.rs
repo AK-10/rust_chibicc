@@ -39,6 +39,7 @@ pub enum Type {
     },
     Func(Box<Type>),
     Void,
+    Bool,
     Dummy
 }
 
@@ -52,6 +53,7 @@ impl Type {
             Type::Array { base, len } => base.size() * len,
             Type::Char => 1,
             Type::Void => 1,
+            Type::Bool => 1,
             Type::Struct { size, .. } => *size,
             Type::Func(_) => 1,
             Type::Dummy => 0
@@ -71,7 +73,8 @@ impl Type {
             Type::Int
             | Type::Short
             | Type::Long
-            | Type::Char => true,
+            | Type::Char
+            | Type::Bool => true,
             _ => false
         }
     }
@@ -92,6 +95,7 @@ impl Type {
             Type::Array { base, .. } => base.align(),
             Type::Char => 1,
             Type::Void => 1,
+            Type::Bool => 1,
             Type::Struct { align, .. } => *align,
             Type::Func(_) => 1,
             Type::Dummy => 0

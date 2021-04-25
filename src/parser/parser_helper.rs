@@ -297,6 +297,8 @@ impl<'a> Parser<'a> {
             Box::new(Type::Char)
         } else if let Ok(_) = self.expect_next_reserved("void") {
             Box::new(Type::Void)
+        } else if let Ok(_) = self.expect_next_reserved("_Bool") {
+            Box::new(Type::Bool)
         } else if let Ok(_) = self.expect_next_reserved("struct") {
             self.struct_decl()?
         } else {

@@ -17,7 +17,7 @@ mod parser_helper;
 // * /
 // 単項+ 単項-
 // ()
-const TYPE_NAMES: [&str; 6] = ["int", "short", "long", "char", "struct", "void"];
+const TYPE_NAMES: [&str; 7] = ["int", "short", "long", "char", "struct", "void", "_Bool"];
 
 pub struct Parser<'a> {
     pub input: &'a Vec<Token>,

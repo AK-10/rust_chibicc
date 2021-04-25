@@ -64,6 +64,7 @@ impl<'a> CodeGenerator<'a> {
                 // cmp命令: 二つの引数のレジスタを比較して, フラグレジスタに結果を格納
                 // sete命令: 指定のレジスタにフラグレジスタの値を格納. seteであれば==の時1になる
                 //           8bitしか書き込めないのでalを指定している
+                //           setneは!=のとき1になる
                 // movzb命令: movzb dist, srcでsrcをdistに書き込む．またsrcで指定されたbitより上の桁は0埋めする
                 // al: raxの下位8bitのエイリアス. alを変更するとraxも変更される
                 println!("  cmp rax, rdi");
@@ -434,6 +435,17 @@ fn load(ty: &Type) {
 fn store(ty: &Type) {
     println!("  pop rdi");
     println!("  pop rax");
+
+    if let Type::Bool = ty {
+        // bool
+        // => 0         = 0
+        //    otherwise = 1
+        // 0と比較して一致しないときゼロフラグがセットされるのでこれをdilに格納
+        // またゼロ拡張したいのでmovzb rdi, dilする
+        println!("  cmp rdi, 0");
+        println!("  setne dil"); // dilはrdiの下位8bit, raxのalみたいなもん
+        println!("  movzb rdi, dil");
+    }
 
     match ty.size() {
         1 => println!("  mov [rax], dil"),
