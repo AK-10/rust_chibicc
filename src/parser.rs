@@ -65,7 +65,7 @@ impl<'a> Parser<'a> {
                     nodes.push(f);
                 }
             } else {
-                let _ = self.global_var()?;
+                self.global_var()?;
             }
         };
 
@@ -81,7 +81,7 @@ impl<'a> Parser<'a> {
     fn function(&mut self) -> Result<Option<Function>, String> {
         self.locals.clear();
 
-        let mut ty = self.base_type()?;
+        let mut ty = self.base_type(&mut None)?;
         let name = &mut String::new();
 
         ty = self.declarator(&mut ty, name)?;
@@ -125,7 +125,6 @@ impl<'a> Parser<'a> {
     //       | "while" "(" expr ")" stmt
     //       | "for" "(" expr? ";" expr? ";" expr? ")" stmt
     //       | "{" stmt "}"
-    //       | "typedef" basetype declarator ("[" num "]")* ";"
     //       | declaration
     fn stmt(&mut self) -> Result<Stmt, String> {
         let tk = self.peekable.peek();
@@ -164,24 +163,6 @@ impl<'a> Parser<'a> {
             }
             Some(_) if self.is_typename() => {
                 self.declaration()
-            }
-            Some(t) if t.as_str() == "typedef" => {
-                self.peekable.next();
-
-                let mut ty = self.base_type()?;
-                let name = &mut String::new();
-                ty = self.declarator(&mut ty, name)?;
-                ty = self.read_type_suffix(ty)?;
-
-                self.expect_next_symbol(";")?;
-
-                self.push_scope_with_typedef(&Rc::new(name.to_string()), &ty);
-
-                Ok(Stmt::ExprStmt {
-                    val: ExprWrapper::new(
-                        Expr::Null
-                    )
-                })
             }
             _ => {
                 let expr_stmt = self.expr_stmt();

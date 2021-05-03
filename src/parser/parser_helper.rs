@@ -127,7 +127,8 @@ impl<'a> Parser<'a> {
     // declaration := basetype declarator type-suffix ("=" expr)? ";"
     //              | basetype ";"
     pub(in super) fn declaration(&mut self) -> Result<Stmt, String> {
-        let mut ty = self.base_type()?;
+        let is_typedef = &mut Some(false);
+        let mut ty = self.base_type(is_typedef)?;
 
         if let Ok(()) = self.expect_next_symbol(";") {
             return Ok(Stmt::ExprStmt { val: Expr::Null.to_expr_wrapper() })
@@ -137,6 +138,15 @@ impl<'a> Parser<'a> {
 
         ty = self.declarator(&mut ty, name)?;
         ty = self.read_type_suffix(ty)?;
+
+        if let Some(true) = is_typedef {
+            self.expect_next_symbol(";")?;
+            self.push_scope_with_typedef(&Rc::new(name.to_string()), &ty);
+
+            return Ok(Stmt::ExprStmt {
+                val: ExprWrapper::new(Expr::Null)
+            })
+        }
 
         if let Type::Void = ty.as_ref() {
             return Err("variable declared void".to_string())
@@ -253,7 +263,7 @@ impl<'a> Parser<'a> {
         if self.expect_next_symbol(")".to_string()).is_ok() {
             return Ok(params)
         }
-        let ty = &mut self.base_type()?;
+        let ty = &mut self.base_type(&mut None)?;
         let name = &mut String::new();
 
         if let Ok(_) = self.declarator(ty, name) {
@@ -263,7 +273,7 @@ impl<'a> Parser<'a> {
         }
 
         while let Ok(_) = self.expect_next_symbol(",".to_string()) {
-            let ty = &mut self.base_type()?;
+            let ty = &mut self.base_type(&mut None)?;
             let name = &mut String::new();
             match self.declarator(ty, name) {
                 Ok(_) => {
@@ -281,33 +291,87 @@ impl<'a> Parser<'a> {
     }
 
     // base-type = buildin-type | struct-decl | typedef-name
-    // builtin-type = "char" | "int" | "short" | "long"
-    pub(in super) fn base_type(&mut self) -> Result<Box<Type>, String> {
+    // builtin-type = "void" | "char" | "_Bool" | "int" | "short" | "long" | "long" "long"
+    //
+    // Note that "typedef" can appear anywhere in a basetype.
+    // "int" can appear anywhere if type is short, long or long long
+    pub(in super) fn base_type(&mut self, is_typedef: &mut Option<bool>) -> Result<Box<Type>, String> {
         if !self.is_typename() {
             return Err("typename expected".to_string())
         }
 
-        let ty = if let Ok(_) = self.expect_next_reserved("int") {
-            Box::new(Type::Int)
-        } else if let Ok(_) = self.expect_next_reserved("short") {
-            Box::new(Type::Short)
-        } else if let Ok(_) = self.expect_next_reserved("long") {
-            let _ = self.expect_next_reserved("long");
-            Box::new(Type::Long)
-        } else if let Ok(_) = self.expect_next_reserved("char") {
-            Box::new(Type::Char)
-        } else if let Ok(_) = self.expect_next_reserved("void") {
-            Box::new(Type::Void)
-        } else if let Ok(_) = self.expect_next_reserved("_Bool") {
-            Box::new(Type::Bool)
-        } else if let Ok(_) = self.expect_next_reserved("struct") {
-            self.struct_decl()?
-        } else {
-            let tk = self.expect_next_ident()?;
-            self.find_typedef(&tk)
-                .ok_or(format!("{:?} is not type", tk.tk_str()))?
-        };
+        let mut ty = Box::new(Type::Int);
+        let mut counter = 0;
 
+        if let Some(true) = is_typedef {
+            *is_typedef = Some(false);
+        }
+
+        while let (true, Some(tok)) = (self.is_typename(), self.peekable.peek()) {
+            let tk_str = tok.tk_str();
+            // handle storage class specifiers
+            if tk_str.as_str() == "typedef" {
+                //if let Some(false) = is_typedef {
+                //    return Err("invalid storage class specifier".to_string())
+                //}
+                *is_typedef = Some(true);
+                self.peekable.next();
+                continue
+            }
+
+            if !["void", "_Bool", "char", "short", "int", "long"].contains(&tk_str.as_str()) {
+                if counter > 0 {
+                    break
+                }
+
+                if tk_str.as_str() == "struct" {
+                    ty = self.struct_decl()?;
+                } else {
+                    ty = self.find_typedef(tok).unwrap();
+                    self.peekable.next();
+                }
+
+                if counter <= 0 {
+                    counter = 1 << 12; //Other.value
+                }
+                continue
+            }
+
+            match tk_str.as_str() {
+                "void" => counter += 1 << 0,
+                "_Bool" => counter += 1 << 2,
+                "char" => counter += 1 << 4,
+                "short" => counter += 1 << 6,
+                "int" => counter += 1 << 8,
+                "long" => counter += 1 << 10,
+                _ => {}
+            };
+//1
+//4
+//16
+//64
+//256
+//1024
+//4096
+            ty = match counter {
+                1 => Box::new(Type::Void), // void
+                4 => Box::new(Type::Bool), // bool
+                16 => Box::new(Type::Char), // char
+                64 //short
+                | 320 => Box::new(Type::Short), // short + long
+                256 => Box::new(Type::Int), // int
+                1024 // long
+                | 1280 // long + int
+                | 2048 // long + long
+                | 2304 => Box::new(Type::Long), // long + long + int
+                _ => {
+                    let msg = format!("counter is {}, invalid type", counter);
+                    return Err(msg)
+                }
+            };
+
+            self.peekable.next();
+        }
         Ok(ty)
     }
 
@@ -382,15 +446,22 @@ impl<'a> Parser<'a> {
     }
 
     // global-var := basetype declarator type-suffix ";"
-    pub(in super) fn global_var(&mut self) -> Result<Rc<RefCell<Var>>, String> {
-        let mut base_ty = self.base_type()?;
+    pub(in super) fn global_var(&mut self) -> Result<(), String> {
+        let is_typedef = &mut Some(false);
+        let mut base_ty = self.base_type(is_typedef)?;
         let name = &mut String::new();
         let base_ty = self.declarator(&mut base_ty, name)?;
 
         let ty = self.read_type_suffix(base_ty)?;
         self.expect_next_symbol(";")?;
 
-        Ok(self.new_gvar(name, ty, None, true))
+        if let Some(true) = is_typedef {
+            self.push_scope_with_typedef(&Rc::new(name.to_string()), &ty);
+        } else {
+            self.new_gvar(name, ty, None, true);
+        }
+
+        Ok(())
     }
 
     pub(in super) fn read_type_suffix(&mut self, base: Box<Type>) -> Result<Box<Type>, String> {
@@ -462,7 +533,8 @@ impl<'a> Parser<'a> {
     pub(in super) fn is_function(&mut self) -> bool {
         let pos = self.peekable.current_position();
 
-        let base = &mut if let Ok(ty) = self.base_type() {
+        let is_typedef = &mut Some(false);
+        let base = &mut if let Ok(ty) = self.base_type(is_typedef) {
             ty
         } else {
             let _ = self.peekable.back_to(pos);
@@ -487,7 +559,7 @@ impl<'a> Parser<'a> {
     pub(in super) fn is_typename(&self) -> bool {
         self.peekable.peek().map(|tk| {
             if let Token::Reserved(Reserved { op, .. }) = tk {
-                TYPE_NAMES.contains(&op.as_str())
+                TYPE_NAMES.contains(&op.as_str()) || op.as_str() == "typedef"
             } else {
                 self.find_typedef(tk).is_some()
             }
@@ -507,6 +579,7 @@ impl<'a> Parser<'a> {
     //              | struct ident { .. }
     //              | struct {}
     pub(in super) fn struct_decl(&mut self) -> Result<Box<Type>, String> {
+        self.peekable.next();
         // read a struct tag.
         let tag = self.expect_next_ident().ok();
 
@@ -557,7 +630,7 @@ impl<'a> Parser<'a> {
 
     //  struct-member := basetype ident ("[" num "]") ";"
     pub(in super) fn struct_member(&mut self) -> Result<Member, String> {
-        let mut ty = self.base_type()?;
+        let mut ty = self.base_type(&mut None)?;
         let name = &mut String::new();
 
         ty = self.declarator(&mut ty, name)?;
