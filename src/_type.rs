@@ -44,6 +44,25 @@ pub enum Type {
 }
 
 impl Type {
+    pub fn new_from<'a>(counter: &'a usize) -> Result<Self, String> {
+        match *counter {
+            1 => Ok(Type::Void), // void
+            4 => Ok(Type::Bool), // bool
+            16 => Ok(Type::Char), // char
+            64 //short
+            | 320 => Ok(Type::Short), // short + long
+            256 => Ok(Type::Int), // int
+            1024 // long
+            | 1280 // long + int
+            | 2048 // long + long
+            | 2304 => Ok(Type::Long), // long + long + int
+            _ => {
+                let msg = format!("counter is {}, invalid type", counter);
+                return Err(msg)
+            }
+        }
+    }
+
     pub fn size(&self) -> usize {
         match self {
             Type::Int => 4,
@@ -108,6 +127,44 @@ impl Type {
                     base.replace_ptr_to(dist);
             },
             _ => *self = dist
+        }
+    }
+}
+
+pub enum TypeCounter {
+    Void,
+    Bool,
+    Char,
+    Short,
+    Int,
+    Long,
+    Other,
+    Zero
+}
+
+impl TypeCounter {
+    pub fn new_from<'a>(tk_str: &'a str) -> Self {
+        match tk_str {
+            "void" => TypeCounter::Void,
+            "_Bool" => TypeCounter::Bool,
+            "char" => TypeCounter::Char,
+            "short" => TypeCounter::Short,
+            "int" => TypeCounter::Int,
+            "long" => TypeCounter::Long,
+            _  => TypeCounter::Zero
+        }
+    }
+
+    pub fn value(&self) -> usize {
+        match self {
+            TypeCounter::Void => 1 << 0,
+            TypeCounter::Bool => 1 << 2,
+            TypeCounter::Char => 1 << 4,
+            TypeCounter::Short => 1 << 6,
+            TypeCounter::Int => 1 << 8,
+            TypeCounter::Long => 1 << 10,
+            TypeCounter::Other => 1 << 12,
+            TypeCounter::Zero => 0,
         }
     }
 }

@@ -3,7 +3,7 @@ use crate::node::{ Stmt, ExprWrapper, Expr };
 use crate::token::Token;
 use crate::token::token_type::*;
 use crate::program::{ Var, Offset, align_to };
-use crate::_type::{ Type, Member };
+use crate::_type::{ Type, Member, TypeCounter };
 use crate::scopes::{ TagScope, VarScope, Scope, ScopeElement };
 
 use std::rc::Rc;
@@ -311,9 +311,9 @@ impl<'a> Parser<'a> {
             let tk_str = tok.tk_str();
             // handle storage class specifiers
             if tk_str.as_str() == "typedef" {
-                //if let Some(false) = is_typedef {
-                //    return Err("invalid storage class specifier".to_string())
-                //}
+                // if let Some(false) = is_typedef {
+                //     return Err("invalid storage class specifier".to_string())
+                // }
                 *is_typedef = Some(true);
                 self.peekable.next();
                 continue
@@ -337,39 +337,9 @@ impl<'a> Parser<'a> {
                 continue
             }
 
-            match tk_str.as_str() {
-                "void" => counter += 1 << 0,
-                "_Bool" => counter += 1 << 2,
-                "char" => counter += 1 << 4,
-                "short" => counter += 1 << 6,
-                "int" => counter += 1 << 8,
-                "long" => counter += 1 << 10,
-                _ => {}
-            };
-//1
-//4
-//16
-//64
-//256
-//1024
-//4096
-            ty = match counter {
-                1 => Box::new(Type::Void), // void
-                4 => Box::new(Type::Bool), // bool
-                16 => Box::new(Type::Char), // char
-                64 //short
-                | 320 => Box::new(Type::Short), // short + long
-                256 => Box::new(Type::Int), // int
-                1024 // long
-                | 1280 // long + int
-                | 2048 // long + long
-                | 2304 => Box::new(Type::Long), // long + long + int
-                _ => {
-                    let msg = format!("counter is {}, invalid type", counter);
-                    return Err(msg)
-                }
-            };
+            counter += TypeCounter::new_from(tk_str.as_str()).value();
 
+            ty = Box::new(Type::new_from(&counter)?);
             self.peekable.next();
         }
         Ok(ty)
