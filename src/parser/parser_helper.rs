@@ -366,13 +366,54 @@ impl<'a> Parser<'a> {
 
             dummy.replace_ptr_to(*self.read_type_suffix(Box::clone(&ty))?);
 
-            Ok(Box::clone(&dummy))
-        } else {
-            let tk = self.expect_next_ident()?;
-            *name = tk.tk_str().to_string();
-
-            self.read_type_suffix(Box::clone(&ty))
+            return Ok(Box::clone(&dummy))
         }
+
+        let tk = self.expect_next_ident()?;
+        *name = tk.tk_str().to_string();
+
+        self.read_type_suffix(Box::clone(&ty))
+    }
+
+    // abstract-declarator := "*"* ("(" abstract-declarator ")")? type-suffix
+    // example:
+    // sizeof(int **):
+    //   ty at start of function -> int
+    //   ty at end of while      -> int**
+    //   return                  -> int**
+    // sizeof(int*[4]):
+    //   ty at start of function -> int
+    //   ty at end of while      -> int*
+    //   type_suffix             -> {ty}[4]
+    //   return                  -> int*[4]
+    //
+    // sizeof(int(*)[4]):
+    //   ty at start of function   -> int
+    //   ty at end of while        -> int
+    //   inner abstract-declarator -> int*
+    //   type_suffix               -> {abstract-declarator}[4]
+    //   return                    -> int*[4]
+    pub(in super) fn abstract_declarator(&mut self, ty: &mut Box<Type>) -> Result<Box<Type>, String> {
+        while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
+            if op.as_str() == "*" {
+                *ty = Box::new(Type::Ptr { base: Box::clone(&ty) });
+                self.peekable.next();
+            } else {
+                break
+            }
+        }
+
+        if let Ok(_) = self.expect_next_symbol("(") {
+            let mut dummy = Box::new(Type::Dummy);
+            dummy = self.abstract_declarator(&mut dummy)?;
+
+            self.expect_next_symbol(")")?;
+            dummy.replace_ptr_to(*self.read_type_suffix(Box::clone(&ty))?);
+
+            return Ok(dummy)
+        }
+
+        self.read_type_suffix(Box::clone(&ty))
     }
 
     pub(in super) fn new_var(&mut self, name: &String, ty: Box<Type>, is_local: bool) -> Rc<RefCell<Var>> {
@@ -453,6 +494,14 @@ impl<'a> Parser<'a> {
             }
             Err(_) => Ok(base)
         }
+    }
+
+    // type-name := base-type abstract-declarator type-suffix
+    pub(in super) fn type_name(&mut self) -> Result<Box<Type>, String> {
+        let mut ty = self.base_type(&mut None)?;
+        ty = self.abstract_declarator(&mut ty)?;
+
+        self.read_type_suffix(ty)
     }
 
     pub(in super) fn new_add(lhs: ExprWrapper, rhs: ExprWrapper) -> Result<ExprWrapper, String> {

@@ -439,6 +439,29 @@ impl<'a> Parser<'a> {
 
                 expr
             }
+            // sizeof
+            Some(Token::Reserved(Reserved { op, .. })) if op.as_str() == "sizeof" => {
+                self.peekable.next();
+
+                let pos = self.peekable.current_position();
+                if let Ok(_) = self.expect_next_symbol("(") {
+                    if self.is_typename() {
+                        let size = self.type_name()?.size();
+                        self.expect_next_symbol(")")?;
+
+                        return Ok(Expr::Num { val: size as isize }.to_expr_wrapper())
+                    };
+                    // typeof unaryとして扱うため一つ戻す
+                    // "(" expression ")" を扱えるようにしたい
+                    // back_toを使わずself.expr()を使っても良さげだが，オリジナルに倣う
+                    let _ = self.peekable.back_to(pos);
+                }
+                // unary at here => "*"* (ident) | "(" expression ")" | num
+                let node = self.unary()?;
+                let size = node.ty.size();
+
+                Ok(Expr::Num { val: size as isize }.to_expr_wrapper())
+            }
             // num
             Some(Token::Num(Num { val, .. })) => {
                 self.peekable.next();
@@ -476,6 +499,7 @@ impl<'a> Parser<'a> {
                     Err(format!("undefined variable: {}", name))
                 }
             }
+            // str
             Some(Token::Str(Str { bytes, .. })) => {
                 self.peekable.next();
                 let ty = Type::Array {
@@ -488,13 +512,6 @@ impl<'a> Parser<'a> {
                 let var = self.new_gvar(&label, Box::new(ty), Some(bytes.clone()), true);
 
                 Ok(Expr::Var(var).to_expr_wrapper())
-            }
-            Some(Token::Reserved(Reserved { op, .. })) if op.as_str() == "sizeof" => {
-                self.peekable.next();
-                let node = self.unary()?;
-                let size = node.ty.size();
-
-                Ok(Expr::Num { val: size as isize }.to_expr_wrapper())
             }
             // unexpected
             unexpected => {
