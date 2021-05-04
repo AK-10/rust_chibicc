@@ -3,6 +3,7 @@ use crate::program::{ Program, Var };
 use crate::_type::Type;
 
 use std::cell::{ Cell, RefCell };
+use std::convert::TryFrom;
 
 const ARG_REG1: [&str; 6] = ["dil", "sil", "dl", "cl", "r8b", "r9b"];
 const ARG_REG2: [&str; 6] = ["di", "si", "dx", "cx", "r8w", "r9w"];
@@ -55,7 +56,17 @@ impl<'a> CodeGenerator<'a> {
                 println!("  idiv rdi");
             },
             Expr::Num { val } => {
-                println!("  push {}", val);
+                // `push` instraction cannot push a 64-bit integer. In order to push it,
+                // we have to first load a large integer to aregister using movabs and then
+                // push it to the stack
+                //
+                // if 64bit int is able to convert 32bit int, can be treated as 32bit
+                if i32::try_from(*val).is_ok() {
+                    println!("  push {}", val);
+                } else {
+                    println!("  movabs rax, {}", val);
+                    println!("  push rax");
+                }
                 return
             }
             Expr::Eq { lhs, rhs } => {
