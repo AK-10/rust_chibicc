@@ -1,5 +1,5 @@
 use crate::node::{ Stmt, Expr, ExprWrapper };
-use crate::token::{ Token, TokenIter, /* TokenIterErr */ };
+use crate::token::{ Token, TokenIter, TokenType };
 use crate::program::{ Function, Var, Program };
 use crate::_type::Type;
 use crate::token::token_type::*;
@@ -57,7 +57,7 @@ impl<'a> Parser<'a> {
 
         while let Some(token) = self.peekable.peek() {
             // eofでbreakしないと，以降の処理でpeek()するので全体としてErrになる(Noneでエラーにするような処理がprimaryにある)
-            if let Token::Eof = token {
+            if let TokenType::Eof = token.token_type {
                 break
             }
             if self.is_function() {
@@ -128,9 +128,9 @@ impl<'a> Parser<'a> {
     //       | declaration
     fn stmt(&mut self) -> Result<Stmt, String> {
         let tk = self.peekable.peek();
-        match tk.map(|t| t.tk_str()) {
+        match tk.map(|t| t.token_type.tk_str()) {
             Some(t) if t.as_str() == "return" => {
-            // Some(Token::Reserved { op }) if *op == "return" => {
+            // Some(TokenType::Reserved { op }) if *op == "return" => {
                 self.peekable.next();
 
                 let expr = self.expr()?;
@@ -206,8 +206,8 @@ impl<'a> Parser<'a> {
         let mut node = self.relational()?;
 
         while let Some(token) = self.peekable.peek() {
-            match token {
-                Token::Reserved(Reserved { op, .. }) if op.as_str() == "==" => {
+            match &token.token_type {
+                TokenType::Reserved(Reserved { op, .. }) if op.as_str() == "==" => {
                     self.peekable.next();
 
                     let rhs = self.relational()?;
@@ -216,7 +216,7 @@ impl<'a> Parser<'a> {
                         rhs
                     }.to_expr_wrapper();
                 }
-                Token::Reserved(Reserved { op, .. }) if op.as_str() == "!=" => {
+                TokenType::Reserved(Reserved { op, .. }) if op.as_str() == "!=" => {
                     self.peekable.next();
 
                     let rhs = self.relational()?;
@@ -236,7 +236,7 @@ impl<'a> Parser<'a> {
     fn relational(&mut self) -> Result<ExprWrapper, String> {
         let mut node = self.add()?;
 
-        while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
+        while let Some(TokenType::Reserved(Reserved { op, .. })) = self.peekable.peek().map(|tok| &tok.token_type) {
             match op.as_str() {
                 "<" => {
                     self.peekable.next();
@@ -285,7 +285,7 @@ impl<'a> Parser<'a> {
     fn add(&mut self) -> Result<ExprWrapper, String> {
         let mut node = self.mul()?;
 
-        while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
+        while let Some(TokenType::Reserved(Reserved { op, .. })) = self.peekable.peek().map(|tok| &tok.token_type) {
             match op.as_str() {
                 "+" => {
                     self.peekable.next();
@@ -316,7 +316,7 @@ impl<'a> Parser<'a> {
     fn mul(&mut self) -> Result<ExprWrapper, String> {
         let mut node = self.cast()?;
 
-        while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
+        while let Some(TokenType::Reserved(Reserved { op, .. })) = self.peekable.peek().map(|tok| &tok.token_type) {
             match op.as_str() {
                 "*" => {
                     self.peekable.next();
@@ -364,8 +364,8 @@ impl<'a> Parser<'a> {
     fn unary(&mut self) -> Result<ExprWrapper, String> {
         let tk = self.peekable.peek();
 
-        match tk {
-            Some(Token::Reserved(Reserved { op, .. })) => {
+        match tk.map(|tok| &tok.token_type) {
+            Some(TokenType::Reserved(Reserved { op, .. })) => {
                 match op.as_str() {
                     "+" => {
                         self.peekable.next();
@@ -443,8 +443,8 @@ impl<'a> Parser<'a> {
     fn primary(&mut self) -> Result<ExprWrapper, String> {
         let token = self.peekable.peek();
 
-        match token {
-            Some(Token::Symbol(symbol)) if symbol.sym.as_str() == "(" => {
+        match token.map(|tok| &tok.token_type) {
+            Some(TokenType::Symbol(symbol)) if symbol.sym.as_str() == "(" => {
                 self.peekable.next();
 
                 if self.expect_next_symbol("{".to_string()).is_ok() {
@@ -457,7 +457,7 @@ impl<'a> Parser<'a> {
                 expr
             }
             // sizeof
-            Some(Token::Reserved(Reserved { op, .. })) if op.as_str() == "sizeof" => {
+            Some(TokenType::Reserved(Reserved { op, .. })) if op.as_str() == "sizeof" => {
                 self.peekable.next();
 
                 let pos = self.peekable.current_position();
@@ -480,19 +480,19 @@ impl<'a> Parser<'a> {
                 Ok(Expr::Num { val: size as isize }.to_expr_wrapper())
             }
             // num
-            Some(Token::Num(Num { val, .. })) => {
+            Some(TokenType::Num(Num { val, .. })) => {
                 self.peekable.next();
                 Ok(Expr::Num { val: *val }.to_expr_wrapper())
             }
             // local var
-            Some(Token::Ident(Ident { name, .. })) => {
+            Some(TokenType::Ident(Ident { name, .. })) => {
                 // function call
                 self.peekable.next();
                 if let Ok(_) = self.expect_next_symbol("(") {
                     let args = self.parse_args()?;
-                    let expr = Box::new(Expr::FnCall { fn_name: Rc::clone(name), args });
+                    let expr = Box::new(Expr::FnCall { fn_name: Rc::clone(&name), args });
 
-                    let ty = match self.find_func(name)? {
+                    let ty = match self.find_func(&*name)? {
                         Some(ret_type) => {
                             ret_type
                         },
@@ -517,7 +517,7 @@ impl<'a> Parser<'a> {
                 }
             }
             // str
-            Some(Token::Str(Str { bytes, .. })) => {
+            Some(TokenType::Str(Str { bytes, .. })) => {
                 self.peekable.next();
                 let ty = Type::Array {
                     base: Box::new(Type::Char),

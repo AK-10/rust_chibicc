@@ -4,34 +4,33 @@ use rust_chibicc::parser::Parser;
 use rust_chibicc::codegen::CodeGenerator;
 
 use std::env;
-use std::fs;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::prelude::*;
 
-fn read_file(path: impl Into<String>) -> String {
-    let path_str = path.into();
-    match fs::read_to_string(&path_str) {
-        Ok(content) => content,
-        Err(e) => {
-            let msg = format!("cannot read {}, reason: {}", &path_str, e);
-            panic!(msg);
-        }
-    }
-}
+// fn read_file(path: impl Into<String>) -> String {
+//     let path_str = path.into();
+//     match fs::read_to_string(&path_str) {
+//         Ok(content) => content,
+//         Err(e) => {
+//             let msg = format!("cannot read {}, reason: {}", &path_str, e);
+//             panic!(msg);
+//         }
+//     }
+// }
 
-fn read_file_with_number(path: impl Into<String>) -> [(usize, String)] {
+fn read_file_with_number<'a>(path: impl Into<String>) -> Vec<String> {
     let path_str = path.into();
     let f = File::open(path_str);
     match f {
         Ok(f) => {
             let buf = BufReader::new(f);
-            let lines = Vec::<String>::new();
-            buf.lines().for_each(|(idx, line)| {
-                lines.append(line.unwrap())
+            let mut lines = Vec::<String>::new();
+            buf.lines().for_each(|line| {
+                lines.push(line.expect("failed read file"));
             });
 
-            *lines.as_slice()
+            lines
         },
         Err(e) => panic!(e)
     }
@@ -47,7 +46,8 @@ fn main() {
     let filename = args.get(1).expect("expect 1 arguments");
 
     let user_input = read_file_with_number(filename);
-    let tokens = match Tokenizer::new(&user_input).tokenize() {
+    println!("{:#?}", user_input);
+    let tokens = match Tokenizer::new(user_input.as_slice()).tokenize() {
         Ok(tokens) => tokens,
         Err(e) => {
             eprintln!("{}:{}", filename, e);

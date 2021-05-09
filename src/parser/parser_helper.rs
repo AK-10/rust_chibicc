@@ -1,6 +1,6 @@
 use crate::parser::{ Parser, TYPE_NAMES };
 use crate::node::{ Stmt, ExprWrapper, Expr };
-use crate::token::Token;
+use crate::token::{ Token, TokenType };
 use crate::token::token_type::*;
 use crate::program::{ Var, Offset, align_to };
 use crate::_type::{ Type, Member, TypeCounter };
@@ -19,8 +19,8 @@ impl<'a> Parser<'a> {
     }
 
     pub(in super) fn find_typedef(&self, tk: &Token) -> Option<Box<Type>> {
-        if let Token::Ident(Ident { name, .. }) = tk {
-            self.find_var(name).and_then(|sc| {
+        if let TokenType::Ident(Ident { name, .. }) = &tk.token_type {
+            self.find_var(&*name).and_then(|sc| {
                 if let ScopeElement::TypeDef(ref ty) = sc.target {
                     Some(Box::clone(ty))
                 } else {
@@ -70,8 +70,8 @@ impl<'a> Parser<'a> {
         // が面倒なので一旦これで(modern)
         let cond = self.primary()?;
         let then = self.stmt()?;
-        let els = match self.peekable.peek() {
-            Some(Token::Reserved(Reserved { op, .. })) if op.as_str() == "else" => {
+        let els = match self.peekable.peek().map(|tok| &tok.token_type) {
+            Some(TokenType::Reserved(Reserved { op, .. })) if op.as_str() == "else" => {
                 self.peekable.next();
 
                 Some(self.stmt()?)
@@ -209,8 +209,8 @@ impl<'a> Parser<'a> {
         let tk = self.peekable.peek();
         let expected = word.into();
 
-        match tk {
-            Some(Token::Symbol(Symbol { sym, .. })) if sym.as_str() == expected => {
+        match tk.map(|tok| &tok.token_type) {
+            Some(TokenType::Symbol(Symbol { sym, .. })) if sym.as_str() == expected => {
                 self.peekable.next();
                 Ok(())
             },
@@ -225,8 +225,8 @@ impl<'a> Parser<'a> {
         let tk = self.peekable.peek();
         let expected = word.into();
 
-        match tk {
-            Some(Token::Reserved(Reserved { op, .. })) if op.as_str() == expected => {
+        match tk.map(|tok| &tok.token_type) {
+            Some(TokenType::Reserved(Reserved { op, .. })) if op.as_str() == expected => {
                 self.peekable.next();
                 Ok(())
             },
@@ -308,7 +308,7 @@ impl<'a> Parser<'a> {
         }
 
         while let (true, Some(tok)) = (self.is_typename(), self.peekable.peek()) {
-            let tk_str = tok.tk_str();
+            let tk_str = tok.token_type.tk_str();
             // handle storage class specifiers
             if tk_str.as_str() == "typedef" {
                 // if let Some(false) = is_typedef {
@@ -349,7 +349,7 @@ impl<'a> Parser<'a> {
     // this function is hard for me.
     // original is https://github.com/rui314/chibicc/commit/d51097dc0f7049e3e1fd00f9021e95686ecfddf3
     pub(in super) fn declarator(&mut self, ty: &mut Box<Type>, name: &mut String) -> Result<Box<Type>, String> {
-        while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
+        while let Some(TokenType::Reserved(Reserved { op, .. })) = self.peekable.peek().map(|tok| &tok.token_type) {
             if op.as_str() == "*" {
                 *ty = Box::new(Type::Ptr { base: Box::clone(&ty) });
                 self.peekable.next();
@@ -370,7 +370,7 @@ impl<'a> Parser<'a> {
         }
 
         let tk = self.expect_next_ident()?;
-        *name = tk.tk_str().to_string();
+        *name = tk.token_type.tk_str().to_string();
 
         self.read_type_suffix(Box::clone(&ty))
     }
@@ -394,7 +394,7 @@ impl<'a> Parser<'a> {
     //   type_suffix               -> {abstract-declarator}[4]
     //   return                    -> int*[4]
     pub(in super) fn abstract_declarator(&mut self, ty: &mut Box<Type>) -> Result<Box<Type>, String> {
-        while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
+        while let Some(TokenType::Reserved(Reserved { op, .. })) = self.peekable.peek().map(|tok| &tok.token_type) {
             if op.as_str() == "*" {
                 *ty = Box::new(Type::Ptr { base: Box::clone(&ty) });
                 self.peekable.next();
@@ -478,8 +478,8 @@ impl<'a> Parser<'a> {
     pub(in super) fn read_type_suffix(&mut self, base: Box<Type>) -> Result<Box<Type>, String> {
         match self.expect_next_symbol("[".to_string()) {
             Ok(_) => {
-                match self.peekable.next() {
-                    Some(Token::Num(Num { val, .. })) => {
+                match self.peekable.next().map(|tok| &tok.token_type) {
+                    Some(TokenType::Num(Num { val, .. })) => {
                         if let Err(e) = self.expect_next_symbol("]".to_string()) {
                             Err(e)
                         } else {
@@ -539,7 +539,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(in super) fn expect_next_ident(&mut self) -> Result<Token, String> {
-        if let Some(Token::Ident { .. }) = self.peekable.peek() {
+        if let Some(TokenType::Ident { .. }) = self.peekable.peek().map(|tok| &tok.token_type) {
             let tk = self.peekable.next().unwrap();
             Ok(tk.clone())
         } else {
@@ -577,7 +577,7 @@ impl<'a> Parser<'a> {
 
     pub(in super) fn is_typename(&self) -> bool {
         self.peekable.peek().map(|tk| {
-            if let Token::Reserved(Reserved { op, .. }) = tk {
+            if let TokenType::Reserved(Reserved { op, .. }) = &tk.token_type {
                 TYPE_NAMES.contains(&op.as_str()) || op.as_str() == "typedef"
             } else {
                 self.find_typedef(tk).is_some()
@@ -605,7 +605,7 @@ impl<'a> Parser<'a> {
         let lbrace = self.expect_next_symbol("{").ok();
         match (&tag, lbrace) {
             (Some(t), None) => {
-                let sc = self.find_tag(t.tk_str());
+                let sc = self.find_tag(t.token_type.tk_str());
 
                 return sc
                     .map(|scope_tag| scope_tag.ty.clone())
@@ -663,7 +663,7 @@ impl<'a> Parser<'a> {
     pub(in super) fn struct_ref(&mut self, expr_wrapper: ExprWrapper) -> Result<ExprWrapper, String> {
         let ty = expr_wrapper.expr.detect_type();
         if let Type::Struct { members, .. } = ty.as_ref() {
-            let ident = self.expect_next_ident()?;
+            let ident = self.expect_next_ident()?.token_type;
             let name = ident.tk_str();
             let member = members.iter()
                             .find(|mem| mem.name == name.as_str())
@@ -687,7 +687,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(in super) fn push_tag_scope(&mut self, token: &Token, ty: Box<Type>) {
-        let sc = TagScope::new(token.tk_str(), ty);
+        let sc = TagScope::new(token.token_type.tk_str(), ty);
         self.tag_scope.push(sc);
     }
 
