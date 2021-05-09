@@ -119,6 +119,7 @@ pub enum Expr {
     Num {
         val: isize
     },
+    Cast(Box<Type>, ExprWrapper),
     Var(Rc<RefCell<Var>>),
     Assign {
         var: ExprWrapper, // x = 10, *y = 100とかあるので今のところexprにするしかない
@@ -167,6 +168,7 @@ impl Expr {
             | Expr::Num { .. }
             | Expr::PtrDiff { .. }
             | Expr::FnCall { .. } => Box::new(Type::Long),
+            Expr::Cast(ty, ..) => Box::clone(ty),
             Expr::PtrAdd { lhs, rhs: _ }
             | Expr::PtrSub { lhs, rhs: _ } => Box::clone(&lhs.ty),
             Expr::Assign { var, .. } => {
@@ -222,6 +224,7 @@ impl Display for Expr {
             Expr::Mul { .. } => write!(f, "Mul"),
             Expr::Div { .. } => write!(f, "Div"),
             Expr::Num { .. } => write!(f, "Num"),
+            Expr::Cast { .. } => write!(f, "Cast"),
             Expr::Var(_) => write!(f, "Var"),
             Expr::Assign { .. } => write!(f, "Assign"),
             Expr::FnCall { .. } => write!(f, "FnCall"),

@@ -68,6 +68,11 @@ impl<'a> CodeGenerator<'a> {
                     println!("  push rax");
                 }
                 return
+            },
+            Expr::Cast(ty, expr_wrapper) => {
+                self.gen_expr(expr_wrapper);
+                trancate(ty);
+                return
             }
             Expr::Eq { lhs, rhs } => {
                 self.gen_both_side(lhs, rhs);
@@ -467,4 +472,22 @@ fn store(ty: &Type) {
     };
 
     println!("  push rdi");
+}
+
+fn trancate(ty: &Type) {
+    println!("  pop rax");
+
+    if let Type::Bool = ty {
+        println!("  cmp rax, 0");
+        println!("  setne al");
+    }
+
+    match ty.size() {
+        1 => println!("  movsx rax, al"),
+        2 => println!("  movsx rax, ax"),
+        4 => println!("  movsxd rax, eax"),
+        _ => {}
+    }
+
+    println!("  push rax");
 }

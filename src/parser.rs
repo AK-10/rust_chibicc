@@ -312,14 +312,15 @@ impl<'a> Parser<'a> {
         Ok(node)
     }
 
+    // mul := cast ("*" cast | "/" cast)*
     fn mul(&mut self) -> Result<ExprWrapper, String> {
-        let mut node = self.unary()?;
+        let mut node = self.cast()?;
 
         while let Some(Token::Reserved(Reserved { op, .. })) = self.peekable.peek() {
             match op.as_str() {
                 "*" => {
                     self.peekable.next();
-                    let rhs = self.unary()?;
+                    let rhs = self.cast()?;
 
                     node = Expr::Mul {
                         lhs: node,
@@ -342,7 +343,23 @@ impl<'a> Parser<'a> {
         Ok(node)
     }
 
-    // unary := ("+" | "-" | "*" | "&")? unary
+    // cast := "(" type-name ")" cast | unary
+    fn cast(&mut self) -> Result<ExprWrapper, String> {
+        let pos = self.peekable.current_position();
+
+        if let Ok(_) = self.expect_next_symbol("(") {
+            if self.is_typename() {
+                let ty = self.type_name()?;
+                self.expect_next_symbol(")")?;
+                return Ok(Expr::Cast(ty, self.cast()?).to_expr_wrapper())
+            }
+            let _ = self.peekable.back_to(pos);
+        }
+
+        self.unary()
+    }
+
+    // unary := ("+" | "-" | "*" | "&")? cast
     //        | postfix
     fn unary(&mut self) -> Result<ExprWrapper, String> {
         let tk = self.peekable.peek();
@@ -352,11 +369,11 @@ impl<'a> Parser<'a> {
                 match op.as_str() {
                     "+" => {
                         self.peekable.next();
-                        self.primary()
+                        self.cast()
                     },
                     "-" => {
                         self.peekable.next();
-                        let rhs = self.unary()?;
+                        let rhs = self.cast()?;
                         Ok(Expr::Sub {
                             lhs: Expr::Num { val: 0 }.to_expr_wrapper(),
                             rhs
@@ -364,12 +381,12 @@ impl<'a> Parser<'a> {
                     },
                     "*" => {
                         self.peekable.next();
-                        let operand = self.unary()?;
+                        let operand = self.cast()?;
                         Ok(Expr::Deref { operand }.to_expr_wrapper())
                     },
                     "&" => {
                         self.peekable.next();
-                        let operand = self.unary()?;
+                        let operand = self.cast()?;
                         Ok(Expr::Addr { operand }.to_expr_wrapper())
                     },
                     _ => self.postfix()
