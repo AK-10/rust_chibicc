@@ -2,9 +2,12 @@
 use rust_chibicc::tokenizer::Tokenizer;
 use rust_chibicc::parser::Parser;
 use rust_chibicc::codegen::CodeGenerator;
-use std::env;
 
+use std::env;
 use std::fs;
+use std::fs::File;
+use std::io::BufReader;
+use std::io::prelude::*;
 
 fn read_file(path: impl Into<String>) -> String {
     let path_str = path.into();
@@ -17,6 +20,23 @@ fn read_file(path: impl Into<String>) -> String {
     }
 }
 
+fn read_file_with_number(path: impl Into<String>) -> [(usize, String)] {
+    let path_str = path.into();
+    let f = File::open(path_str);
+    match f {
+        Ok(f) => {
+            let buf = BufReader::new(f);
+            let lines = Vec::<String>::new();
+            buf.lines().for_each(|(idx, line)| {
+                lines.append(line.unwrap())
+            });
+
+            *lines.as_slice()
+        },
+        Err(e) => panic!(e)
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
@@ -24,14 +44,13 @@ fn main() {
         return
     }
 
-    let arg1 = args.get(1)
-        .expect("第一引数が取得できませんでした");
+    let filename = args.get(1).expect("expect 1 arguments");
 
-    let user_input = read_file(arg1);
-    let tokens = match Tokenizer::new(&*user_input).tokenize() {
+    let user_input = read_file_with_number(filename);
+    let tokens = match Tokenizer::new(&user_input).tokenize() {
         Ok(tokens) => tokens,
         Err(e) => {
-            eprintln!("{}", e);
+            eprintln!("{}:{}", filename, e);
             return
         }
     };

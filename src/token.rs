@@ -1,3 +1,5 @@
+use crate::tokenizer::loc::Loc;
+
 pub mod token_type {
     use std::rc::Rc;
 
@@ -35,10 +37,8 @@ pub mod token_type {
 use token_type::{ Reserved, Num, Ident, Symbol, Str };
 use std::rc::Rc;
 
-// TODO: new_type パターンに置き換えたい
-// op, nameなどのアクセスがかなりめんどくさい
 #[derive(Debug, Clone, PartialEq)]
-pub enum Token {
+pub enum TokenType {
     Reserved(Reserved),
     Num(Num),
     Ident(Ident),
@@ -47,23 +47,35 @@ pub enum Token {
     Eof
 }
 
-impl Token {
-    pub fn at_eof(self) -> bool {
+impl TokenType {
+    pub fn at_eof(&self) -> bool {
         match self {
-            Token::Eof => true,
+            TokenType::Eof => true,
             _ => false
         }
     }
 
     pub fn tk_str(&self) -> Rc<String> {
         match self {
-            Token::Reserved(reserved) => Rc::clone(&reserved.tk_str),
-            Token::Num(num) => Rc::clone(&num.tk_str),
-            Token::Ident(ident) => Rc::clone(&ident.tk_str),
-            Token::Symbol(sym) => Rc::clone(&sym.tk_str),
-            Token::Str(str_content) => Rc::clone(&str_content.tk_str),
-            Token::Eof => panic!("Eof does not have tk_str")
+            TokenType::Reserved(reserved) => Rc::clone(&reserved.tk_str),
+            TokenType::Num(num) => Rc::clone(&num.tk_str),
+            TokenType::Ident(ident) => Rc::clone(&ident.tk_str),
+            TokenType::Symbol(sym) => Rc::clone(&sym.tk_str),
+            TokenType::Str(str_content) => Rc::clone(&str_content.tk_str),
+            TokenType::Eof => panic!("Eof does not have tk_str")
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Token {
+    pub token_type: TokenType,
+    pub loc: Loc
+}
+
+impl Token {
+    pub fn new(token_type: TokenType, loc: Loc) -> Self {
+        Token { token_type, loc }
     }
 }
 
