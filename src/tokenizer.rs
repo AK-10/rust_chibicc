@@ -109,7 +109,7 @@ impl<'a> Tokenizer {
                     let token = Token::Symbol(symbol);
                     tokens.push(token);
                 },
-                // string
+                // string literal
                 '"' => {
                     let contents = self.read_string_literal();
                     match contents {
@@ -134,6 +134,18 @@ impl<'a> Tokenizer {
                         }
                     }
                 },
+                // character literal
+                '\'' => {
+                    let c = self.read_char_literal()?;
+                    let token = Token::Num(
+                        Num {
+                            val: c as isize,
+                            tk_str: Rc::new(format!("'{}'", c as char))
+                        }
+                    );
+
+                    tokens.push(token);
+                }
                 // num
                 '0' ..= '9' => {
                     let (num, tk_str) = self.strtol::<isize>()?;
@@ -320,6 +332,33 @@ impl<'a> Tokenizer {
         self.pos += 1;
 
         escaped.expect("failed read_escaped_literal")
+    }
+
+    fn read_char_literal(&mut self) -> Result<u8, String>{
+         // skip first '\''
+        self.pos += 1;
+
+        let ch = match self.current() {
+            Some('\0') | None => return Err("unclosed char literal".to_string()),
+            Some('\\') => {
+                self.pos += 1;
+
+                self.read_escaped_literal()
+            },
+            Some(c) => {
+                self.pos += 1;
+
+                c as u8
+            }
+        };
+
+        if let Some('\'') = self.current() {
+            self.pos += 1;
+        } else {
+            return Err("char literal too long".to_string())
+        }
+
+        Ok(ch)
     }
 
     fn strtol<T: FromStr>(&mut self) -> Result<(T, String), String> {
