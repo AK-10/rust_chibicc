@@ -46,7 +46,6 @@ fn main() {
     let filename = args.get(1).expect("expect 1 arguments");
 
     let user_input = read_file_with_number(filename);
-    println!("{:#?}", user_input);
     let tokens = match Tokenizer::new(user_input.as_slice()).tokenize() {
         Ok(tokens) => tokens,
         Err(e) => {
@@ -55,11 +54,13 @@ fn main() {
         }
     };
 
+    println!("tokens: {:#?}", tokens);
+
     let mut parser = Parser::new(&tokens);
     let parsed = parser.parse();
 
     match parsed {
-        Err(msg) => { eprintln!("{}", msg); },
+        Err(msg) => { eprintln!("{}:{}", filename, msg); },
         Ok(ast) => { CodeGenerator::new(&ast).codegen() }
     };
 }

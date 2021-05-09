@@ -48,17 +48,15 @@ impl<'a> Tokenizer<'a> {
     pub fn tokenize(&mut self) -> Result<Vec<Token>, String> {
         let mut tokens = Vec::<Token>::new();
 
-        while self.current_col_index < self.user_input.len() {
+        while let Some(c) = self.current() {
+            println!("c: {}", c);
             let loc = self.new_loc();
-            let c = self.current().expect("current_col is out of user_input range");
             match c {
                 // line comment
                 _ if self.multi_get(2)
                     .map(|line_comment| line_comment == "//")
                     .unwrap_or(false) => {
-                        while self.current().unwrap() != '\n' {
-                            self.step_forward(1);
-                        }
+                        // TODO: skip one line
                 },
                 // block comment
                 _ if self.multi_get(2)
@@ -211,24 +209,25 @@ impl<'a> Tokenizer<'a> {
 
         Ok(tokens)
     }
-
     fn multi_get(&self, n: usize) -> Option<&'a str> {
-        if self.current_col_index + n >= self.user_input.len() { return None }
+        println!("cur_row: {:?}", self.current_row());
+        if self.current_col_index + n >= self.current_row().map_or(0, String::len) { return None }
 
-        Some(&self.current_row()[self.current_col_index .. (self.current_col_index + n)])
+        Some(&self.current_row().unwrap()[self.current_col_index .. (self.current_col_index + n)])
     }
 
     fn current(&self) -> Option<char> {
         self.current_row()
-            .chars()
-            .nth(self.current_col_index)
+            .and_then(|cur_row| {
+                cur_row
+                    .chars()
+                    .nth(self.current_col_index)
+            })
+
     }
 
-    fn current_row(&self) -> &'a String {
-        // 面倒なのでexpectしている
-        // ちゃんとしたほうが良いかも
-        let x = self.user_input.get(self.current_row_index);
-        x.expect(format!("current_row_index: {} is out of range", self.current_row_index).as_str())
+    fn current_row(&self) -> Option<&'a String> {
+        self.user_input.get(self.current_row_index)
     }
 
     fn tokenize_eq(&mut self) -> Result<TokenType, String> {
@@ -420,14 +419,15 @@ impl<'a> Tokenizer<'a> {
 
         letter
     }
-
     fn block_comment(&mut self) -> Result<(), String> {
         while let Some(false) = self.multi_get(2).map(|char_slice| char_slice == "*/") {
+            println!("inner blockcomment");
             self.step_forward(1);
         }
 
         self.step_forward(2);
 
+        // 👎
         if self.pos >= self.user_input.len() - 1 {
             return Err("unclosed block comment".to_string())
         }
@@ -447,13 +447,15 @@ impl<'a> Tokenizer<'a> {
         )
     }
 
+    // fix me
     fn step_forward(&mut self, n: usize) {
         // straggle user_input
         // reset current_col, current_row
-        if self.current_col_index + n >= self.current_row().len() {
+        if let None = self.current_row().and_then(|row| row.chars().nth(self.current_col_index + n)) {
             self.current_col_index = 0;
             self.current_row_index += 1;
-            if self.current_row().as_str() == "" {
+            while let Some("") = self.current_row().map(String::as_str) {
+                self.pos += 1;
                 self.current_row_index += 1;
             }
         } else {
