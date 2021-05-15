@@ -57,6 +57,9 @@ impl<'a> Tokenizer {
                         while self.current().unwrap() != '\n' {
                             self.pos += 1;
                         }
+                        self.current_col_index = 0;
+                        self.current_row_index += 1;
+
                 },
                 // block comment
                 _ if self.multi_get(2)
@@ -93,6 +96,7 @@ impl<'a> Tokenizer {
                 // binary or unary oeprator
                 '+' | '-' | '*' | '&' | '/' => {
                     self.pos += 1;
+                    self.current_col_index += 1;
 
                     let op = c.to_string();
                     let rc_op = Rc::new(op);
@@ -106,6 +110,7 @@ impl<'a> Tokenizer {
                 // symbol
                 '(' | ')' | ';' | '{' | '}' | '.' | ',' | '[' | ']' => {
                     self.pos += 1;
+                    self.current_col_index += 1;
 
                     let sym = c.to_string();
                     let rc_sym = Rc::new(sym);
@@ -164,8 +169,16 @@ impl<'a> Tokenizer {
 
                     tokens.push(self.new_token(token_type));
                 },
+                // 改行文字はis_whitespaceに含まれるため，それより前に書く
+                '\n' => {
+                    self.pos += 1;
+                    self.current_col_index = 0;
+                    self.current_row_index += 1;
+
+                }
                 ws if ws.is_whitespace() => {
                     self.pos += 1;
+                    self.current_col_index += 1;
                     continue
                 },
                 // ident or reserved
@@ -213,10 +226,12 @@ impl<'a> Tokenizer {
 
     fn tokenize_eq(&mut self) -> Result<TokenType, String> {
         self.pos += 1;
+        self.current_col_index += 1;
 
         let op = match self.current() {
             Some('=') => {
                 self.pos += 1;
+                self.current_col_index += 1;
                 "==".to_string()
             },
             Some(_) => "=".to_string(),
@@ -234,9 +249,11 @@ impl<'a> Tokenizer {
 
     fn tokenize_not(&mut self) -> Result<TokenType, String> {
         self.pos += 1;
+        self.current_col_index += 1;
         match self.current() {
             Some('=') => {
                 self.pos += 1;
+                self.current_col_index += 1;
                 let op = "!=".to_string();
                 let rc_op = Rc::new(op);
 
@@ -253,9 +270,11 @@ impl<'a> Tokenizer {
 
     fn tokenize_lt(&mut self) -> Result<TokenType, String> {
         self.pos += 1;
+        self.current_col_index += 1;
         let op = match self.current() {
             Some('=') => {
                 self.pos += 1;
+                self.current_col_index += 1;
                 "<=".to_string()
             },
             Some(_) => "<".to_string(),
@@ -272,9 +291,11 @@ impl<'a> Tokenizer {
 
     fn tokenize_gt(&mut self) -> Result<TokenType, String> {
         self.pos += 1;
+        self.current_col_index += 1;
         let op = match self.current() {
             Some('=') => {
                 self.pos += 1;
+                self.current_col_index += 1;
                 ">=".to_string()
             },
             Some(_) => ">".to_string(),
@@ -292,6 +313,7 @@ impl<'a> Tokenizer {
     fn read_string_literal(&mut self) -> Result<Vec<u8>, String> {
         // skip first '"'
         self.pos += 1;
+        self.current_col_index += 1;
 
         let mut str_content = Vec::<u8>::new();
 
@@ -300,6 +322,7 @@ impl<'a> Tokenizer {
                 // insert null char at last
                 '"' => {
                     self.pos += 1;
+                    self.current_col_index += 1;
                     // push '\0'
                     str_content.push(0);
                     break
@@ -307,10 +330,12 @@ impl<'a> Tokenizer {
                 // escaped
                 '\\' => {
                     self.pos += 1;
+                    self.current_col_index += 1;
                     str_content.push(self.read_escaped_literal());
                 },
                 _ => {
                     self.pos += 1;
+                    self.current_col_index += 1;
                     str_content.push(c as u8);
                 }
 
@@ -337,6 +362,7 @@ impl<'a> Tokenizer {
         });
 
         self.pos += 1;
+        self.current_col_index += 1;
 
         escaped.expect("failed read_escaped_literal")
     }
@@ -344,16 +370,19 @@ impl<'a> Tokenizer {
     fn read_char_literal(&mut self) -> Result<u8, String>{
          // skip first '\''
         self.pos += 1;
+        self.current_col_index += 1;
 
         let ch = match self.current() {
             Some('\0') | None => return Err("unclosed char literal".to_string()),
             Some('\\') => {
                 self.pos += 1;
+                self.current_col_index += 1;
 
                 self.read_escaped_literal()
             },
             Some(c) => {
                 self.pos += 1;
+                self.current_col_index += 1;
 
                 c as u8
             }
@@ -361,6 +390,7 @@ impl<'a> Tokenizer {
 
         if let Some('\'') = self.current() {
             self.pos += 1;
+            self.current_col_index += 1;
         } else {
             return Err("char literal too long".to_string())
         }
@@ -374,6 +404,7 @@ impl<'a> Tokenizer {
             match c {
                 num if num.is_digit(10) => {
                     self.pos += 1;
+                    self.current_col_index += 1;
                     num_str.push(num);
                 },
                 _ => break
@@ -392,6 +423,7 @@ impl<'a> Tokenizer {
                 // '0' ..= '9'は呼び出し側で排除されているので，ここでは含めて良い(文字列の先頭以外は含めて良い)
                 'a' ..= 'z' | 'A' ..= 'Z' | '0' ..= '9' | '_' => {
                     self.pos += 1;
+                    self.current_col_index += 1;
                     letter.push(c);
                 },
                 _ => break
@@ -405,9 +437,11 @@ impl<'a> Tokenizer {
     fn block_comment(&mut self) -> Result<(), String> {
         while let Some(false) = self.multi_get(2).map(|char_slice| char_slice == ['*', '/']) {
             self.pos += 1;
+            self.current_col_index += 1;
         }
 
         self.pos += 2;
+        self.current_col_index += 2;
 
         if self.pos >= self.user_input.len() - 1 {
             return Err("unclosed block comment".to_string())
@@ -419,6 +453,7 @@ impl<'a> Tokenizer {
     fn arrow(&mut self) -> Result<TokenType, String> {
         let arrow_str = Rc::new("->".to_string());
         self.pos += 2;
+        self.current_col_index += 2;
 
 
         Ok(TokenType::Reserved(Reserved {
@@ -441,6 +476,5 @@ impl<'a> Tokenizer {
             Loc::new(self.row_number(), self.col_number())
         )
     }
-
 }
 

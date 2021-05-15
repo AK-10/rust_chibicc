@@ -48,7 +48,17 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse(&mut self) -> Result<Program, String> {
-        self.program()
+        match self.program() {
+            Ok(prog) => Ok(prog),
+            Err(e) => {
+                let msg = self.peekable.peek()
+                    .map(|tok| {
+                        tok.error_message(&*e)
+                    })
+                    .unwrap_or("eof detected".to_string());
+                Err(msg)
+            }
+        }
     }
 
     // program := (global-var | function)*
@@ -107,7 +117,7 @@ impl<'a> Parser<'a> {
 
         let mut nodes = Vec::new();
 
-        while let Err(_) = self.expect_next_symbol("}".to_string()) {
+        while let Err(_) = self.expect_next_symbol("}") {
             nodes.push(self.stmt()?);
         };
 

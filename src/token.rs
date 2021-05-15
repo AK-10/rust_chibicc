@@ -77,6 +77,10 @@ impl Token {
     pub fn new(token_type: TokenType, loc: Loc) -> Self {
         Token { token_type, loc }
     }
+
+    pub fn error_message<'a>(&self, msg: &'a str) -> String {
+        format!("{} {}", self.loc, msg)
+    }
 }
 
 #[derive(Debug, Clone)]

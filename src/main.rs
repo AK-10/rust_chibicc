@@ -20,23 +20,6 @@ fn read_file(path: impl Into<String>) -> String {
     }
 }
 
-//fn read_file_with_number<'a>(path: impl Into<String>) -> Vec<String> {
-//    let path_str = path.into();
-//    let f = File::open(path_str);
-//    match f {
-//        Ok(f) => {
-//            let buf = BufReader::new(f);
-//            let mut lines = Vec::<String>::new();
-//            buf.lines().for_each(|line| {
-//                lines.push(line.expect("failed read file"));
-//            });
-//
-//            lines
-//        },
-//        Err(e) => panic!(e)
-//    }
-//}
-
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
