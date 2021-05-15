@@ -1,13 +1,13 @@
+pub mod loc;
+
 use crate::token::{ Token, TokenType };
+use crate::tokenizer::loc::Loc;
 use crate::token::token_type::*;
-use self::loc::Loc;
 
 use std::str::FromStr;
 use std::rc::Rc;
 
-pub mod loc;
-
-// TODO: TokenzieErrorの定義
+// TODO: LexerErrorの定義
 // TODO: Location structがほしい
 
 const KEYWORDS: [&str; 14] = [
@@ -27,72 +27,72 @@ const KEYWORDS: [&str; 14] = [
     "typedef"
 ];
 
-pub struct Tokenizer<'a> {
-    user_input: &'a [String],
+pub struct Tokenizer {
+    user_input: Vec<char>,
     current_col_index: usize,
     current_row_index: usize,
     pos: usize
 }
 
-impl<'a> Tokenizer<'a> {
-    pub fn new(user_input: &'a [String]) -> Self {
-        // TODO: should fix, maybe.
+impl<'a> Tokenizer {
+    pub fn new(user_input: &'_ str) -> Self {
         Self {
-            user_input,
-            current_row_index: 0, // user_input index
-            current_col_index: 0, // current_str index
-            pos: 0
+            user_input: user_input.chars().collect(),
+            current_col_index: 0,
+            current_row_index: 0,
+            pos: 0,
         }
     }
 
     pub fn tokenize(&mut self) -> Result<Vec<Token>, String> {
         let mut tokens = Vec::<Token>::new();
 
-        while let Some(c) = self.current() {
-            println!("c: {}", c);
-            let loc = self.new_loc();
+        while self.pos <= self.user_input.len() - 1 {
+            let c = self.current().expect("pos is out of user_input range");
             match c {
                 // line comment
                 _ if self.multi_get(2)
-                    .map(|line_comment| line_comment == "//")
+                    .map(|line_comment| line_comment == ['/', '/'])
                     .unwrap_or(false) => {
-                        // TODO: skip one line
+                        while self.current().unwrap() != '\n' {
+                            self.pos += 1;
+                        }
                 },
                 // block comment
                 _ if self.multi_get(2)
-                    .map(|block_comment| block_comment == "/*")
+                    .map(|block_comment| block_comment == ['/', '*'])
                     .unwrap_or(false) => {
                         self.block_comment()?;
                 },
                 // arrow operator
                 _ if self.multi_get(2)
-                    .map(|block_comment| block_comment == "->")
+                    .map(|block_comment| block_comment == ['-', '>'])
                     .unwrap_or(false) => {
                         let token_type = self.arrow()?;
-                        tokens.push(Token::new(token_type, loc));
+                        tokens.push(self.new_token(token_type));
                 },
                 // "=" or "=="
                 '=' => {
                     let token_type = self.tokenize_eq()?;
-                    tokens.push(Token::new(token_type, loc));
+                    tokens.push(self.new_token(token_type));
                 },
                 // "!="
                 '!' => {
                     let token_type = self.tokenize_not()?;
-                    tokens.push(Token::new(token_type, loc));
+                    tokens.push(self.new_token(token_type));
                 },
                 // "<" or "<="
                 '<' => {
                     let token_type = self.tokenize_lt()?;
-                    tokens.push(Token::new(token_type, loc));
+                    tokens.push(self.new_token(token_type));
                 },
                 '>' => {
                     let token_type = self.tokenize_gt()?;
-                    tokens.push(Token::new(token_type, loc));
+                    tokens.push(self.new_token(token_type));
                 }
                 // binary or unary oeprator
                 '+' | '-' | '*' | '&' | '/' => {
-                    self.step_forward(1);
+                    self.pos += 1;
 
                     let op = c.to_string();
                     let rc_op = Rc::new(op);
@@ -101,11 +101,11 @@ impl<'a> Tokenizer<'a> {
                         tk_str: rc_op
                     };
                     let token_type = TokenType::Reserved(reserved);
-                    tokens.push(Token::new(token_type, loc));
+                    tokens.push(self.new_token(token_type));
                 },
                 // symbol
                 '(' | ')' | ';' | '{' | '}' | '.' | ',' | '[' | ']' => {
-                    self.step_forward(1);
+                    self.pos += 1;
 
                     let sym = c.to_string();
                     let rc_sym = Rc::new(sym);
@@ -114,7 +114,7 @@ impl<'a> Tokenizer<'a> {
                         tk_str: rc_sym
                     };
                     let token_type = TokenType::Symbol(symbol);
-                    tokens.push(Token::new(token_type, loc));
+                    tokens.push(self.new_token(token_type));
                 },
                 // string literal
                 '"' => {
@@ -130,8 +130,7 @@ impl<'a> Tokenizer<'a> {
                                         tk_str: Rc::new(cs)
                                     };
 
-                                    let token_type = TokenType::Str(str_type);
-                                    tokens.push(Token::new(token_type, loc));
+                                    tokens.push(self.new_token(TokenType::Str(str_type)));
                                 },
                                 Err(e) => return Err(e.to_string())
                             }
@@ -152,7 +151,7 @@ impl<'a> Tokenizer<'a> {
                         }
                     );
 
-                    tokens.push(Token::new(token_type, loc));
+                    tokens.push(self.new_token(token_type));
                 }
                 // num
                 '0' ..= '9' => {
@@ -163,10 +162,10 @@ impl<'a> Tokenizer<'a> {
                     };
                     let token_type = TokenType::Num(num_type);
 
-                    tokens.push(Token::new(token_type, loc));
+                    tokens.push(self.new_token(token_type));
                 },
                 ws if ws.is_whitespace() => {
-                    self.step_forward(1);
+                    self.pos += 1;
                     continue
                 },
                 // ident or reserved
@@ -179,16 +178,14 @@ impl<'a> Tokenizer<'a> {
                             tk_str: rc_letter
                         };
 
-                        let token_type = TokenType::Reserved(reserved_type);
-                        tokens.push(Token::new(token_type, loc));
+                        tokens.push(self.new_token(TokenType::Reserved(reserved_type)));
                     } else {
                         let ident_type = Ident {
                             name: Rc::clone(&rc_letter),
                             tk_str: rc_letter
                         };
 
-                        let token_type = TokenType::Ident(ident_type);
-                        tokens.push(Token::new(token_type, loc));
+                        tokens.push(self.new_token(TokenType::Ident(ident_type)));
                     }
                 },
                 unsupported => {
@@ -199,43 +196,27 @@ impl<'a> Tokenizer<'a> {
             }
         }
 
-        tokens.push(Token {
-            token_type: TokenType::Eof,
-            loc: Loc {
-                row: 999999,
-                col: 999999
-            }
-        });
+        tokens.push(self.new_token(TokenType::Eof));
 
         Ok(tokens)
     }
-    fn multi_get(&self, n: usize) -> Option<&'a str> {
-        println!("cur_row: {:?}", self.current_row());
-        if self.current_col_index + n >= self.current_row().map_or(0, String::len) { return None }
 
-        Some(&self.current_row().unwrap()[self.current_col_index .. (self.current_col_index + n)])
+    fn multi_get(&self, n: usize) -> Option<&[char]> {
+        if self.pos + n >= self.user_input.len() { return None }
+
+        Some(&self.user_input[self.pos .. (self.pos + n)])
     }
 
     fn current(&self) -> Option<char> {
-        self.current_row()
-            .and_then(|cur_row| {
-                cur_row
-                    .chars()
-                    .nth(self.current_col_index)
-            })
-
-    }
-
-    fn current_row(&self) -> Option<&'a String> {
-        self.user_input.get(self.current_row_index)
+        self.user_input.get(self.pos).map(|c| *c)
     }
 
     fn tokenize_eq(&mut self) -> Result<TokenType, String> {
-        self.step_forward(1);
+        self.pos += 1;
 
         let op = match self.current() {
             Some('=') => {
-                self.step_forward(1);
+                self.pos += 1;
                 "==".to_string()
             },
             Some(_) => "=".to_string(),
@@ -252,10 +233,10 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn tokenize_not(&mut self) -> Result<TokenType, String> {
-        self.step_forward(1);
+        self.pos += 1;
         match self.current() {
             Some('=') => {
-                self.step_forward(1);
+                self.pos += 1;
                 let op = "!=".to_string();
                 let rc_op = Rc::new(op);
 
@@ -271,10 +252,10 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn tokenize_lt(&mut self) -> Result<TokenType, String> {
-        self.step_forward(1);
+        self.pos += 1;
         let op = match self.current() {
             Some('=') => {
-                self.step_forward(1);
+                self.pos += 1;
                 "<=".to_string()
             },
             Some(_) => "<".to_string(),
@@ -290,10 +271,10 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn tokenize_gt(&mut self) -> Result<TokenType, String> {
-        self.step_forward(1);
+        self.pos += 1;
         let op = match self.current() {
             Some('=') => {
-                self.step_forward(1);
+                self.pos += 1;
                 ">=".to_string()
             },
             Some(_) => ">".to_string(),
@@ -310,7 +291,7 @@ impl<'a> Tokenizer<'a> {
 
     fn read_string_literal(&mut self) -> Result<Vec<u8>, String> {
         // skip first '"'
-        self.step_forward(1);
+        self.pos += 1;
 
         let mut str_content = Vec::<u8>::new();
 
@@ -318,20 +299,21 @@ impl<'a> Tokenizer<'a> {
             match c {
                 // insert null char at last
                 '"' => {
-                    self.step_forward(1);
+                    self.pos += 1;
                     // push '\0'
                     str_content.push(0);
                     break
                 },
                 // escaped
                 '\\' => {
-                    self.step_forward(1);
+                    self.pos += 1;
                     str_content.push(self.read_escaped_literal());
                 },
                 _ => {
-                    self.step_forward(1);
+                    self.pos += 1;
                     str_content.push(c as u8);
                 }
+
             }
         }
 
@@ -352,33 +334,33 @@ impl<'a> Tokenizer<'a> {
                 '0' => 0,
                 _ => c as u8 // 「escapeできない文字だよ」でもいい説ある
             }
-    });
+        });
 
-        self.step_forward(1);
+        self.pos += 1;
 
         escaped.expect("failed read_escaped_literal")
     }
 
     fn read_char_literal(&mut self) -> Result<u8, String>{
          // skip first '\''
-        self.step_forward(1);
+        self.pos += 1;
 
         let ch = match self.current() {
             Some('\0') | None => return Err("unclosed char literal".to_string()),
             Some('\\') => {
-                self.step_forward(1);
+                self.pos += 1;
 
                 self.read_escaped_literal()
             },
             Some(c) => {
-                self.step_forward(1);
+                self.pos += 1;
 
                 c as u8
             }
         };
 
         if let Some('\'') = self.current() {
-            self.step_forward(1);
+            self.pos += 1;
         } else {
             return Err("char literal too long".to_string())
         }
@@ -391,7 +373,7 @@ impl<'a> Tokenizer<'a> {
         while let Some(c) = self.current() {
             match c {
                 num if num.is_digit(10) => {
-                    self.step_forward(1);
+                    self.pos += 1;
                     num_str.push(num);
                 },
                 _ => break
@@ -409,7 +391,7 @@ impl<'a> Tokenizer<'a> {
             match c {
                 // '0' ..= '9'は呼び出し側で排除されているので，ここでは含めて良い(文字列の先頭以外は含めて良い)
                 'a' ..= 'z' | 'A' ..= 'Z' | '0' ..= '9' | '_' => {
-                    self.step_forward(1);
+                    self.pos += 1;
                     letter.push(c);
                 },
                 _ => break
@@ -419,15 +401,14 @@ impl<'a> Tokenizer<'a> {
 
         letter
     }
+
     fn block_comment(&mut self) -> Result<(), String> {
-        while let Some(false) = self.multi_get(2).map(|char_slice| char_slice == "*/") {
-            println!("inner blockcomment");
-            self.step_forward(1);
+        while let Some(false) = self.multi_get(2).map(|char_slice| char_slice == ['*', '/']) {
+            self.pos += 1;
         }
 
-        self.step_forward(2);
+        self.pos += 2;
 
-        // 👎
         if self.pos >= self.user_input.len() - 1 {
             return Err("unclosed block comment".to_string())
         }
@@ -437,42 +418,29 @@ impl<'a> Tokenizer<'a> {
 
     fn arrow(&mut self) -> Result<TokenType, String> {
         let arrow_str = Rc::new("->".to_string());
-        self.step_forward(2);
+        self.pos += 2;
 
-        Ok(TokenType::Reserved(
-            Reserved {
-                op: Rc::clone(&arrow_str),
-                tk_str: arrow_str
-            })
-        )
-    }
 
-    // fix me
-    fn step_forward(&mut self, n: usize) {
-        // straggle user_input
-        // reset current_col, current_row
-        if let None = self.current_row().and_then(|row| row.chars().nth(self.current_col_index + n)) {
-            self.current_col_index = 0;
-            self.current_row_index += 1;
-            while let Some("") = self.current_row().map(String::as_str) {
-                self.pos += 1;
-                self.current_row_index += 1;
-            }
-        } else {
-            self.current_col_index += n;
-        }
-        self.pos += n;
-    }
-
-    fn row_number(&self) -> usize {
-        self.current_row_index + 1
+        Ok(TokenType::Reserved(Reserved {
+            op: Rc::clone(&arrow_str),
+            tk_str: arrow_str
+        }))
     }
 
     fn col_number(&self) -> usize {
         self.current_col_index + 1
     }
 
-    fn new_loc(&self) -> Loc {
-        Loc::new(self.row_number(), self.col_number())
+    fn row_number(&self) -> usize {
+        self.current_row_index + 1
     }
+
+    fn new_token(&self, token_type: TokenType) -> Token {
+        Token::new(
+            token_type,
+            Loc::new(self.row_number(), self.col_number())
+        )
+    }
+
 }
+
