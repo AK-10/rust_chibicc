@@ -40,6 +40,7 @@ pub enum Type {
     Func(Box<Type>),
     Void,
     Bool,
+    Enum(isize),
     Dummy
 }
 
@@ -75,6 +76,7 @@ impl Type {
             Type::Bool => 1,
             Type::Struct { size, .. } => *size,
             Type::Func(_) => 1,
+            Type::Enum(_) => 4,
             Type::Dummy => 0
         }
     }
@@ -117,6 +119,7 @@ impl Type {
             Type::Bool => 1,
             Type::Struct { align, .. } => *align,
             Type::Func(_) => 1,
+            Type::Enum(_) => 4,
             Type::Dummy => 0
         }
     }

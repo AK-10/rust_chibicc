@@ -19,7 +19,7 @@ impl TagScope {
 #[derive(Clone, Debug)]
 pub enum ScopeElement {
     Var(Rc<RefCell<Var>>),
-    TypeDef(Box<Type>)
+    TypeDef(Box<Type>),
 }
 
 // Scope for local variables, global variables or typedefs

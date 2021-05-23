@@ -547,6 +547,15 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub(in super) fn expect_next_num(&mut self) -> Result<isize, String> {
+        if let Some(TokenType::Num(Num { val, .. })) = self.peekable.peek().map(|tok| &tok.token_type) {
+            self.peekable.next();
+            Ok(*val)
+        } else {
+            Err("expect num".to_string())
+        }
+    }
+
     // function := type ident "(" params* ")"
     // gvar := type ident ("=" expr ";")
     pub(in super) fn is_function(&mut self) -> bool {
@@ -673,6 +682,74 @@ impl<'a> Parser<'a> {
         } else {
             Err("not_a struct".to_string())
         }
+    }
+
+    // some types of list can end with an optional "," followed by "}"
+    // to allow a trailing comma. this function returns true if it looks
+    // like we are at the end of such list.
+    fn consume_end(&mut self) -> bool {
+        let cur = self.peekable.current_position();
+
+        if self.expect_next_symbol("}").is_ok()
+            || self.expect_next_symbol(",").is_ok() && self.expect_next_symbol("}").is_ok() {
+               return true
+        } else {
+            let _ = self.peekable.back_to(cur);
+            return false
+        }
+    }
+
+    // enum-specifier := "enum" ident
+    //                 | "enum" ident? "{" enum-list? "}"
+    //
+    // enum-list := ident ("=" num)? ("," ident ("=" num)?)* ","?
+    pub(in super) fn enum_specifier(&mut self) -> Result<Box<Type>, String> {
+        self.expect_next_reserved("enum")?;
+        let ty = Box::new(Type::Enum(0));
+
+        // read an enum tag
+        let ident = self.expect_next_ident();
+        if let (Ok(tag), Err(_)) = (ident.clone(), self.expect_next_symbol("{")) {
+            let tag_name = &tag.token_type.tk_str();
+            let sc = self.find_tag(tag_name);
+            match sc {
+                Some(tag_scope) => {
+                    if let Type::Enum(_) = *tag_scope.ty.clone() {
+                        return Ok(Box::clone(&tag_scope.ty))
+
+                    } else {
+                        return Err(format!("{}: not an enum tag", tag_name))
+                    }
+                },
+                None => {
+                    return Err(format!("{}: unknown enum type", tag_name))
+                }
+            }
+        } else {
+            // read enum-list
+            let mut cnt = 0;
+            loop {
+                let ident = self.expect_next_ident()?;
+                if let Ok(_) = self.expect_next_reserved("=") {
+                    cnt = self.expect_next_num()?;
+                }
+
+                self.push_tag_scope(&ident, Box::new(Type::Enum(cnt)));
+                cnt += 1;
+
+                if self.consume_end() {
+                    break
+                }
+
+                self.expect_next_symbol(",")?;
+            }
+        }
+
+        if let Ok(tok) = &ident {
+            self.push_tag_scope(tok, Box::clone(&ty));
+        }
+
+        Ok(ty)
     }
 
     // begin a block scope
