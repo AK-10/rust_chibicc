@@ -516,11 +516,17 @@ impl<'a> Parser<'a> {
                  }
                 // variable
                 if let Some(VarScope { target, .. }) = self.find_var(&name) {
-                    if let ScopeElement::Var(var) = target {
-                        Ok(Expr::Var(Rc::clone(var)).to_expr_wrapper())
-                    } else {
-                        let msg = format!("undefined variable: {}", name);
-                        Err(msg)
+                    match target {
+                        ScopeElement::Var(var) => {
+                            Ok(Expr::Var(Rc::clone(var)).to_expr_wrapper())
+                        },
+                        ScopeElement::Enum(_, val) => {
+                            Ok(Expr::Num { val: *val }.to_expr_wrapper())
+                        },
+                        _ => {
+                            let msg = format!("undefined variable: {}", name);
+                            Err(msg)
+                        }
                     }
                 } else {
                     Err(format!("undefined variable: {}", name))

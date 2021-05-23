@@ -20,6 +20,7 @@ impl TagScope {
 pub enum ScopeElement {
     Var(Rc<RefCell<Var>>),
     TypeDef(Box<Type>),
+    Enum(Box<Type>, isize)
 }
 
 // Scope for local variables, global variables or typedefs
@@ -49,6 +50,13 @@ impl VarScope {
         Self {
             name: Rc::clone(name),
             target: ScopeElement::TypeDef(Box::clone(ty))
+        }
+    }
+
+    pub fn new_enum(name: &Rc<String>, ty: &Box<Type>, val: isize) -> Self {
+        Self {
+            name: Rc::clone(name),
+            target: ScopeElement::Enum(ty.clone(), val)
         }
     }
 }

@@ -311,9 +311,6 @@ impl<'a> Parser<'a> {
             let tk_str = tok.token_type.tk_str();
             // handle storage class specifiers
             if tk_str.as_str() == "typedef" {
-                // if let Some(false) = is_typedef {
-                //     return Err("invalid storage class specifier".to_string())
-                // }
                 *is_typedef = Some(true);
                 self.peekable.next();
                 continue
@@ -324,11 +321,13 @@ impl<'a> Parser<'a> {
                     break
                 }
 
-                if tk_str.as_str() == "struct" {
-                    ty = self.struct_decl()?;
-                } else {
-                    ty = self.find_typedef(tok).unwrap();
-                    self.peekable.next();
+                match tk_str.as_str() {
+                    "struct" => ty = self.struct_decl()?,
+                    "enum" => ty = self.enum_specifier()?,
+                    _ => {
+                        ty = self.find_typedef(tok).unwrap();
+                        self.peekable.next();
+                    }
                 }
 
                 if counter <= 0 {
@@ -587,7 +586,7 @@ impl<'a> Parser<'a> {
     pub(in super) fn is_typename(&self) -> bool {
         self.peekable.peek().map(|tk| {
             if let TokenType::Reserved(Reserved { op, .. }) = &tk.token_type {
-                TYPE_NAMES.contains(&op.as_str()) || op.as_str() == "typedef"
+                TYPE_NAMES.contains(&op.as_str()) || op.as_str() == "typedef" || op.as_str() == "enum"
             } else {
                 self.find_typedef(tk).is_some()
             }
@@ -619,6 +618,13 @@ impl<'a> Parser<'a> {
                 return sc
                     .map(|scope_tag| scope_tag.ty.clone())
                     .ok_or("unknown struct type".to_string())
+                    .and_then(|scope_tag| {
+                        if let Type::Struct { .. } = *scope_tag {
+                            Ok(scope_tag)
+                        } else {
+                            Err("not a struct tag".to_string())
+                        }
+                    })
             },
             _ => {}
         }
@@ -705,7 +711,7 @@ impl<'a> Parser<'a> {
     // enum-list := ident ("=" num)? ("," ident ("=" num)?)* ","?
     pub(in super) fn enum_specifier(&mut self) -> Result<Box<Type>, String> {
         self.expect_next_reserved("enum")?;
-        let ty = Box::new(Type::Enum(0));
+        let ty = Box::new(Type::Enum);
 
         // read an enum tag
         let ident = self.expect_next_ident();
@@ -714,7 +720,7 @@ impl<'a> Parser<'a> {
             let sc = self.find_tag(tag_name);
             match sc {
                 Some(tag_scope) => {
-                    if let Type::Enum(_) = *tag_scope.ty.clone() {
+                    if let Type::Enum = *tag_scope.ty.clone() {
                         return Ok(Box::clone(&tag_scope.ty))
 
                     } else {
@@ -729,12 +735,12 @@ impl<'a> Parser<'a> {
             // read enum-list
             let mut cnt = 0;
             loop {
-                let ident = self.expect_next_ident()?;
+                let ident = self.expect_next_ident()?.token_type.tk_str();
                 if let Ok(_) = self.expect_next_reserved("=") {
                     cnt = self.expect_next_num()?;
                 }
 
-                self.push_tag_scope(&ident, Box::new(Type::Enum(cnt)));
+                self.push_scope_with_enum(&ident, &ty, cnt);
                 cnt += 1;
 
                 if self.consume_end() {
@@ -775,6 +781,11 @@ impl<'a> Parser<'a> {
 
     pub(in super) fn push_scope_with_typedef(&mut self, name: &Rc<String>, ty: &Box<Type>) {
         let vsc = VarScope::new_typedef(name, ty);
+        self.var_scope.push(vsc);
+    }
+
+    pub(in super) fn push_scope_with_enum(&mut self, name: &Rc<String>, ty: &Box<Type>, val: isize) {
+        let vsc = VarScope::new_enum(name, ty, val);
         self.var_scope.push(vsc);
     }
 }
