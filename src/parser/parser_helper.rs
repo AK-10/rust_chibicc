@@ -290,7 +290,7 @@ impl<'a> Parser<'a> {
         Ok(params)
     }
 
-    // base-type = buildin-type | struct-decl | typedef-name
+    // base-type = buildin-type | struct-decl | typedef-name | enum-specifier
     // builtin-type = "void" | "char" | "_Bool" | "int" | "short" | "long" | "long" "long"
     //
     // Note that "typedef" can appear anywhere in a basetype.

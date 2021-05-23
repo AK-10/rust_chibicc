@@ -8,9 +8,7 @@ use std::str::FromStr;
 use std::rc::Rc;
 
 // TODO: LexerErrorの定義
-// TODO: Location structがほしい
-
-const KEYWORDS: [&str; 14] = [
+const KEYWORDS: [&str; 15] = [
     "return",
     "if",
     "while",
@@ -24,7 +22,8 @@ const KEYWORDS: [&str; 14] = [
     "_Bool",
     "sizeof",
     "struct",
-    "typedef"
+    "typedef",
+    "enum"
 ];
 
 pub struct Tokenizer {
