@@ -32,11 +32,18 @@ pub struct Function {
     // parser.parse()でParser.locals -- move --> Function.locals的な気持ち
     pub locals: Vec<Rc<RefCell<Var>>>,
     pub params: Vec<Rc<RefCell<Var>>>,
-    pub stack_size: usize
+    pub stack_size: usize,
+    pub is_static: bool
 }
 
 impl Function {
-    pub fn new(name: Rc<String>, nodes: Vec<Stmt>, locals: Vec<Rc<RefCell<Var>>>, params: Vec<Rc<RefCell<Var>>>) -> Self {
+    pub fn new(
+        name: Rc<String>,
+        nodes: Vec<Stmt>,
+        locals: Vec<Rc<RefCell<Var>>>,
+        params: Vec<Rc<RefCell<Var>>>,
+        is_static: bool
+    ) -> Self {
         let (fixed_locals, offset) = Self::calc_offsets(&locals);
 
         Self {
@@ -44,7 +51,8 @@ impl Function {
             nodes,
             stack_size: align_to(offset, 8),
             locals: fixed_locals,
-            params
+            params,
+            is_static
         }
     }
 

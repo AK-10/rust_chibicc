@@ -91,7 +91,8 @@ impl<'a> Parser<'a> {
     fn function(&mut self) -> Result<Option<Function>, String> {
         self.locals.clear();
 
-        let mut ty = self.base_type(&mut false)?;
+        let mut sclass = None;
+        let mut ty = self.base_type(&mut sclass)?;
         let name = &mut String::new();
 
         ty = self.declarator(&mut ty, name)?;
@@ -126,7 +127,7 @@ impl<'a> Parser<'a> {
         let locals = self.locals.to_vec();
 
         // construct function object
-        Ok(Some(Function::new(Rc::new(name.to_string()), nodes, locals, params)))
+        Ok(Some(Function::new(Rc::new(name.to_string()), nodes, locals, params, sclass.map_or(false, |sc| sc.is_static()))))
     }
 
     // stmt := expr ";"

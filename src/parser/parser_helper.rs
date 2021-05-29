@@ -9,6 +9,20 @@ use crate::scopes::{ TagScope, VarScope, Scope, ScopeElement };
 use std::rc::Rc;
 use std::cell::RefCell;
 
+pub(in super) enum StorageClass {
+    TypeDef,
+    Static,
+}
+
+impl StorageClass {
+    pub fn is_static(&self) -> bool {
+        match self {
+            StorageClass::TypeDef => false,
+            StorageClass::Static => true
+        }
+    }
+}
+
 impl<'a> Parser<'a> {
     // local変数 -> global変数の順に探す
     pub(in super) fn find_var(&self, name: &String) -> Option<&VarScope> {
@@ -127,8 +141,8 @@ impl<'a> Parser<'a> {
     // declaration := basetype declarator type-suffix ("=" expr)? ";"
     //              | basetype ";"
     pub(in super) fn declaration(&mut self) -> Result<Stmt, String> {
-        let is_typedef = &mut false;
-        let mut ty = self.base_type(is_typedef)?;
+        let sclass = &mut None;
+        let mut ty = self.base_type(sclass)?;
 
         if let Ok(()) = self.expect_next_symbol(";") {
             return Ok(Stmt::ExprStmt { val: Expr::Null.to_expr_wrapper() })
@@ -139,7 +153,7 @@ impl<'a> Parser<'a> {
         ty = self.declarator(&mut ty, name)?;
         ty = self.read_type_suffix(ty)?;
 
-        if *is_typedef {
+        if let Some(StorageClass::TypeDef) = *sclass {
             self.expect_next_symbol(";")?;
             self.push_scope_with_typedef(&Rc::new(name.to_string()), &ty);
 
@@ -263,7 +277,7 @@ impl<'a> Parser<'a> {
         if self.expect_next_symbol(")".to_string()).is_ok() {
             return Ok(params)
         }
-        let ty = &mut self.base_type(&mut false)?;
+        let ty = &mut self.base_type(&mut None)?;
         let name = &mut String::new();
 
         if let Ok(_) = self.declarator(ty, name) {
@@ -273,7 +287,7 @@ impl<'a> Parser<'a> {
         }
 
         while let Ok(_) = self.expect_next_symbol(",".to_string()) {
-            let ty = &mut self.base_type(&mut false)?;
+            let ty = &mut self.base_type(&mut None)?;
             let name = &mut String::new();
             match self.declarator(ty, name) {
                 Ok(_) => {
@@ -295,7 +309,7 @@ impl<'a> Parser<'a> {
     //
     // Note that "typedef" can appear anywhere in a basetype.
     // "int" can appear anywhere if type is short, long or long long
-    pub(in super) fn base_type(&mut self, is_typedef: &mut bool) -> Result<Box<Type>, String> {
+    pub(in super) fn base_type(&mut self, sclass: &mut Option<StorageClass>) -> Result<Box<Type>, String> {
         if !self.is_typename() {
             return Err("typename expected".to_string())
         }
@@ -303,15 +317,28 @@ impl<'a> Parser<'a> {
         let mut ty = Box::new(Type::Int);
         let mut counter = 0;
 
-        if *is_typedef {
-            *is_typedef = false;
+        if let Some(_) = sclass {
+            *sclass = None;
         }
 
         while let (true, Some(tok)) = (self.is_typename(), self.peekable.peek()) {
             let tk_str = tok.token_type.tk_str();
             // handle storage class specifiers
             if tk_str.as_str() == "typedef" {
-                *is_typedef = true;
+                if let None = sclass {
+                    *sclass = Some(StorageClass::TypeDef);
+                } else {
+                    return Err("typedef and static may not be used together".to_string())
+                }
+                self.peekable.next();
+                continue
+            }
+            else if tk_str.as_str() == "static" {
+                if let None = sclass {
+                    *sclass = Some(StorageClass::Static);
+                } else {
+                    return Err("typedef and static may not be used together".to_string())
+                }
                 self.peekable.next();
                 continue
             }
@@ -457,15 +484,15 @@ impl<'a> Parser<'a> {
 
     // global-var := basetype declarator type-suffix ";"
     pub(in super) fn global_var(&mut self) -> Result<(), String> {
-        let is_typedef = &mut false;
-        let mut base_ty = self.base_type(is_typedef)?;
+        let sclass = &mut None;
+        let mut base_ty = self.base_type(sclass)?;
         let name = &mut String::new();
         let base_ty = self.declarator(&mut base_ty, name)?;
 
         let ty = self.read_type_suffix(base_ty)?;
         self.expect_next_symbol(";")?;
 
-        if *is_typedef {
+        if let Some(StorageClass::TypeDef) = *sclass {
             self.push_scope_with_typedef(&Rc::new(name.to_string()), &ty);
         } else {
             self.new_gvar(name, ty, None, true);
@@ -497,7 +524,7 @@ impl<'a> Parser<'a> {
 
     // type-name := base-type abstract-declarator type-suffix
     pub(in super) fn type_name(&mut self) -> Result<Box<Type>, String> {
-        let mut ty = self.base_type(&mut false)?;
+        let mut ty = self.base_type(&mut None)?;
         ty = self.abstract_declarator(&mut ty)?;
 
         self.read_type_suffix(ty)
@@ -560,8 +587,8 @@ impl<'a> Parser<'a> {
     pub(in super) fn is_function(&mut self) -> bool {
         let pos = self.peekable.current_position();
 
-        let is_typedef = &mut false;
-        let base = &mut if let Ok(ty) = self.base_type(is_typedef) {
+        let sclass = &mut None;
+        let base = &mut if let Ok(ty) = self.base_type(sclass) {
             ty
         } else {
             let _ = self.peekable.back_to(pos);
@@ -586,7 +613,11 @@ impl<'a> Parser<'a> {
     pub(in super) fn is_typename(&self) -> bool {
         self.peekable.peek().map(|tk| {
             if let TokenType::Reserved(Reserved { op, .. }) = &tk.token_type {
-                TYPE_NAMES.contains(&op.as_str()) || op.as_str() == "typedef" || op.as_str() == "enum"
+                let op_str = op.as_str();
+                TYPE_NAMES.contains(&op.as_str()) ||
+                op_str == "typedef" ||
+                op_str == "enum" ||
+                op_str == "static"
             } else {
                 self.find_typedef(tk).is_some()
             }
@@ -664,7 +695,7 @@ impl<'a> Parser<'a> {
 
     //  struct-member := basetype ident ("[" num "]") ";"
     pub(in super) fn struct_member(&mut self) -> Result<Member, String> {
-        let mut ty = self.base_type(&mut false)?;
+        let mut ty = self.base_type(&mut None)?;
         let name = &mut String::new();
 
         ty = self.declarator(&mut ty, name)?;
