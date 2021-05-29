@@ -8,7 +8,7 @@ use std::str::FromStr;
 use std::rc::Rc;
 
 // TODO: LexerErrorの定義
-const KEYWORDS: [&str; 15] = [
+const KEYWORDS: [&str; 16] = [
     "return",
     "if",
     "while",
@@ -23,7 +23,8 @@ const KEYWORDS: [&str; 15] = [
     "sizeof",
     "struct",
     "typedef",
-    "enum"
+    "enum",
+    "static"
 ];
 
 pub struct Tokenizer {

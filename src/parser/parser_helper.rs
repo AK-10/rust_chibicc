@@ -327,7 +327,7 @@ impl<'a> Parser<'a> {
             if tk_str.as_str() == "typedef" {
                 if let None = sclass {
                     *sclass = Some(StorageClass::TypeDef);
-                } else {
+                } else if let Some(StorageClass::Static) = sclass {
                     return Err("typedef and static may not be used together".to_string())
                 }
                 self.peekable.next();
@@ -336,7 +336,7 @@ impl<'a> Parser<'a> {
             else if tk_str.as_str() == "static" {
                 if let None = sclass {
                     *sclass = Some(StorageClass::Static);
-                } else {
+                } else if let Some(StorageClass::TypeDef) = sclass {
                     return Err("typedef and static may not be used together".to_string())
                 }
                 self.peekable.next();

@@ -399,7 +399,9 @@ impl<'a> CodeGenerator<'a> {
             let mut node_iter = func.nodes.iter();
             *self.funcname.borrow_mut() = func.name.to_string();
             let funcname = self.funcname.borrow().to_string();
-            println!(".global {}", funcname);
+            if !func.is_static {
+                println!(".global {}", funcname);
+            }
             println!("{}:", funcname);
 
             // Prologue
