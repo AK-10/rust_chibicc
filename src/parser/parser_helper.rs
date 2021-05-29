@@ -127,7 +127,7 @@ impl<'a> Parser<'a> {
     // declaration := basetype declarator type-suffix ("=" expr)? ";"
     //              | basetype ";"
     pub(in super) fn declaration(&mut self) -> Result<Stmt, String> {
-        let is_typedef = &mut Some(false);
+        let is_typedef = &mut false;
         let mut ty = self.base_type(is_typedef)?;
 
         if let Ok(()) = self.expect_next_symbol(";") {
@@ -139,7 +139,7 @@ impl<'a> Parser<'a> {
         ty = self.declarator(&mut ty, name)?;
         ty = self.read_type_suffix(ty)?;
 
-        if let Some(true) = is_typedef {
+        if *is_typedef {
             self.expect_next_symbol(";")?;
             self.push_scope_with_typedef(&Rc::new(name.to_string()), &ty);
 
@@ -263,7 +263,7 @@ impl<'a> Parser<'a> {
         if self.expect_next_symbol(")".to_string()).is_ok() {
             return Ok(params)
         }
-        let ty = &mut self.base_type(&mut None)?;
+        let ty = &mut self.base_type(&mut false)?;
         let name = &mut String::new();
 
         if let Ok(_) = self.declarator(ty, name) {
@@ -273,7 +273,7 @@ impl<'a> Parser<'a> {
         }
 
         while let Ok(_) = self.expect_next_symbol(",".to_string()) {
-            let ty = &mut self.base_type(&mut None)?;
+            let ty = &mut self.base_type(&mut false)?;
             let name = &mut String::new();
             match self.declarator(ty, name) {
                 Ok(_) => {
@@ -295,7 +295,7 @@ impl<'a> Parser<'a> {
     //
     // Note that "typedef" can appear anywhere in a basetype.
     // "int" can appear anywhere if type is short, long or long long
-    pub(in super) fn base_type(&mut self, is_typedef: &mut Option<bool>) -> Result<Box<Type>, String> {
+    pub(in super) fn base_type(&mut self, is_typedef: &mut bool) -> Result<Box<Type>, String> {
         if !self.is_typename() {
             return Err("typename expected".to_string())
         }
@@ -303,15 +303,15 @@ impl<'a> Parser<'a> {
         let mut ty = Box::new(Type::Int);
         let mut counter = 0;
 
-        if let Some(true) = is_typedef {
-            *is_typedef = Some(false);
+        if *is_typedef {
+            *is_typedef = false;
         }
 
         while let (true, Some(tok)) = (self.is_typename(), self.peekable.peek()) {
             let tk_str = tok.token_type.tk_str();
             // handle storage class specifiers
             if tk_str.as_str() == "typedef" {
-                *is_typedef = Some(true);
+                *is_typedef = true;
                 self.peekable.next();
                 continue
             }
@@ -457,7 +457,7 @@ impl<'a> Parser<'a> {
 
     // global-var := basetype declarator type-suffix ";"
     pub(in super) fn global_var(&mut self) -> Result<(), String> {
-        let is_typedef = &mut Some(false);
+        let is_typedef = &mut false;
         let mut base_ty = self.base_type(is_typedef)?;
         let name = &mut String::new();
         let base_ty = self.declarator(&mut base_ty, name)?;
@@ -465,7 +465,7 @@ impl<'a> Parser<'a> {
         let ty = self.read_type_suffix(base_ty)?;
         self.expect_next_symbol(";")?;
 
-        if let Some(true) = is_typedef {
+        if *is_typedef {
             self.push_scope_with_typedef(&Rc::new(name.to_string()), &ty);
         } else {
             self.new_gvar(name, ty, None, true);
@@ -497,7 +497,7 @@ impl<'a> Parser<'a> {
 
     // type-name := base-type abstract-declarator type-suffix
     pub(in super) fn type_name(&mut self) -> Result<Box<Type>, String> {
-        let mut ty = self.base_type(&mut None)?;
+        let mut ty = self.base_type(&mut false)?;
         ty = self.abstract_declarator(&mut ty)?;
 
         self.read_type_suffix(ty)
@@ -560,7 +560,7 @@ impl<'a> Parser<'a> {
     pub(in super) fn is_function(&mut self) -> bool {
         let pos = self.peekable.current_position();
 
-        let is_typedef = &mut Some(false);
+        let is_typedef = &mut false;
         let base = &mut if let Ok(ty) = self.base_type(is_typedef) {
             ty
         } else {
@@ -664,7 +664,7 @@ impl<'a> Parser<'a> {
 
     //  struct-member := basetype ident ("[" num "]") ";"
     pub(in super) fn struct_member(&mut self) -> Result<Member, String> {
-        let mut ty = self.base_type(&mut None)?;
+        let mut ty = self.base_type(&mut false)?;
         let name = &mut String::new();
 
         ty = self.declarator(&mut ty, name)?;

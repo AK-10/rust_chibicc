@@ -91,7 +91,7 @@ impl<'a> Parser<'a> {
     fn function(&mut self) -> Result<Option<Function>, String> {
         self.locals.clear();
 
-        let mut ty = self.base_type(&mut None)?;
+        let mut ty = self.base_type(&mut false)?;
         let name = &mut String::new();
 
         ty = self.declarator(&mut ty, name)?;
