@@ -116,10 +116,16 @@ impl<'a> Parser<'a> {
         self.peekable.next();
 
         self.expect_next_symbol("(")?;
+        let sc = self.enter_scope();
 
         // 初期化，条件，処理後はない場合がある
-        let init = self.expr_stmt().ok();
-        self.expect_next_symbol(";")?;
+        let init = if self.is_typename() {
+            self.declaration().ok()
+        } else {
+            let init_stmt = self.expr_stmt().ok();
+            self.expect_next_symbol(";")?;
+            init_stmt
+        };
 
         let cond = self.expr().ok();
         self.expect_next_symbol(";")?;
@@ -128,6 +134,8 @@ impl<'a> Parser<'a> {
         self.expect_next_symbol(")")?;
 
         let then = self.stmt()?;
+
+        self.leave_scope(sc);
 
         Ok(Stmt::For {
             init: Box::new(init),

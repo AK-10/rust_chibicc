@@ -134,7 +134,7 @@ impl<'a> Parser<'a> {
     //       | "return" expr ";"
     //       | "if" "(" expr ")" stmt ("else" stmt)?
     //       | "while" "(" expr ")" stmt
-    //       | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+    //       | "for" "(" (expr? | declaration) ";" expr? ";" expr? ")" stmt
     //       | "{" stmt "}"
     //       | declaration
     fn stmt(&mut self) -> Result<Stmt, String> {
