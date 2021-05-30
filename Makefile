@@ -9,3 +9,8 @@ test:
 		gcc -xc -c -o tmp2.o -
 	gcc -static -o tmp tmp.s tmp2.o
 	./tmp
+
+nqueen:
+	cargo run --release examples/nqueen.c > tmp.s
+	gcc -static -o tmp tmp.s
+	./tmp
