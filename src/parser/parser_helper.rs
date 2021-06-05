@@ -276,35 +276,30 @@ impl<'a> Parser<'a> {
         Ok(args)
     }
 
-    // 関数宣言における引数をparseする
-    // params := ident ("," ident)*
-    pub(in super) fn parse_func_params(&mut self) -> Result<Vec<Rc<RefCell<Var>>>, String> {
+    pub(in super) fn read_func_param(&mut self) -> Result<Rc<RefCell<Var>>, String> {
+        let mut ty = self.base_type(&mut None)?;
+        let name = &mut String::new();
+
+        ty = self.declarator(&mut ty, name)?;
+        ty = self.read_type_suffix(ty)?;
+
+        Ok(self.new_var(name, Box::clone(&ty), true))
+    }
+
+    // function = basetype declarator "(" params? ")" ("{" stmt* "}" | ";")
+    // params   = param ("," param)*
+    // param    = basetype declarator type-suffix
+    pub(in super) fn read_func_params(&mut self) -> Result<Vec<Rc<RefCell<Var>>>, String> {
         self.expect_next_symbol("(".to_string())?;
 
         let mut params = Vec::<Rc<RefCell<Var>>>::new();
         if self.expect_next_symbol(")".to_string()).is_ok() {
             return Ok(params)
         }
-        let ty = &mut self.base_type(&mut None)?;
-        let name = &mut String::new();
-
-        if let Ok(_) = self.declarator(ty, name) {
-            params.push(self.new_var(name, Box::clone(&ty), true));
-        } else {
-            return Err("token not found".to_string())
-        }
+        params.push(self.read_func_param()?);
 
         while let Ok(_) = self.expect_next_symbol(",".to_string()) {
-            let ty = &mut self.base_type(&mut None)?;
-            let name = &mut String::new();
-            match self.declarator(ty, name) {
-                Ok(_) => {
-                    params.push(self.new_var(name, Box::clone(&ty), true));
-                }
-                _ => {
-                    return Err("error occured at parse_func_params".to_string())
-                }
-            }
+            params.push(self.read_func_param()?);
         }
 
         self.expect_next_symbol(")".to_string())?;

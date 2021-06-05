@@ -18,10 +18,12 @@ pub struct CodeGenerator<'a> {
 
 impl<'a> CodeGenerator<'a> {
     pub fn new(prog: &'a Program) -> Self {
+        //println!("{:#?}", prog);
         Self {
             prog,
             funcname: RefCell::new(String::new()),
-            labelseq: Cell::new(0) }
+            labelseq: Cell::new(0)
+        }
     }
 
     pub fn codegen(&self) {

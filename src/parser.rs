@@ -104,7 +104,7 @@ impl<'a> Parser<'a> {
         let sc = self.enter_scope();
 
         // parse params
-        let params = self.parse_func_params()?;
+        let params = self.read_func_params()?;
         self.locals = params.clone();
 
         // prototype declaration
