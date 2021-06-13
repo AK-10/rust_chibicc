@@ -74,6 +74,30 @@ impl<'a> Tokenizer {
                         let token_type = self.arrow()?;
                         tokens.push(self.new_token(token_type));
                 },
+                _ if self.multi_get(2)
+                    .map(|inc| inc == ['+', '+'])
+                    .unwrap_or(false) => {
+                        let op = Rc::new("++".to_string());
+                        let token_type = TokenType::Reserved(Reserved {
+                            op: Rc::clone(&op),
+                            tk_str: op
+                        });
+
+                        self.increment_pos(2);
+                        tokens.push(self.new_token(token_type));
+                }
+                _ if self.multi_get(2)
+                    .map(|inc| inc == ['-', '-'])
+                    .unwrap_or(false) => {
+                        let op = Rc::new("--".to_string());
+                        let token_type = TokenType::Reserved(Reserved {
+                            op: Rc::clone(&op),
+                            tk_str: op
+                        });
+
+                        self.increment_pos(2);
+                        tokens.push(self.new_token(token_type));
+                }
                 // "=" or "=="
                 '=' => {
                     let token_type = self.tokenize_eq()?;

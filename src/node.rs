@@ -7,30 +7,6 @@ use std::cell::RefCell;
 use std::fmt;
 use std::fmt::Display;
 
-// EBNF
-// program := stmt*
-// stmt := expr ";"
-//       | "return" expr ";"
-//       | "{" stmt* "}"
-//       | "if" "(" expr ")" stmt ("else" stmt)? /* ( expr ) is primary. */
-//       | "while" "(" expr ")" stmt
-//       | "for" "(" expr? ";" expr? ";" expr? ")" stmt
-//       |
-// expr := assign
-// assign := equality ("=" assign)?
-// equality := relational ("==" relational | "!=" relational)*
-// relational := add ("<" add | "<=" add | ">" add | ">=" add)*
-// add := mul ("+" mul | "-" mul)*
-// mul := unary ("*" unary | "/" unary)*
-// unary := "+"? primary
-//        | "-"? primary
-//        | "*"? unary
-//        | "&"? unary
-// primary := num
-//          | ident args? // 単なる変数か，関数呼び出し
-//          | "(" expr ")"
-// args := "(" ")"
-
 #[derive(PartialEq, Debug, Clone)]
 pub enum Stmt {
     Return {
@@ -82,7 +58,8 @@ pub enum Expr {
         rhs: ExprWrapper
     },
     Neq {
-        lhs: ExprWrapper, rhs: ExprWrapper
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
     },
     Gt {
         lhs: ExprWrapper,
@@ -129,6 +106,10 @@ pub enum Expr {
         lhs: Stmt,
         rhs: ExprWrapper
     },
+    PreInc(ExprWrapper),
+    PreDec(ExprWrapper),
+    PostInc(ExprWrapper),
+    PostDec(ExprWrapper),
     FnCall {
         fn_name: Rc<String>,
         args: Vec<ExprWrapper>
@@ -178,6 +159,10 @@ impl Expr {
             Expr::Assign { var, .. } => {
                 Box::clone(&var.ty)
             },
+            Expr::PreInc(expr_wrapper) => Box::clone(&expr_wrapper.ty),
+            Expr::PreDec(expr_wrapper) => Box::clone(&expr_wrapper.ty),
+            Expr::PostInc(expr_wrapper) => Box::clone(&expr_wrapper.ty),
+            Expr::PostDec(expr_wrapper) => Box::clone(&expr_wrapper.ty),
             Expr::Comma { rhs, .. } => {
                 Box::clone(&rhs.ty)
             },
@@ -215,6 +200,15 @@ impl Expr {
     pub fn to_expr_wrapper(self) -> ExprWrapper {
         ExprWrapper::new(self)
     }
+
+    pub fn is_lvalue(&self) -> bool {
+        match self {
+            Expr::Deref { .. }
+            | Expr::Var(_)
+            | Expr::Member(_, _) => true,
+            _ => false
+        }
+    }
 }
 
 impl Display for Expr {
@@ -234,6 +228,10 @@ impl Display for Expr {
             Expr::Cast { .. } => write!(f, "Cast"),
             Expr::Var(_) => write!(f, "Var"),
             Expr::Assign { .. } => write!(f, "Assign"),
+            Expr::PreInc(_) => write!(f, "PreInc"),
+            Expr::PreDec(_) => write!(f, "PreDec"),
+            Expr::PostInc(_) => write!(f, "PostInc"),
+            Expr::PostDec(_) => write!(f, "PostDec"),
             Expr::Comma { .. } => write!(f, "Comma"),
             Expr::FnCall { .. } => write!(f, "FnCall"),
             Expr::Addr { .. } => write!(f, "Addr"),

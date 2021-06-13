@@ -146,6 +146,38 @@ impl<'a> CodeGenerator<'a> {
 
                 return
             }
+            Expr::PreInc(ew) => {
+                self.gen_lval(ew);
+                println!("  push [rsp]");
+                load(ew.ty.as_ref());
+                inc(ew.ty.as_ref());
+                store(ew.ty.as_ref());
+                return
+            }
+            Expr::PreDec(ew) => {
+                self.gen_lval(ew);
+                println!("  push [rsp]");
+                load(ew.ty.as_ref());
+                dec(ew.ty.as_ref());
+                store(ew.ty.as_ref());
+                return
+            }
+            Expr::PostInc(ew) => {
+                self.gen_lval(ew);
+                println!("  push [rsp]");
+                load(ew.ty.as_ref());
+                store(ew.ty.as_ref());
+                inc(ew.ty.as_ref());
+                return
+            }
+            Expr::PostDec(ew) => {
+                self.gen_lval(ew);
+                println!("  push [rsp]");
+                load(ew.ty.as_ref());
+                store(ew.ty.as_ref());
+                dec(ew.ty.as_ref());
+                return
+            }
             Expr::Comma { lhs, rhs } => {
                 //println!("{:#?}", expr_wrapper);
                 self.gen_stmt(lhs);
@@ -360,6 +392,13 @@ impl<'a> CodeGenerator<'a> {
         println!("  pop rax");
     }
 
+    fn gen_lval(&self, ew: &ExprWrapper) {
+        if let Type::Array { .. } = *ew.ty {
+            panic!("not an lvalue");
+        }
+        self.gen_addr(ew)
+    }
+
     // pushes the given node's address to the stack
     fn gen_addr(&self, expr_wrapper: &ExprWrapper) {
         match expr_wrapper.expr.as_ref() {
@@ -500,5 +539,27 @@ fn trancate(ty: &Type) {
         _ => {}
     }
 
+    println!("  push rax");
+}
+
+fn inc(ty: &Type) {
+    println!("  pop rax");
+    let sz = if ty.has_base() {
+        ty.base_size()
+    } else {
+        1
+    };
+    println!("  add rax, {}", sz);
+    println!("  push rax");
+}
+
+fn dec(ty: &Type) {
+    println!("  pop rax");
+    let sz = if ty.has_base() {
+        ty.base_size()
+    } else {
+        1
+    };
+    println!("  sub rax, {}", sz);
     println!("  push rax");
 }

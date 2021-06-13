@@ -378,6 +378,7 @@ impl<'a> Parser<'a> {
     }
 
     // unary := ("+" | "-" | "*" | "&")? cast
+    //        | ("++" | "--") unary
     //        | postfix
     fn unary(&mut self) -> Result<ExprWrapper, String> {
         let tk = self.peekable.peek();
@@ -407,6 +408,20 @@ impl<'a> Parser<'a> {
                         let operand = self.cast()?;
                         Ok(Expr::Addr { operand }.to_expr_wrapper())
                     },
+                    "++" => {
+                        let unary = self.unary()?;
+                        if unary.expr.is_lvalue() {
+                            return Err(format!("{:?} is not an lvalue", unary))
+                        }
+                        Ok(Expr::PreInc(unary).to_expr_wrapper())
+                    },
+                    "--" => {
+                        let unary = self.unary()?;
+                        if unary.expr.is_lvalue() {
+                            return Err(format!("{:?} is not an lvalue", unary))
+                        }
+                        Ok(Expr::PreDec(unary).to_expr_wrapper())
+                    }
                     _ => self.postfix()
                 }
             },
@@ -414,7 +429,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // postfix := primary ("[" expr "]" | "." ident | "->" ident)*
+    // postfix := primary ("[" expr "]" | "." ident | "->" ident | "++" | "--")*
     fn postfix(&mut self) -> Result<ExprWrapper, String> {
         let mut node = self.primary()?;
 
@@ -446,6 +461,16 @@ impl<'a> Parser<'a> {
             if let Ok(_) = self.expect_next_reserved("->") {
                 node = Expr::Deref { operand: node }.to_expr_wrapper();
                 node = self.struct_ref(node)?;
+                continue
+            }
+
+            if let Ok(_) = self.expect_next_reserved("++") {
+                node = Expr::PostInc(node).to_expr_wrapper();
+                continue
+            }
+            if let Ok(_) = self.expect_next_reserved("--") {
+                node = Expr::PostDec(node).to_expr_wrapper();
+                continue
             }
 
             return Ok(node);
