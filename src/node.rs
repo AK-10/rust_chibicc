@@ -125,6 +125,10 @@ pub enum Expr {
         var: ExprWrapper, // x = 10, *y = 100とかあるので今のところexprにするしかない
         val: ExprWrapper
     },
+    Comma {
+        lhs: Stmt,
+        rhs: ExprWrapper
+    },
     FnCall {
         fn_name: Rc<String>,
         args: Vec<ExprWrapper>
@@ -173,6 +177,9 @@ impl Expr {
             | Expr::PtrSub { lhs, rhs: _ } => Box::clone(&lhs.ty),
             Expr::Assign { var, .. } => {
                 Box::clone(&var.ty)
+            },
+            Expr::Comma { rhs, .. } => {
+                Box::clone(&rhs.ty)
             },
             Expr::Addr { operand } => {
                 let ty = operand.ty.as_ref();
@@ -227,6 +234,7 @@ impl Display for Expr {
             Expr::Cast { .. } => write!(f, "Cast"),
             Expr::Var(_) => write!(f, "Var"),
             Expr::Assign { .. } => write!(f, "Assign"),
+            Expr::Comma { .. } => write!(f, "Comma"),
             Expr::FnCall { .. } => write!(f, "FnCall"),
             Expr::Addr { .. } => write!(f, "Addr"),
             Expr::Deref { .. } => write!(f, "Deref"),

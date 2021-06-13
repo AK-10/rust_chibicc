@@ -184,9 +184,16 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // expr := assign
+    // expr := assign ("," assign)*
     fn expr(&mut self) -> Result<ExprWrapper, String> {
-        self.assign()
+        let mut node = self.assign()?;
+
+        while let Ok(_) = self.expect_next_symbol(",") {
+            let lhs = Stmt::ExprStmt { val: node };
+            node = Expr::Comma { lhs, rhs: self.assign()? }.to_expr_wrapper();
+        }
+
+        Ok(node)
     }
 
     // assign := equality ("=" assign)?

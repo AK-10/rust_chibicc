@@ -266,9 +266,9 @@ impl<'a> Parser<'a> {
             return Ok(vec![])
         }
         // 最初の一個だけ読んでおく
-        let mut args = vec![self.expr()?];
+        let mut args = vec![self.assign()?];
         while let Ok(_) = self.expect_next_symbol(",") {
-            args.push(self.expr()?);
+            args.push(self.assign()?);
         }
 
         self.expect_next_symbol(")")?;

@@ -350,6 +350,9 @@ int main() {
 
   assert(55, ({ int j=0; for (int i=0; i<=10; i=i+1) j=j+i; j; }), "int j=0; for (int i=0; i<=10; i=i+1) j=j+1; j;");
   assert(3, ({ int i=3; int j=0; for (int i=0; i<=10; i=i+1) j=j+1; i; }), "int i=3; int j=0; for (int i=0; i<=10; i=i+1) j=j+1; j;");
+
+  assert(3, (1,2,3), "(1,2,3)");
+
   printf("OK\n");
   return 0;
 }

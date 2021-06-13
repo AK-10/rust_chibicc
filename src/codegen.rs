@@ -146,6 +146,13 @@ impl<'a> CodeGenerator<'a> {
 
                 return
             }
+            Expr::Comma { lhs, rhs } => {
+                //println!("{:#?}", expr_wrapper);
+                self.gen_stmt(lhs);
+                self.gen_expr(rhs);
+
+                return
+            }
             Expr::FnCall { fn_name, args, .. } => {
                 let arg_size = args.len();
                 args.iter().for_each( |arg| {
