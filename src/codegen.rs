@@ -166,16 +166,18 @@ impl<'a> CodeGenerator<'a> {
                 self.gen_lval(ew);
                 println!("  push [rsp]");
                 load(ew.ty.as_ref());
-                store(ew.ty.as_ref());
                 inc(ew.ty.as_ref());
+                store(ew.ty.as_ref());
+                dec(ew.ty.as_ref());
                 return
             }
             Expr::PostDec(ew) => {
                 self.gen_lval(ew);
                 println!("  push [rsp]");
                 load(ew.ty.as_ref());
-                store(ew.ty.as_ref());
                 dec(ew.ty.as_ref());
+                store(ew.ty.as_ref());
+                inc(ew.ty.as_ref());
                 return
             }
             Expr::Comma { lhs, rhs } => {

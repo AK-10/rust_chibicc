@@ -409,15 +409,17 @@ impl<'a> Parser<'a> {
                         Ok(Expr::Addr { operand }.to_expr_wrapper())
                     },
                     "++" => {
+                        self.peekable.next();
                         let unary = self.unary()?;
-                        if unary.expr.is_lvalue() {
+                        if !unary.expr.is_lvalue() {
                             return Err(format!("{:?} is not an lvalue", unary))
                         }
                         Ok(Expr::PreInc(unary).to_expr_wrapper())
                     },
                     "--" => {
+                        self.peekable.next();
                         let unary = self.unary()?;
-                        if unary.expr.is_lvalue() {
+                        if !unary.expr.is_lvalue() {
                             return Err(format!("{:?} is not an lvalue", unary))
                         }
                         Ok(Expr::PreDec(unary).to_expr_wrapper())
