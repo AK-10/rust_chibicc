@@ -30,7 +30,7 @@ fn main() {
     let filename = args.get(1).expect("expect 1 arguments");
 
     let user_input = read_file(filename);
-    let tokens = match Tokenizer::new(&*user_input).tokenize() {
+    let tokens = match Tokenizer::new(user_input).tokenize() {
         Ok(tokens) => tokens,
         Err(e) => {
             eprintln!("{}:{}", filename, e);
