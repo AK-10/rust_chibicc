@@ -196,27 +196,64 @@ impl<'a> Parser<'a> {
         Ok(node)
     }
 
-    // assign := equality ("=" assign)?
+    // assign    := equality (assign-op assign)?
+    // assign-op := "=" | "+=" | "-=" | "*=" | "/="
     fn assign(&mut self) -> Result<ExprWrapper, String> {
-        let node = self.equality();
-        (&node).as_ref().ok().and_then(|nd| {
-            if let Expr::Var(var) = nd.expr.as_ref() {
-                return Some(var)
-            }
+        let var = self.equality()?;
 
-            None
-        });
-
-        let is_assign = self.expect_next_reserved("=".to_string());
-        if let Ok(_) = is_assign {
+        if let Ok(_) = self.expect_next_reserved("=") {
             let val = self.expr()?;
             return Ok(Expr::Assign {
-                var: node?,
+                var,
                 val
             }.to_expr_wrapper())
         }
 
-        node
+        if let Ok(_) = self.expect_next_reserved("*=") {
+            let val = self.expr()?;
+            return Ok(Expr::MulEq {
+                var,
+                val
+            }.to_expr_wrapper())
+        }
+
+        if let Ok(_) = self.expect_next_reserved("/=") {
+            let val = self.expr()?;
+            return Ok(Expr::DivEq {
+                var,
+                val
+            }.to_expr_wrapper())
+        }
+
+        if let Ok(_) = self.expect_next_reserved("+=") {
+            let val = self.expr()?;
+            if var.ty.has_base() {
+                return Ok(Expr::PtrAddEq {
+                    var,
+                    val
+                }.to_expr_wrapper())
+            }
+            return Ok(Expr::AddEq {
+                var,
+                val
+            }.to_expr_wrapper())
+        }
+
+        if let Ok(_) = self.expect_next_reserved("-=") {
+            let val = self.expr()?;
+            if var.ty.has_base() {
+                return Ok(Expr::PtrSubEq {
+                    var,
+                    val
+                }.to_expr_wrapper())
+            }
+            return Ok(Expr::SubEq {
+                var,
+                val
+            }.to_expr_wrapper())
+        }
+
+        Ok(var)
     }
 
     // equality := relational ("==" relational | "!=" relational)*

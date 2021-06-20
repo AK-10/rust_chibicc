@@ -102,14 +102,38 @@ pub enum Expr {
         var: ExprWrapper, // x = 10, *y = 100とかあるので今のところexprにするしかない
         val: ExprWrapper
     },
-    Comma {
-        lhs: Stmt,
-        rhs: ExprWrapper
-    },
     PreInc(ExprWrapper),
     PreDec(ExprWrapper),
     PostInc(ExprWrapper),
     PostDec(ExprWrapper),
+    AddEq {
+        var: ExprWrapper,
+        val: ExprWrapper
+    },
+    PtrAddEq {
+        var: ExprWrapper,
+        val: ExprWrapper
+    },
+    SubEq {
+        var: ExprWrapper,
+        val: ExprWrapper
+    },
+    PtrSubEq {
+        var: ExprWrapper,
+        val: ExprWrapper
+    },
+    MulEq {
+        var: ExprWrapper,
+        val: ExprWrapper
+    },
+    DivEq {
+        var: ExprWrapper,
+        val: ExprWrapper
+    },
+    Comma {
+        lhs: Stmt,
+        rhs: ExprWrapper
+    },
     FnCall {
         fn_name: Rc<String>,
         args: Vec<ExprWrapper>
@@ -163,6 +187,24 @@ impl Expr {
             Expr::PreDec(expr_wrapper) => Box::clone(&expr_wrapper.ty),
             Expr::PostInc(expr_wrapper) => Box::clone(&expr_wrapper.ty),
             Expr::PostDec(expr_wrapper) => Box::clone(&expr_wrapper.ty),
+            Expr::AddEq { var, .. } => {
+                Box::clone(&var.ty)
+            },
+            Expr::PtrAddEq { var, .. } => {
+                Box::clone(&var.ty)
+            },
+            Expr::SubEq { var, .. } => {
+                Box::clone(&var.ty)
+            }
+            Expr::PtrSubEq { var, .. } => {
+                Box::clone(&var.ty)
+            },
+            Expr::MulEq { var, .. } => {
+                Box::clone(&var.ty)
+            },
+            Expr::DivEq { var, .. } => {
+                Box::clone(&var.ty)
+            },
             Expr::Comma { rhs, .. } => {
                 Box::clone(&rhs.ty)
             },
@@ -232,6 +274,12 @@ impl Display for Expr {
             Expr::PreDec(_) => write!(f, "PreDec"),
             Expr::PostInc(_) => write!(f, "PostInc"),
             Expr::PostDec(_) => write!(f, "PostDec"),
+            Expr::AddEq { .. } => write!(f, "PostDec"),
+            Expr::PtrAddEq { .. } => write!(f, "PostDec"),
+            Expr::SubEq { .. } => write!(f, "PostDec"),
+            Expr::PtrSubEq { .. } => write!(f, "PostDec"),
+            Expr::MulEq { .. } => write!(f, "PostDec"),
+            Expr::DivEq { .. } => write!(f, "PostDec"),
             Expr::Comma { .. } => write!(f, "Comma"),
             Expr::FnCall { .. } => write!(f, "FnCall"),
             Expr::Addr { .. } => write!(f, "Addr"),

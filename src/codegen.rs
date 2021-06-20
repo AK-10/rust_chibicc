@@ -34,29 +34,42 @@ impl<'a> CodeGenerator<'a> {
 
     fn gen_expr(&self, expr_wrapper: &ExprWrapper) {
         match expr_wrapper.expr.as_ref() {
-            Expr::Add { lhs, rhs } => {
-                self.gen_both_side(lhs, rhs);
-                println!("  add rax, rdi");
-            },
-            Expr::Sub { lhs, rhs } => {
-                self.gen_both_side(lhs, rhs);
-                println!("  sub rax, rdi");
-            },
-            Expr::Mul { lhs, rhs } => {
-                self.gen_both_side(lhs, rhs);
-                println!("  imul rax, rdi");
-            },
-            Expr::Div { lhs, rhs } => {
-                self.gen_both_side(lhs, rhs);
+            Expr::AddEq { var, val }
+            | Expr::PtrAddEq { var, val }
+            | Expr::SubEq { var, val }
+            | Expr::PtrSubEq { var, val }
+            | Expr::MulEq { var, val }
+            | Expr::DivEq { var, val } => {
+                self.gen_lval(var);
+                println!("  push [rsp]");
+                load(var.ty.as_ref());
+                self.gen_expr(val);
+                self.gen_binary(expr_wrapper);
+                store(expr_wrapper.ty.as_ref());
+            }
+            Expr::Add { lhs, rhs }
+            | Expr::PtrAdd { lhs, rhs }
+            | Expr::Sub { lhs, rhs }
+            | Expr::PtrSub { lhs, rhs }
+            | Expr::PtrDiff { lhs, rhs }
+            | Expr::Mul { lhs, rhs }
+            | Expr::Div { lhs, rhs }
+            | Expr::Eq { lhs, rhs }
+            | Expr::Neq { lhs, rhs }
+            | Expr::Lt { lhs, rhs }
+            | Expr::Le { lhs, rhs } => {
+                self.gen_expr(lhs);
+                self.gen_expr(rhs);
 
-                // idiv命令は符号あり除算を行う命令
-                // rdxとraxをとってそれを合わせたものを128bit整数とみなす
-                // それを引数のレジスタの64bit整数で割り，商をrax, 余をrdxにセットする
-                // cqo命令を使うと、RAXに入っている64ビットの値を128ビットに伸ばして
-                // rdxとraxにセットすることができる
-                println!("  cqo");
-                println!("  idiv rdi");
-            },
+                self.gen_binary(expr_wrapper)
+            }
+            | Expr::Gt { lhs, rhs }
+            | Expr::Ge { lhs, rhs } => {
+                self.gen_expr(rhs);
+                self.gen_expr(lhs);
+
+                self.gen_binary(expr_wrapper)
+            }
             Expr::Num { val } => {
                 // `push` instraction cannot push a 64-bit integer. In order to push it,
                 // we have to first load a large integer to aregister using movabs and then
@@ -69,62 +82,10 @@ impl<'a> CodeGenerator<'a> {
                     println!("  movabs rax, {}", val);
                     println!("  push rax");
                 }
-                return
             },
             Expr::Cast(ty, expr_wrapper) => {
                 self.gen_expr(expr_wrapper);
                 trancate(ty);
-                return
-            }
-            Expr::Eq { lhs, rhs } => {
-                self.gen_both_side(lhs, rhs);
-
-                // cmp命令: 二つの引数のレジスタを比較して, フラグレジスタに結果を格納
-                // sete命令: 指定のレジスタにフラグレジスタの値を格納. seteであれば==の時1になる
-                //           8bitしか書き込めないのでalを指定している
-                //           setneは!=のとき1になる
-                // movzb命令: movzb dist, srcでsrcをdistに書き込む．またsrcで指定されたbitより上の桁は0埋めする
-                // al: raxの下位8bitのエイリアス. alを変更するとraxも変更される
-                println!("  cmp rax, rdi");
-                println!("  sete al");
-                println!("  movzb rax, al");
-            }
-            Expr::Neq { lhs, rhs } => {
-                self.gen_both_side(lhs, rhs);
-
-                println!("  cmp rax, rdi");
-                println!("  setne al");
-                println!("  movzb rax, al");
-            }
-            Expr::Gt { lhs, rhs } => {
-                // setl を使うため，rhs, lhsを逆にする
-                self.gen_both_side(rhs, lhs);
-
-                println!("  cmp rax, rdi");
-                println!("  setl al");
-                println!("  movzb rax, al");
-            }
-            Expr::Ge { lhs, rhs } => {
-                // setle を使うため，rhs, lhsを逆にする
-                self.gen_both_side(rhs, lhs);
-
-                println!("  cmp rax, rdi");
-                println!("  setle al");
-                println!("  movzb rax, al");
-            }
-            Expr::Lt { lhs, rhs } => {
-                self.gen_both_side(lhs, rhs);
-
-                println!("  cmp rax, rdi");
-                println!("  setl al");
-                println!("  movzb rax, al");
-            }
-            Expr::Le { lhs, rhs } => {
-                self.gen_both_side(lhs, rhs);
-
-                println!("  cmp rax, rdi");
-                println!("  setle al");
-                println!("  movzb rax, al");
             }
             Expr::Var(_) => {
                 self.gen_addr(expr_wrapper);
@@ -132,8 +93,6 @@ impl<'a> CodeGenerator<'a> {
                     Type::Array { .. } => {},
                     _ => { load(&expr_wrapper.ty); }
                 }
-
-                return
             }
             Expr::Assign { var, val, .. } => {
                 match *expr_wrapper.ty {
@@ -143,8 +102,6 @@ impl<'a> CodeGenerator<'a> {
 
                 self.gen_expr(val);
                 store(&expr_wrapper.ty);
-
-                return
             }
             Expr::PreInc(ew) => {
                 self.gen_lval(ew);
@@ -152,7 +109,6 @@ impl<'a> CodeGenerator<'a> {
                 load(ew.ty.as_ref());
                 inc(ew.ty.as_ref());
                 store(ew.ty.as_ref());
-                return
             }
             Expr::PreDec(ew) => {
                 self.gen_lval(ew);
@@ -160,7 +116,6 @@ impl<'a> CodeGenerator<'a> {
                 load(ew.ty.as_ref());
                 dec(ew.ty.as_ref());
                 store(ew.ty.as_ref());
-                return
             }
             Expr::PostInc(ew) => {
                 self.gen_lval(ew);
@@ -169,7 +124,6 @@ impl<'a> CodeGenerator<'a> {
                 inc(ew.ty.as_ref());
                 store(ew.ty.as_ref());
                 dec(ew.ty.as_ref());
-                return
             }
             Expr::PostDec(ew) => {
                 self.gen_lval(ew);
@@ -178,14 +132,11 @@ impl<'a> CodeGenerator<'a> {
                 dec(ew.ty.as_ref());
                 store(ew.ty.as_ref());
                 inc(ew.ty.as_ref());
-                return
             }
             Expr::Comma { lhs, rhs } => {
                 //println!("{:#?}", expr_wrapper);
                 self.gen_stmt(lhs);
                 self.gen_expr(rhs);
-
-                return
             }
             Expr::FnCall { fn_name, args, .. } => {
                 let arg_size = args.len();
@@ -239,10 +190,10 @@ impl<'a> CodeGenerator<'a> {
 
                 println!("  add rsp, 8");
                 println!(".L.end.{}:", self.labelseq.get());
+                println!("  push rax");
             }
             Expr::Addr { operand } => {
                 self.gen_addr(operand);
-                return
             }
             Expr::Deref { operand } => {
                 self.gen_expr(operand);
@@ -250,31 +201,12 @@ impl<'a> CodeGenerator<'a> {
                     Type::Array { .. } => {},
                     _ => { load(&expr_wrapper.ty); }
                 }
-                return
-            }
-            Expr::PtrAdd { lhs, rhs } => {
-                self.gen_both_side(lhs, rhs);
-                println!("  imul rdi, {}", expr_wrapper.ty.base_size());
-                println!("  add rax, rdi");
-            }
-            Expr::PtrSub { lhs, rhs } => {
-                self.gen_both_side(lhs, rhs);
-                println!("  imul rdi, {}", expr_wrapper.ty.base_size());
-                println!("  sub rax, rdi");
-            }
-            Expr::PtrDiff { lhs, rhs } => {
-                self.gen_both_side(lhs, rhs);
-                println!("  sub rax, rdi");
-                println!("  cqo");
-                println!("  mov rdi, {}", lhs.ty.base_size());
-                println!("  idiv rdi");
             }
             Expr::Null => return,
             Expr::StmtExpr(stmts) => {
                 stmts.iter().for_each(|stmt| {
                     self.gen_stmt(stmt);
                 });
-                return
             },
             Expr::Member(_, __) => {
                 self.gen_addr(expr_wrapper);
@@ -282,12 +214,8 @@ impl<'a> CodeGenerator<'a> {
                     Type::Array { .. } => {},
                     _ => { load(&expr_wrapper.ty); }
                 }
-
-                return
             }
         }
-
-        println!("  push rax");
     }
 
     fn gen_stmt(&self, stmt: &Stmt) {
@@ -386,12 +314,83 @@ impl<'a> CodeGenerator<'a> {
         };
     }
 
-    fn gen_both_side(&self, lhs: &ExprWrapper, rhs: &ExprWrapper) {
-        self.gen_expr(lhs);
-        self.gen_expr(rhs);
-
+    fn gen_binary(&self, ew: &ExprWrapper) {
         println!("  pop rdi");
         println!("  pop rax");
+
+        match ew.expr.as_ref() {
+            Expr::Add { .. } | Expr::AddEq { .. } => {
+                println!("  add rax, rdi");
+            }
+            Expr::PtrAdd { .. } | Expr::PtrAddEq { .. } => {
+                println!("  imul rdi, {}", ew.ty.base_size());
+                println!("  add rax, rdi");
+            }
+            Expr::Sub { .. } | Expr::SubEq { .. } => {
+                println!(" sub rax, rdi");
+            }
+            Expr::PtrSub { .. } | Expr::PtrSubEq { .. } => {
+                println!("  imul rdi, {}", ew.ty.base_size());
+                println!("  sub rax, rdi");
+            }
+            Expr::PtrDiff { lhs, .. } => {
+                println!("  sub rax, rdi");
+                println!("  cqo");
+                println!("  mov rdi, {}", lhs.ty.base_size());
+                println!("  idiv rdi");
+            }
+            Expr::Mul { .. } | Expr::MulEq { .. } => {
+                println!("  imul rax, rdi");
+            }
+            Expr::Div { .. } | Expr::DivEq { .. } => {
+                // idiv命令は符号あり除算を行う命令
+                // rdxとraxをとってそれを合わせたものを128bit整数とみなす
+                // それを引数のレジスタの64bit整数で割り，商をrax, 余をrdxにセットする
+                // cqo命令を使うと、RAXに入っている64ビットの値を128ビットに伸ばして
+                // rdxとraxにセットすることができる
+                println!("  cqo");
+                println!("  idiv rdi");
+            }
+            Expr::Eq { .. } => {
+                // cmp命令: 二つの引数のレジスタを比較して, フラグレジスタに結果を格納
+                // sete命令: 指定のレジスタにフラグレジスタの値を格納. seteであれば==の時1になる
+                //           8bitしか書き込めないのでalを指定している
+                //           setneは!=のとき1になる
+                // movzb命令: movzb dist, srcでsrcをdistに書き込む．またsrcで指定されたbitより上の桁は0埋めする
+                // al: raxの下位8bitのエイリアス. alを変更するとraxも変更される
+                println!("  cmp rax, rdi");
+                println!("  sete al");
+                println!("  movzb rax, al");
+            }
+            Expr::Neq { .. } => {
+                println!("  cmp rax, rdi");
+                println!("  setne al");
+                println!("  movzb rax, al");
+            }
+            Expr::Gt { .. } => {
+                println!("  cmp rax, rdi");
+                println!("  setl al");
+                println!("  movzb rax, al");
+            }
+            Expr::Ge { .. } => {
+                println!("  cmp rax, rdi");
+                println!("  setle al");
+                println!("  movzb rax, al");
+            }
+            Expr::Lt { .. } => {
+                println!("  cmp rax, rdi");
+                println!("  setl al");
+                println!("  movzb rax, al");
+            }
+            Expr::Le { .. } => {
+                println!("  cmp rax, rdi");
+                println!("  setle al");
+                println!("  movzb rax, al");
+            }
+            _ => unreachable!()
+        }
+
+        println!("  push rax");
     }
 
     fn gen_lval(&self, ew: &ExprWrapper) {
