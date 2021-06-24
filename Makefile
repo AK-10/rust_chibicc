@@ -10,7 +10,11 @@ test:
 	gcc -static -o tmp tmp.s tmp2.o
 	./tmp
 
+output:
+	cargo run --release test.c
+
 nqueen:
 	cargo run --release examples/nqueen.c > tmp.s
 	gcc -static -o tmp tmp.s
 	./tmp
+

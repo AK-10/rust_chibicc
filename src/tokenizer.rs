@@ -4,7 +4,6 @@ use crate::token::{ Token, TokenType };
 use crate::tokenizer::loc::Loc;
 use crate::token::token_type::*;
 
-use std::str::FromStr;
 use std::rc::Rc;
 
 // TODO: LexerErrorの定義
@@ -52,9 +51,7 @@ pub struct Tokenizer {
 impl<'a> Tokenizer {
     pub fn new(user_input: String) -> Self {
         Self {
-            user_input,
-            current_col_index: 0,
-            current_row_index: 0,
+            user_input, current_col_index: 0, current_row_index: 0,
             pos: 0,
         }
     }
@@ -164,12 +161,7 @@ impl<'a> Tokenizer {
                 }
                 // num
                 '0' ..= '9' => {
-                    let (num, tk_str) = self.strtol::<isize>()?;
-                    let num_type = Num {
-                        val: num,
-                        tk_str: Rc::new(tk_str)
-                    };
-                    let token_type = TokenType::Num(num_type);
+                    let token_type = self.read_int_literal()?;
 
                     tokens.push(self.new_token(token_type));
                 },
@@ -306,22 +298,14 @@ impl<'a> Tokenizer {
         Ok(ch)
     }
 
-    fn strtol<T: FromStr>(&mut self) -> Result<(T, String), String> {
-        let mut num_str = String::new();
-        while let Some(c) = self.current() {
-            match c {
-                num if num.is_digit(10) => {
-                    self.increment_pos(1);
-
-                    num_str.push(num);
-                },
-                _ => break
-            }
+    fn strtol(&mut self, base: u32) -> Result<isize, String> {
+        let start = self.pos;
+        while let Some(true) = self.current().map(|digit| digit.is_digit(base)) {
+            self.increment_pos(1);
         }
 
-        num_str.parse::<T>()
-            .map(|i| (i, num_str)) // Result<T, String> -> Result<(T, String), String>
-            .or(Err("failed pasring num".to_string()))
+        isize::from_str_radix(&self.user_input[start .. self.pos], base)
+            .or(Err("failed parsing num".to_string()))
     }
 
     fn get_letter(&mut self) -> String {
@@ -363,18 +347,66 @@ impl<'a> Tokenizer {
             .map(|punct| punct.to_string())
     }
 
-    fn col_number(&self) -> usize {
+    fn strncasecmp(&self, n: usize, string: &str) -> bool {
+        self.multi_get(n)
+            .map(|chs| chs.to_lowercase() == string.to_lowercase())
+            .unwrap_or(false)
+    }
+
+    fn is_ascii_alphanumeric(&self, pos: usize) -> bool {
+        self.user_input.chars()
+            .nth(self.pos + pos)
+            .map(|c| c.is_ascii_alphanumeric())
+            .unwrap_or(false)
+    }
+
+    fn get_int_base_num(&mut self) -> usize {
+        if self.strncasecmp(2, "0x") && self.is_ascii_alphanumeric(2) {
+            16
+        } else if self.strncasecmp(2, "0b") && self.is_ascii_alphanumeric(2) {
+            2
+        } else if self.current().map_or(false, |c| c == '0') {
+            8
+        } else {
+            10
+        }
+    }
+
+    fn read_int_literal(&mut self) -> Result<TokenType, String> {
+        let start = self.pos;
+        let base = self.get_int_base_num();
+        match base {
+            2 | 16 => self.increment_pos(2),
+            _ => {}
+        };
+
+        let val = self.strtol(base as u32)?;
+
+        if self.current().map_or(false, |c| c.is_ascii_alphanumeric()) {
+            return Err("invalid digit".to_string())
+        } else {
+            Ok(TokenType::Num(
+                Num {
+                    val,
+                    tk_str: Rc::new(String::from(&self.user_input[start .. self.pos]))
+                }
+            ))
+        }
+    }
+
+    pub fn col_number(&self) -> usize {
         self.current_col_index + 1
     }
 
-    fn row_number(&self) -> usize {
+    pub fn row_number(&self) -> usize {
         self.current_row_index + 1
     }
 
     fn new_token(&self, token_type: TokenType) -> Token {
         Token::new(
             token_type,
-            Loc::new(self.row_number(), self.col_number())
+            Loc::new
+            (self.row_number(), self.col_number())
         )
     }
 
@@ -383,4 +415,3 @@ impl<'a> Tokenizer {
         self.current_col_index += count;
     }
 }
-
