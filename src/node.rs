@@ -93,6 +93,18 @@ pub enum Expr {
         lhs: ExprWrapper,
         rhs: ExprWrapper
     },
+    BitAnd {
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
+    },
+    BitOr {
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
+    },
+    BitXor {
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
+    },
     Num {
         val: isize
     },
@@ -178,7 +190,11 @@ impl Expr {
             | Expr::Div { .. }
             | Expr::Num { .. }
             | Expr::PtrDiff { .. }
-            | Expr::FnCall { .. } => Box::new(Type::Long),
+            | Expr::FnCall { .. }
+            | Expr::Not(_)
+            | Expr::BitAnd { .. }
+            | Expr::BitOr { .. }
+            | Expr::BitXor { .. } => Box::new(Type::Long),
             Expr::Cast(ty, ..) => Box::clone(ty),
             Expr::PtrAdd { lhs, rhs: _ }
             | Expr::PtrSub { lhs, rhs: _ } => Box::clone(&lhs.ty),
@@ -225,7 +241,6 @@ impl Expr {
                    _ => Box::clone(&operand.ty)
                 }
             },
-            Expr::Not(_) => Box::new(Type::Long),
             Expr::BitNot(target) => Box::clone(&target.ty),
             Expr::Var(var) => {
                 Box::clone(&var.borrow().ty)
@@ -270,6 +285,9 @@ impl Display for Expr {
             Expr::Sub { .. } => write!(f, "Sub"),
             Expr::Mul { .. } => write!(f, "Mul"),
             Expr::Div { .. } => write!(f, "Div"),
+            Expr::BitAnd { .. } => write!(f, "Div"),
+            Expr::BitOr { .. } => write!(f, "Div"),
+            Expr::BitXor { .. } => write!(f, "Div"),
             Expr::Num { .. } => write!(f, "Num"),
             Expr::Cast { .. } => write!(f, "Cast"),
             Expr::Var(_) => write!(f, "Var"),

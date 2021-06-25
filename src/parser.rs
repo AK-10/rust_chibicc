@@ -196,10 +196,10 @@ impl<'a> Parser<'a> {
         Ok(node)
     }
 
-    // assign    := equality (assign-op assign)?
+    // assign    := bitor (assign-op assign)?
     // assign-op := "=" | "+=" | "-=" | "*=" | "/="
     fn assign(&mut self) -> Result<ExprWrapper, String> {
-        let var = self.equality()?;
+        let var = self.bitor()?;
 
         if let Ok(_) = self.expect_next_reserved("=") {
             let val = self.expr()?;
@@ -254,6 +254,60 @@ impl<'a> Parser<'a> {
         }
 
         Ok(var)
+    }
+
+    // bitor := bitxor ("|" bitxor)*
+    fn bitor(&mut self) -> Result<ExprWrapper, String> {
+        let mut lhs = self.bitxor()?;
+        while let Some(TokenType::Reserved(Reserved { op, .. })) = self.peekable.peek().map(|tok| &tok.token_type) {
+            if op.as_ref() == "|" {
+                self.peekable.next();
+                lhs = Expr::BitOr {
+                    lhs,
+                    rhs: self.bitxor()?
+                }.to_expr_wrapper()
+            } else {
+                break
+            }
+        }
+
+        Ok(lhs)
+    }
+
+    // bitxor := bitand ("^" bitand)*
+    fn bitxor(&mut self) -> Result<ExprWrapper, String> {
+        let mut lhs = self.bitand()?;
+        while let Some(TokenType::Reserved(Reserved { op, .. })) = self.peekable.peek().map(|tok| &tok.token_type) {
+            if op.as_ref() == "^" {
+                self.peekable.next();
+                lhs = Expr::BitXor {
+                    lhs,
+                    rhs: self.bitand()?
+                }.to_expr_wrapper()
+            } else {
+                break
+            }
+        }
+
+        Ok(lhs)
+    }
+
+    // bitand := equality ("&" equality)*
+    fn bitand(&mut self) -> Result<ExprWrapper, String> {
+        let mut lhs = self.equality()?;
+        while let Some(TokenType::Reserved(Reserved { op, .. })) = self.peekable.peek().map(|tok| &tok.token_type) {
+            if op.as_ref() == "&" {
+                self.peekable.next();
+                lhs = Expr::BitAnd {
+                    lhs,
+                    rhs: self.equality()?
+                }.to_expr_wrapper()
+            } else {
+                break
+            }
+        }
+
+        Ok(lhs)
     }
 
     // equality := relational ("==" relational | "!=" relational)*

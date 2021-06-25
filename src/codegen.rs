@@ -57,7 +57,10 @@ impl<'a> CodeGenerator<'a> {
             | Expr::Eq { lhs, rhs }
             | Expr::Neq { lhs, rhs }
             | Expr::Lt { lhs, rhs }
-            | Expr::Le { lhs, rhs } => {
+            | Expr::Le { lhs, rhs }
+            | Expr::BitAnd { lhs, rhs }
+            | Expr::BitOr { lhs, rhs }
+            | Expr::BitXor { lhs, rhs } => {
                 self.gen_expr(lhs);
                 self.gen_expr(rhs);
 
@@ -400,6 +403,15 @@ impl<'a> CodeGenerator<'a> {
                 println!("  cmp rax, rdi");
                 println!("  setle al");
                 println!("  movzb rax, al");
+            }
+            Expr::BitAnd { .. } => {
+                println!("  and rax, rdi");
+            }
+            Expr::BitOr { .. } => {
+                println!("  or rax, rdi");
+            }
+            Expr::BitXor { .. } => {
+                println!("  xor rax, rdi");
             }
             _ => unreachable!()
         }
