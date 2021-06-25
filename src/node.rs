@@ -144,6 +144,7 @@ pub enum Expr {
     Deref {
         operand: ExprWrapper
     },
+    Not(ExprWrapper),
     PtrAdd { // ptr + num or num + ptr
         lhs: ExprWrapper,
         rhs: ExprWrapper
@@ -223,6 +224,9 @@ impl Expr {
                    _ => Box::clone(&operand.ty)
                 }
             },
+            Expr::Not(_) => {
+                Box::new(Type::Long)
+            },
             Expr::Var(var) => {
                 Box::clone(&var.borrow().ty)
             },
@@ -284,6 +288,7 @@ impl Display for Expr {
             Expr::FnCall { .. } => write!(f, "FnCall"),
             Expr::Addr { .. } => write!(f, "Addr"),
             Expr::Deref { .. } => write!(f, "Deref"),
+            Expr::Not { .. } => write!(f, "Not"),
             Expr::PtrAdd { .. } => write!(f, "PtrAdd"),
             Expr::PtrSub { .. } => write!(f, "PtrSub"),
             Expr::PtrDiff { .. } => write!(f, "PtrDiff"),

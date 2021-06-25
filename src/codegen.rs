@@ -202,6 +202,14 @@ impl<'a> CodeGenerator<'a> {
                     _ => { load(&expr_wrapper.ty); }
                 }
             }
+            Expr::Not(target) => {
+                self.gen_expr(target);
+                println!("  pop rax");
+                println!("  cmp rax, 0");
+                println!("  sete al");
+                println!("  movzb rax, al");
+                println!("  push rax");
+            }
             Expr::Null => return,
             Expr::StmtExpr(stmts) => {
                 stmts.iter().for_each(|stmt| {

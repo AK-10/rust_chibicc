@@ -414,7 +414,7 @@ impl<'a> Parser<'a> {
         self.unary()
     }
 
-    // unary := ("+" | "-" | "*" | "&")? cast
+    // unary := ("+" | "-" | "*" | "&" | "!")? cast
     //        | ("++" | "--") unary
     //        | postfix
     fn unary(&mut self) -> Result<ExprWrapper, String> {
@@ -437,14 +437,16 @@ impl<'a> Parser<'a> {
                     },
                     "*" => {
                         self.peekable.next();
-                        let operand = self.cast()?;
-                        Ok(Expr::Deref { operand }.to_expr_wrapper())
+                        Ok(Expr::Deref { operand: self.cast()? }.to_expr_wrapper())
                     },
                     "&" => {
                         self.peekable.next();
-                        let operand = self.cast()?;
-                        Ok(Expr::Addr { operand }.to_expr_wrapper())
+                        Ok(Expr::Addr { operand: self.cast()? }.to_expr_wrapper())
                     },
+                    "!" => {
+                        self.peekable.next();
+                        Ok(Expr::Not(self.cast()?).to_expr_wrapper())
+                    }
                     "++" => {
                         self.peekable.next();
                         let unary = self.unary()?;

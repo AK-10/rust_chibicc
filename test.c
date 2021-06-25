@@ -72,6 +72,7 @@ int main() {
   assert(8, ({ int a=3; int z=5; a+z; }), "int a=3; int z=5; a+z;");
 
   assert(0, 0, "0");
+
   assert(42, 42, "42");
   assert(5, 5, "0");
   assert(41,  12 + 34 - 5 , " 12 + 34 - 5 ");
@@ -389,6 +390,10 @@ int main() {
   assert(1, 0b1, "0b1");
   assert(47, 0b101111, "0b101111");
   assert(47, 0B101111, "0B101111");
+
+  assert(0, !1, "!1");
+  assert(0, !2, "!2");
+  assert(1, !0, "!0");
 
   printf("OK\n");
   return 0;
