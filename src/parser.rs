@@ -414,7 +414,7 @@ impl<'a> Parser<'a> {
         self.unary()
     }
 
-    // unary := ("+" | "-" | "*" | "&" | "!")? cast
+    // unary := ("+" | "-" | "*" | "&" | "!" | "~")? cast
     //        | ("++" | "--") unary
     //        | postfix
     fn unary(&mut self) -> Result<ExprWrapper, String> {
@@ -446,6 +446,10 @@ impl<'a> Parser<'a> {
                     "!" => {
                         self.peekable.next();
                         Ok(Expr::Not(self.cast()?).to_expr_wrapper())
+                    }
+                    "~" => {
+                        self.peekable.next();
+                        Ok(Expr::BitNot(self.cast()?).to_expr_wrapper())
                     }
                     "++" => {
                         self.peekable.next();

@@ -97,7 +97,7 @@ impl<'a> Tokenizer {
 
             let c = self.current().expect("pos is out of user_input range");
             match c {
-                '=' | '!' | '<' | '>' | '+' | '-' | '*' | '&' | '/' => {
+                '=' | '!' | '<' | '>' | '+' | '-' | '*' | '&' | '/' | '~' => {
                     self.increment_pos(1);
 
                     let op = c.to_string();

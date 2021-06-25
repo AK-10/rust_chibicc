@@ -210,6 +210,12 @@ impl<'a> CodeGenerator<'a> {
                 println!("  movzb rax, al");
                 println!("  push rax");
             }
+            Expr::BitNot(target) => {
+                self.gen_expr(target);
+                println!("  pop rax");
+                println!("  not rax");
+                println!("  push rax");
+            }
             Expr::Null => return,
             Expr::StmtExpr(stmts) => {
                 stmts.iter().for_each(|stmt| {
