@@ -27,7 +27,7 @@ const KEYWORDS: [&str; 16] = [
 ];
 
 // multi-letter punctuator
-const MULTI_LETTER_PUNCTUACTORS: [&str; 11] = [
+const MULTI_LETTER_PUNCTUACTORS: [&str; 13] = [
     "==",
     "!=",
     "<=",
@@ -38,7 +38,9 @@ const MULTI_LETTER_PUNCTUACTORS: [&str; 11] = [
     "+=",
     "-=",
     "*=",
-    "/="
+    "/=",
+    "&&",
+    "||"
 ];
 
 pub struct Tokenizer {

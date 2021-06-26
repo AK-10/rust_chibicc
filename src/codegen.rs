@@ -219,6 +219,40 @@ impl<'a> CodeGenerator<'a> {
                 println!("  not rax");
                 println!("  push rax");
             }
+            Expr::LogAnd { lhs, rhs } => {
+                self.labelseq.set(self.labelseq.get() + 1);
+                let seq = self.labelseq.get();
+                self.gen_expr(lhs);
+                println!("  pop rax");
+                println!("  cmp rax, 0");
+                println!("  je .L.false.{}", seq);
+                self.gen_expr(rhs);
+                println!("  pop rax");
+                println!("  cmp rax, 0");
+                println!("  je .L.false.{}", seq);
+                println!("  push 1");
+                println!("  jmp .L.end.{}", seq);
+                println!(".L.false.{}:", seq);
+                println!("  push 0");
+                println!(".L.end.{}:", seq);
+            }
+            Expr::LogOr { lhs, rhs } => {
+                self.labelseq.set(self.labelseq.get() + 1);
+                let seq = self.labelseq.get();
+                self.gen_expr(lhs);
+                println!("  pop rax");
+                println!("  cmp rax, 0");
+                println!("  jne .L.true.{}", seq);
+                self.gen_expr(rhs);
+                println!("  pop rax");
+                println!("  cmp rax, 0");
+                println!("  jne .L.true.{}", seq);
+                println!("  push 0");
+                println!("  jmp .L.end.{}", seq);
+                println!(".L.true.{}:", seq);
+                println!("  push 1");
+                println!(".L.end.{}:", seq);
+            }
             Expr::Null => return,
             Expr::StmtExpr(stmts) => {
                 stmts.iter().for_each(|stmt| {

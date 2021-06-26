@@ -199,7 +199,7 @@ impl<'a> Parser<'a> {
     // assign    := bitor (assign-op assign)?
     // assign-op := "=" | "+=" | "-=" | "*=" | "/="
     fn assign(&mut self) -> Result<ExprWrapper, String> {
-        let var = self.bitor()?;
+        let var = self.logor()?;
 
         if let Ok(_) = self.expect_next_reserved("=") {
             let val = self.expr()?;
@@ -254,6 +254,41 @@ impl<'a> Parser<'a> {
         }
 
         Ok(var)
+    }
+
+    // logor := logand ("||" logand)*
+    fn logor(&mut self) -> Result<ExprWrapper, String> {
+        let mut lhs = self.logand()?;
+        while let Some(TokenType::Reserved(Reserved { op, .. })) = self.peekable.peek().map(|tok| &tok.token_type) {
+            if op.as_ref() == "||" {
+                self.peekable.next();
+                lhs = Expr::LogOr {
+                    lhs,
+                    rhs: self.logand()?
+                }.to_expr_wrapper();
+            } else {
+                break
+            }
+        }
+
+        Ok(lhs)
+    }
+    // logand := bitor ("&&" bitor)*
+    fn logand(&mut self) -> Result<ExprWrapper, String> {
+        let mut lhs = self.bitor()?;
+        while let Some(TokenType::Reserved(Reserved { op, .. })) = self.peekable.peek().map(|tok| &tok.token_type) {
+            if op.as_ref() == "&&" {
+                self.peekable.next();
+                lhs = Expr::LogAnd {
+                    lhs,
+                    rhs: self.bitor()?
+                }.to_expr_wrapper();
+            } else {
+                break
+            }
+        }
+
+        Ok(lhs)
     }
 
     // bitor := bitxor ("|" bitxor)*

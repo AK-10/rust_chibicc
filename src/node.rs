@@ -158,6 +158,14 @@ pub enum Expr {
     },
     Not(ExprWrapper),
     BitNot(ExprWrapper),
+    LogAnd {
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
+    },
+    LogOr {
+        lhs: ExprWrapper,
+        rhs: ExprWrapper
+    },
     PtrAdd { // ptr + num or num + ptr
         lhs: ExprWrapper,
         rhs: ExprWrapper
@@ -194,7 +202,9 @@ impl Expr {
             | Expr::Not(_)
             | Expr::BitAnd { .. }
             | Expr::BitOr { .. }
-            | Expr::BitXor { .. } => Box::new(Type::Long),
+            | Expr::BitXor { .. }
+            | Expr::LogAnd { .. }
+            | Expr::LogOr { .. } => Box::new(Type::Long),
             Expr::Cast(ty, ..) => Box::clone(ty),
             Expr::PtrAdd { lhs, rhs: _ }
             | Expr::PtrSub { lhs, rhs: _ } => Box::clone(&lhs.ty),
@@ -285,9 +295,9 @@ impl Display for Expr {
             Expr::Sub { .. } => write!(f, "Sub"),
             Expr::Mul { .. } => write!(f, "Mul"),
             Expr::Div { .. } => write!(f, "Div"),
-            Expr::BitAnd { .. } => write!(f, "Div"),
-            Expr::BitOr { .. } => write!(f, "Div"),
-            Expr::BitXor { .. } => write!(f, "Div"),
+            Expr::BitAnd { .. } => write!(f, "BitAnd"),
+            Expr::BitOr { .. } => write!(f, "BitOr"),
+            Expr::BitXor { .. } => write!(f, "BitXor"),
             Expr::Num { .. } => write!(f, "Num"),
             Expr::Cast { .. } => write!(f, "Cast"),
             Expr::Var(_) => write!(f, "Var"),
@@ -307,7 +317,9 @@ impl Display for Expr {
             Expr::Addr { .. } => write!(f, "Addr"),
             Expr::Deref { .. } => write!(f, "Deref"),
             Expr::Not { .. } => write!(f, "Not"),
-            Expr::BitNot { .. } => write!(f, "Not"),
+            Expr::BitNot { .. } => write!(f, "BitNot"),
+            Expr::LogAnd { .. } => write!(f, "LogAnd"),
+            Expr::LogOr { .. } => write!(f, "LogOr"),
             Expr::PtrAdd { .. } => write!(f, "PtrAdd"),
             Expr::PtrSub { .. } => write!(f, "PtrSub"),
             Expr::PtrDiff { .. } => write!(f, "PtrDiff"),
