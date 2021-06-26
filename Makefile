@@ -1,7 +1,9 @@
 .PHONY: test
+docker_build:
+	docekr build . -t compilerbook:latest
 
 test_docker:
-	docker run --rm -v `pwd`:/home/user/rust_chibicc -w /home/user/rust_chibicc compilerbook bash ./test/test.sh
+	docker run --rm -it -v `pwd`:/home/user/rust_chibicc -w /home/user/rust_chibicc compilerbook make test
 
 test:
 	cargo run --release test.c > tmp.s
