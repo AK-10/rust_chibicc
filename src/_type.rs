@@ -29,6 +29,7 @@ pub enum Type {
     },
     Array {
         base: Box<Type>,
+        is_incomplete: bool,
         len: usize
     },
     Char,
@@ -70,7 +71,7 @@ impl Type {
             Type::Short => 2,
             Type::Long => 8,
             Type::Ptr { .. } => 8,
-            Type::Array { base, len } => base.size() * len,
+            Type::Array { base, len, .. } => base.size() * len,
             Type::Char => 1,
             Type::Void => 1,
             Type::Bool => 1,
@@ -130,6 +131,13 @@ impl Type {
                     base.replace_ptr_to(dist);
             },
             _ => *self = dist
+        }
+    }
+
+    pub fn is_incomplete(&self) -> bool {
+        match self {
+            Type::Array { is_incomplete, .. } => *is_incomplete,
+            _ => false
         }
     }
 }

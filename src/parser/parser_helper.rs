@@ -175,6 +175,9 @@ impl<'a> Parser<'a> {
         }
 
         let var = self.new_var(name, Box::clone(&ty), true);
+        if ty.is_incomplete() {
+            return Err("incomplete type".to_string())
+        }
 
         let expr =
             if let Err(_) = self.expect_next_reserved("=") {
@@ -498,28 +501,40 @@ impl<'a> Parser<'a> {
         if let Some(StorageClass::TypeDef) = *sclass {
             self.push_scope_with_typedef(&Rc::new(name.to_string()), &ty);
         } else {
+            if ty.is_incomplete() {
+                return Err("incomplete type".to_string())
+            }
             self.new_gvar(name, ty, None, true);
         }
 
         Ok(())
     }
 
+    // type-suffix := ("[" num? "]" type-suffix)?
     pub(in super) fn read_type_suffix(&mut self, base: Box<Type>) -> Result<Box<Type>, String> {
         match self.expect_next_symbol("[".to_string()) {
             Ok(_) => {
-                match self.peekable.next().map(|tok| &tok.token_type) {
-                    Some(TokenType::Num(Num { val, .. })) => {
-                        if let Err(e) = self.expect_next_symbol("]".to_string()) {
-                            Err(e)
-                        } else {
-                            let nested_base = self.read_type_suffix(base)?;
-                            Ok(Box::new(Type::Array { base: nested_base, len: *val as usize }))
-                        }
-                    },
+                let mut is_incomplete = true;
+                let mut sz = 0;
+                match self.expect_next_symbol("]") {
+                    Ok(_) => {},
                     _ => {
-                        Err("expect num after [".to_string())
+                        if let Some(TokenType::Num(Num { val, .. })) = self.peekable.next().map(|tok| &tok.token_type) {
+                            self.expect_next_symbol("]")?;
+                            is_incomplete = false;
+                            sz = *val;
+                        } else {
+                            return Err("expect num after [".to_string())
+                        }
                     }
                 }
+                let nested_base = self.read_type_suffix(base)?;
+                if nested_base.is_incomplete() {
+                    return Err("incomplete element type".to_string());
+                }
+
+                Ok(Box::new(Type::Array { base: nested_base, is_incomplete, len: sz as usize }))
+
             }
             Err(_) => Ok(base)
         }
@@ -650,7 +665,7 @@ impl<'a> Parser<'a> {
                 let sc = self.find_tag(t.token_type.tk_str());
 
                 return sc
-                    .map(|scope_tag| scope_tag.ty.clone())
+                    .map(|scope_tag| Box::clone(&scope_tag.ty))
                     .ok_or("unknown struct type".to_string())
                     .and_then(|scope_tag| {
                         if let Type::Struct { .. } = *scope_tag {
@@ -669,6 +684,9 @@ impl<'a> Parser<'a> {
 
         while let Err(_) = self.expect_next_symbol("}") {
             let mut member = self.struct_member()?;
+            if member.ty.is_incomplete() {
+                return Err("incomplete element type".to_string())
+            }
             offset = align_to(offset, member.ty.align());
             member.offset = Offset::Value(offset);
             // offsetのインクリメントとmembers.pushが逆の場合,pushが走った時点でmemberの所有権はmembersにあるためエラーになる

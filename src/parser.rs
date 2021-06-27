@@ -196,7 +196,7 @@ impl<'a> Parser<'a> {
         Ok(node)
     }
 
-    // assign    := bitor (assign-op assign)?
+    // assign    := logor (assign-op assign)?
     // assign-op := "=" | "+=" | "-=" | "*=" | "/="
     fn assign(&mut self) -> Result<ExprWrapper, String> {
         let var = self.logor()?;
@@ -640,7 +640,12 @@ impl<'a> Parser<'a> {
                 let pos = self.peekable.current_position();
                 if let Ok(_) = self.expect_next_symbol("(") {
                     if self.is_typename() {
-                        let size = self.type_name()?.size();
+                        let ty = self.type_name()?;
+                        if ty.is_incomplete() {
+                            return Err("incomplete type".to_string())
+                        }
+
+                        let size = ty.size();
                         self.expect_next_symbol(")")?;
 
                         return Ok(Expr::Num { val: size as isize }.to_expr_wrapper())
@@ -652,6 +657,9 @@ impl<'a> Parser<'a> {
                 }
                 // unary at here => "*"* (ident) | "(" expression ")" | num
                 let node = self.unary()?;
+                if node.ty.is_incomplete() {
+                    return Err("incomplete type".to_string())
+                }
                 let size = node.ty.size();
 
                 Ok(Expr::Num { val: size as isize }.to_expr_wrapper())
@@ -704,6 +712,7 @@ impl<'a> Parser<'a> {
                 self.peekable.next();
                 let ty = Type::Array {
                     base: Box::new(Type::Char),
+                    is_incomplete: false,
                     len: bytes.len()
                 };
 
