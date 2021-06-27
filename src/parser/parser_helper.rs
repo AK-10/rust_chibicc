@@ -286,6 +286,12 @@ impl<'a> Parser<'a> {
         ty = self.declarator(&mut ty, name)?;
         ty = self.read_type_suffix(ty)?;
 
+        // "array of T" is converted to "pointer to T" only in the parameter
+        // context. For example, *argv[] is converted to **argv by this.
+        if let Type::Array { base, .. } = *ty {
+            ty = Box::new(Type::Ptr { base });
+        }
+
         Ok(self.new_var(name, Box::clone(&ty), true))
     }
 
