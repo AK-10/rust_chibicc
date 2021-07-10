@@ -2,7 +2,7 @@ use crate::node::{ Stmt, Expr, ExprWrapper };
 use crate::program::{ Program, Var };
 use crate::_type::Type;
 
-use std::cell::{ Cell, RefCell };
+use std::cell::RefCell;
 use std::convert::TryFrom;
 
 const ARG_REG1: [&str; 6] = ["dil", "sil", "dl", "cl", "r8b", "r9b"];
@@ -13,7 +13,8 @@ const ARG_REG8: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
 pub struct CodeGenerator<'a> {
     prog: &'a Program,
     funcname: RefCell<String>,
-    labelseq: Cell<usize>,
+    labelseq: usize,
+    brkseq: usize
 }
 
 impl<'a> CodeGenerator<'a> {
@@ -22,17 +23,18 @@ impl<'a> CodeGenerator<'a> {
         Self {
             prog,
             funcname: RefCell::new(String::new()),
-            labelseq: Cell::new(0)
+            labelseq: 0,
+            brkseq: 0
         }
     }
 
-    pub fn codegen(&self) {
+    pub fn codegen(&mut self) {
         println!(".intel_syntax noprefix");
         self.emit_data();
         self.emit_text();
     }
 
-    fn gen_expr(&self, expr_wrapper: &ExprWrapper) {
+    fn gen_expr(&mut self, expr_wrapper: &ExprWrapper) -> Result<(), String> {
         match expr_wrapper.expr.as_ref() {
             Expr::AddEq { var, val }
             | Expr::PtrAddEq { var, val }
@@ -43,7 +45,7 @@ impl<'a> CodeGenerator<'a> {
                 self.gen_lval(var);
                 println!("  push [rsp]");
                 load(var.ty.as_ref());
-                self.gen_expr(val);
+                self.gen_expr(val)?;
                 self.gen_binary(expr_wrapper);
                 store(expr_wrapper.ty.as_ref());
             }
@@ -61,15 +63,15 @@ impl<'a> CodeGenerator<'a> {
             | Expr::BitAnd { lhs, rhs }
             | Expr::BitOr { lhs, rhs }
             | Expr::BitXor { lhs, rhs } => {
-                self.gen_expr(lhs);
-                self.gen_expr(rhs);
+                self.gen_expr(lhs)?;
+                self.gen_expr(rhs)?;
 
                 self.gen_binary(expr_wrapper)
             }
             | Expr::Gt { lhs, rhs }
             | Expr::Ge { lhs, rhs } => {
-                self.gen_expr(rhs);
-                self.gen_expr(lhs);
+                self.gen_expr(rhs)?;
+                self.gen_expr(lhs)?;
 
                 self.gen_binary(expr_wrapper)
             }
@@ -87,7 +89,7 @@ impl<'a> CodeGenerator<'a> {
                 }
             },
             Expr::Cast(ty, expr_wrapper) => {
-                self.gen_expr(expr_wrapper);
+                self.gen_expr(expr_wrapper)?;
                 trancate(ty);
             }
             Expr::Var(_) => {
@@ -103,7 +105,7 @@ impl<'a> CodeGenerator<'a> {
                     _ => { self.gen_addr(var); }
                 }
 
-                self.gen_expr(val);
+                self.gen_expr(val)?;
                 store(&expr_wrapper.ty);
             }
             Expr::PreInc(ew) => {
@@ -138,14 +140,14 @@ impl<'a> CodeGenerator<'a> {
             }
             Expr::Comma { lhs, rhs } => {
                 //println!("{:#?}", expr_wrapper);
-                self.gen_stmt(lhs);
-                self.gen_expr(rhs);
+                self.gen_stmt(lhs)?;
+                self.gen_expr(rhs)?;
             }
             Expr::FnCall { fn_name, args, .. } => {
                 let arg_size = args.len();
-                args.iter().for_each( |arg| {
-                    self.gen_expr(arg);
-                });
+                for arg in args {
+                    self.gen_expr(arg)?;
+                }
 
                 // 引数をスタックにpushして各レジスタにpopすることで引数を渡す
                 // sub(2, 4)のとき
@@ -166,8 +168,7 @@ impl<'a> CodeGenerator<'a> {
                 // やりたいことは, RSP(スタックの先頭のポインタ)が16の倍数でなければ8を追加する(スタックの方向的にsub rsp, 8をする)
                 // RAX は variadic function のために0にセットする
                 // 「x86 関数呼び出し アライメント」でぐぐるといろいろ出てくる
-                let cur_labelseq = self.labelseq.get();
-                self.labelseq.set(cur_labelseq + 1);
+                self.labelseq += 1;
 
                 // and rax, 15
                 // 15 -> 00001111
@@ -181,32 +182,32 @@ impl<'a> CodeGenerator<'a> {
                 println!("  and rax, 15"); // and: オペランドの論理積を計算し，第一引数に格納
 
                 // jnz: フラグレジスタのZFが0の時(比較の結果，等しくない)，adr[,x]のアドレスへ分岐(実行が移動)する
-                println!("  jnz .L.call.{}", self.labelseq.get());
+                println!("  jnz .L.call.{}", self.labelseq);
                 println!("  mov rax, 0");
                 println!("  call {}", fn_name);
-                println!("  jmp .L.end.{}", self.labelseq.get());
-                println!(".L.call.{}:", self.labelseq.get());
+                println!("  jmp .L.end.{}", self.labelseq);
+                println!(".L.call.{}:", self.labelseq);
                 println!("  sub rsp, 8");
                 println!("  mov rax, 0");
 
                 println!("  call {}", fn_name);
 
                 println!("  add rsp, 8");
-                println!(".L.end.{}:", self.labelseq.get());
+                println!(".L.end.{}:", self.labelseq);
                 println!("  push rax");
             }
             Expr::Addr { operand } => {
                 self.gen_addr(operand);
             }
             Expr::Deref { operand } => {
-                self.gen_expr(operand);
+                self.gen_expr(operand)?;
                 match *expr_wrapper.ty {
                     Type::Array { .. } => {},
                     _ => { load(&expr_wrapper.ty); }
                 }
             }
             Expr::Not(target) => {
-                self.gen_expr(target);
+                self.gen_expr(target)?;
                 println!("  pop rax");
                 println!("  cmp rax, 0");
                 println!("  sete al");
@@ -214,19 +215,19 @@ impl<'a> CodeGenerator<'a> {
                 println!("  push rax");
             }
             Expr::BitNot(target) => {
-                self.gen_expr(target);
+                self.gen_expr(target)?;
                 println!("  pop rax");
                 println!("  not rax");
                 println!("  push rax");
             }
             Expr::LogAnd { lhs, rhs } => {
-                self.labelseq.set(self.labelseq.get() + 1);
-                let seq = self.labelseq.get();
-                self.gen_expr(lhs);
+                self.labelseq += 1;
+                let seq = self.labelseq;
+                self.gen_expr(lhs)?;
                 println!("  pop rax");
                 println!("  cmp rax, 0");
                 println!("  je .L.false.{}", seq);
-                self.gen_expr(rhs);
+                self.gen_expr(rhs)?;
                 println!("  pop rax");
                 println!("  cmp rax, 0");
                 println!("  je .L.false.{}", seq);
@@ -237,13 +238,13 @@ impl<'a> CodeGenerator<'a> {
                 println!(".L.end.{}:", seq);
             }
             Expr::LogOr { lhs, rhs } => {
-                self.labelseq.set(self.labelseq.get() + 1);
-                let seq = self.labelseq.get();
-                self.gen_expr(lhs);
+                self.labelseq += 1;
+                let seq = self.labelseq;
+                self.gen_expr(lhs)?;
                 println!("  pop rax");
                 println!("  cmp rax, 0");
                 println!("  jne .L.true.{}", seq);
-                self.gen_expr(rhs);
+                self.gen_expr(rhs)?;
                 println!("  pop rax");
                 println!("  cmp rax, 0");
                 println!("  jne .L.true.{}", seq);
@@ -253,11 +254,11 @@ impl<'a> CodeGenerator<'a> {
                 println!("  push 1");
                 println!(".L.end.{}:", seq);
             }
-            Expr::Null => return,
+            Expr::Null => {},
             Expr::StmtExpr(stmts) => {
-                stmts.iter().for_each(|stmt| {
-                    self.gen_stmt(stmt);
-                });
+                for stmt in stmts {
+                    self.gen_stmt(stmt)?;
+                }
             },
             Expr::Member(_, __) => {
                 self.gen_addr(expr_wrapper);
@@ -267,18 +268,19 @@ impl<'a> CodeGenerator<'a> {
                 }
             }
         }
+        Ok(())
     }
 
-    fn gen_stmt(&self, stmt: &Stmt) {
+    fn gen_stmt(&mut self, stmt: &Stmt) -> Result<(), String> {
         match stmt {
             Stmt::Return { val } => {
-                self.gen_expr(val);
+                self.gen_expr(val)?;
 
                 println!("  pop rax");
                 println!("  jmp .L.return.{}", self.funcname.borrow().as_str());
             }
             Stmt::ExprStmt { val } => {
-                self.gen_expr(val);
+                self.gen_expr(val)?;
                 if let Expr::Null = *val.expr {
                 } else {
                     println!("  add rsp, 8");
@@ -296,10 +298,10 @@ impl<'a> CodeGenerator<'a> {
                 //   Cをコンパイルしたコード
                 // .L.end.XXX
 
-                self.labelseq.set(self.labelseq.get() + 1);
-                let seq = self.labelseq.get();
+                self.labelseq += 1;
+                let seq = self.labelseq;
 
-                self.gen_expr(cond);
+                self.gen_expr(cond)?;
                 // stackのトップにcondの結果が格納されているはず
                 println!("  pop rax");
                 // conditionの結果を0と比較する. (条件式が偽であることかをみている)
@@ -308,61 +310,79 @@ impl<'a> CodeGenerator<'a> {
                 // else block exist
                 if let Some(els_block) = els {
                     println!("  je .L.else.{}", seq);
-                    self.gen_stmt(then);
+                    self.gen_stmt(then)?;
                     println!("  jmp .L.end.{}", seq);
                     println!(".L.else.{}:", seq);
-                    self.gen_stmt(els_block);
+                    self.gen_stmt(els_block)?;
                     println!(".L.end.{}:", seq);
                 // not exist
                 } else {
                     println!("  je .L.end.{}", seq);
-                    self.gen_stmt(then);
+                    self.gen_stmt(then)?;
                     println!(".L.end.{}:", seq);
                 }
             }
             Stmt::While { cond, then } => {
-                self.labelseq.set(self.labelseq.get() + 1);
-                let seq = self.labelseq.get();
+                self.labelseq += 1;
+                let seq = self.labelseq;
+                let brk = self.brkseq;
+                self.brkseq = seq;
 
                 println!(".L.begin.{}:", seq);
-                self.gen_expr(cond);
+                let _ = self.gen_expr(cond);
                 println!("  pop rax");
                 println!("  cmp rax, 0");
-                println!("  je .L.end.{}", seq);
+                println!("  je .L.break.{}", seq);
 
-                self.gen_stmt(then);
+                self.gen_stmt(then)?;
                 println!("  jmp .L.begin.{}", seq);
-                println!(".L.end.{}:", seq);
+                println!(".L.break.{}:", seq);
+
+                self.brkseq = brk;
             }
             Stmt::For { init, cond, inc, then } => {
-                self.labelseq.set(self.labelseq.get() + 1);
-                let seq = self.labelseq.get();
+                self.labelseq += 1;
+                let seq = self.labelseq;
+                let brk = self.brkseq;
+                self.brkseq = seq;
 
                 init.as_ref()
                     .as_ref()
                     .map(|stmt| self.gen_stmt(stmt));
                 println!(".L.begin.{}:", seq);
 
-                cond.as_ref().as_ref().map(|x| {
-                    self.gen_expr(x);
+                cond.as_ref().map(|x| {
+                    let _ = self.gen_expr(x);
                     println!("  pop rax");
                     println!("  cmp rax, 0");
-                    println!("  je .L.end.{}", seq);
+                    println!("  je .L.break.{}", seq);
                 });
 
-                self.gen_stmt(then);
+                self.gen_stmt(then)?;
 
                 inc.as_ref()
                     .as_ref()
                     .map(|x| self.gen_stmt(x));
                 println!("  jmp .L.begin.{}", seq);
-                println!(".L.end.{}:", seq);
+                println!(".L.break.{}:", seq);
+
+                self.brkseq = brk;
             }
             Stmt::Block { stmts } => {
-                stmts.iter().for_each(|stmt| self.gen_stmt(stmt));
+                for stmt in stmts {
+                    self.gen_stmt(stmt)?;
+                }
             },
-            Stmt::PureExpr(expr_wrapper) => self.gen_expr(expr_wrapper)
+            Stmt::PureExpr(expr_wrapper) => self.gen_expr(expr_wrapper)?,
+            Stmt::Break => {
+                if self.brkseq == 0 {
+                    return Err("stray break".to_string())
+                }
+                println!("  jmp .L.break.{}", self.brkseq);
+            }
         };
+
+        Ok(())
     }
 
     fn gen_binary(&self, ew: &ExprWrapper) {
@@ -453,7 +473,7 @@ impl<'a> CodeGenerator<'a> {
         println!("  push rax");
     }
 
-    fn gen_lval(&self, ew: &ExprWrapper) {
+    fn gen_lval(&mut self, ew: &ExprWrapper) {
         if let Type::Array { .. } = *ew.ty {
             panic!("not an lvalue");
         }
@@ -461,10 +481,10 @@ impl<'a> CodeGenerator<'a> {
     }
 
     // pushes the given node's address to the stack
-    fn gen_addr(&self, expr_wrapper: &ExprWrapper) {
+    fn gen_addr(&mut self, expr_wrapper: &ExprWrapper) {
         match expr_wrapper.expr.as_ref() {
             Expr::Deref { operand } => {
-                self.gen_expr(operand);
+                let _ = self.gen_expr(operand);
             }
             Expr::Var(var) => {
                 if var.borrow().is_local {
@@ -502,7 +522,7 @@ impl<'a> CodeGenerator<'a> {
         });
     }
 
-    fn emit_text(&self) {
+    fn emit_text(&mut self) {
         println!(".text");
         self.prog.fns.iter().for_each(|func| {
             let mut node_iter = func.nodes.iter();
@@ -523,7 +543,7 @@ impl<'a> CodeGenerator<'a> {
             });
 
             while let Some(node) = node_iter.next() {
-                self.gen_stmt(node);
+                let _ = self.gen_stmt(node);
             };
 
             // Epilogue

@@ -136,7 +136,9 @@ impl<'a> Parser<'a> {
     //       | "while" "(" expr ")" stmt
     //       | "for" "(" (expr? | declaration) ";" expr? ";" expr? ")" stmt
     //       | "{" stmt "}"
+    //       | "break" ";"
     //       | declaration
+    //       | expr ";"
     fn stmt(&mut self) -> Result<Stmt, String> {
         let tk = self.peekable.peek();
         match tk.map(|t| t.token_type.tk_str()) {
@@ -171,6 +173,11 @@ impl<'a> Parser<'a> {
             }
             Some(t) if t.as_str() == "for" => {
                 self.for_stmt()
+            }
+            Some(t) if t.as_str() == "break" => {
+                self.peekable.next();
+                self.expect_next_symbol(";")?;
+                return Ok(Stmt::Break)
             }
             Some(_) if self.is_typename() => {
                 self.declaration()

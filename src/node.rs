@@ -33,7 +33,8 @@ pub enum Stmt {
     Block {
         stmts: Vec<Stmt>,
     },
-    PureExpr(ExprWrapper) // StmtExprの返り値のために作った
+    PureExpr(ExprWrapper), // StmtExprの返り値のために作った
+    Break
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -340,6 +341,7 @@ impl Display for Stmt {
             Stmt::For { .. } => write!(f, "For"),
             Stmt::Block { .. } => write!(f, "Block"),
             Stmt::PureExpr { .. } => write!(f, "PureExpr"),
+            Stmt::Break { .. } => write!(f, "Break"),
         }
     }
 }
