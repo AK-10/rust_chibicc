@@ -5,9 +5,6 @@ use rust_chibicc::codegen::CodeGenerator;
 
 use std::env;
 use std::fs;
-//use std::fs::File;
-//use std::io::BufReader;
-//use std::io::prelude::*;
 
 fn read_file(path: impl Into<String>) -> String {
     let path_str = path.into();
@@ -15,7 +12,7 @@ fn read_file(path: impl Into<String>) -> String {
         Ok(content) => content,
         Err(e) => {
             let msg = format!("cannot read {}, reason: {}", &path_str, e);
-            panic!(msg);
+            panic!("{}", msg);
         }
     }
 }
