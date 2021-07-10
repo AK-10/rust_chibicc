@@ -137,6 +137,7 @@ impl<'a> Parser<'a> {
     //       | "for" "(" (expr? | declaration) ";" expr? ";" expr? ")" stmt
     //       | "{" stmt "}"
     //       | "break" ";"
+    //       | "continue" ";"
     //       | declaration
     //       | expr ";"
     fn stmt(&mut self) -> Result<Stmt, String> {
@@ -178,6 +179,11 @@ impl<'a> Parser<'a> {
                 self.peekable.next();
                 self.expect_next_symbol(";")?;
                 return Ok(Stmt::Break)
+            }
+            Some(t) if t.as_str() == "continue" => {
+                self.peekable.next();
+                self.expect_next_symbol(";")?;
+                return Ok(Stmt::Continue)
             }
             Some(_) if self.is_typename() => {
                 self.declaration()

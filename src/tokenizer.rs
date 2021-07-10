@@ -7,7 +7,7 @@ use crate::token::token_type::*;
 use std::rc::Rc;
 
 // TODO: LexerErrorの定義
-const KEYWORDS: [&str; 17] = [
+const KEYWORDS: [&str; 18] = [
     "return",
     "if",
     "while",
@@ -24,7 +24,8 @@ const KEYWORDS: [&str; 17] = [
     "typedef",
     "enum",
     "static",
-    "break"
+    "break",
+    "continue"
 ];
 
 // multi-letter punctuator

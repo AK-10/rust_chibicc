@@ -14,7 +14,8 @@ pub struct CodeGenerator<'a> {
     prog: &'a Program,
     funcname: RefCell<String>,
     labelseq: usize,
-    brkseq: usize
+    brkseq: usize,
+    contseq: usize
 }
 
 impl<'a> CodeGenerator<'a> {
@@ -24,7 +25,8 @@ impl<'a> CodeGenerator<'a> {
             prog,
             funcname: RefCell::new(String::new()),
             labelseq: 0,
-            brkseq: 0
+            brkseq: 0,
+            contseq: 0
         }
     }
 
@@ -327,24 +329,29 @@ impl<'a> CodeGenerator<'a> {
                 let seq = self.labelseq;
                 let brk = self.brkseq;
                 self.brkseq = seq;
+                let cont = self.contseq;
+                self.contseq = seq;
 
-                println!(".L.begin.{}:", seq);
+                println!(".L.continue.{}:", seq);
                 let _ = self.gen_expr(cond);
                 println!("  pop rax");
                 println!("  cmp rax, 0");
                 println!("  je .L.break.{}", seq);
 
                 self.gen_stmt(then)?;
-                println!("  jmp .L.begin.{}", seq);
+                println!("  jmp .L.continue.{}", seq);
                 println!(".L.break.{}:", seq);
 
                 self.brkseq = brk;
+                self.contseq = cont;
             }
             Stmt::For { init, cond, inc, then } => {
                 self.labelseq += 1;
                 let seq = self.labelseq;
                 let brk = self.brkseq;
                 self.brkseq = seq;
+                let cont = self.contseq;
+                self.contseq = seq;
 
                 init.as_ref()
                     .as_ref()
@@ -359,6 +366,7 @@ impl<'a> CodeGenerator<'a> {
                 });
 
                 self.gen_stmt(then)?;
+                println!(".L.continue.{}:", seq);
 
                 inc.as_ref()
                     .as_ref()
@@ -367,6 +375,7 @@ impl<'a> CodeGenerator<'a> {
                 println!(".L.break.{}:", seq);
 
                 self.brkseq = brk;
+                self.contseq = cont;
             }
             Stmt::Block { stmts } => {
                 for stmt in stmts {
@@ -379,6 +388,12 @@ impl<'a> CodeGenerator<'a> {
                     return Err("stray break".to_string())
                 }
                 println!("  jmp .L.break.{}", self.brkseq);
+            }
+            Stmt::Continue => {
+                if self.contseq == 0 {
+                    return Err("stray continue".to_string())
+                }
+                println!("  jmp .L.continue.{}", self.contseq);
             }
         };
 
