@@ -1,6 +1,6 @@
 .PHONY: test
 docker_build:
-	docekr build . -t compilerbook:latest
+	docker build . -t compilerbook:latest
 
 test_docker:
 	docker run --rm -it -v `pwd`:/home/user/rust_chibicc -w /home/user/rust_chibicc compilerbook make test
