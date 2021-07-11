@@ -35,7 +35,9 @@ pub enum Stmt {
     },
     PureExpr(ExprWrapper), // StmtExprの返り値のために作った
     Break,
-    Continue
+    Continue,
+    Goto(Rc<String>),
+    Label(Box<Stmt>, Rc<String>)
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -342,8 +344,10 @@ impl Display for Stmt {
             Stmt::For { .. } => write!(f, "For"),
             Stmt::Block { .. } => write!(f, "Block"),
             Stmt::PureExpr { .. } => write!(f, "PureExpr"),
-            Stmt::Break { .. } => write!(f, "Break"),
-            Stmt::Continue { .. } => write!(f, "Continue"),
+            Stmt::Break => write!(f, "Break"),
+            Stmt::Continue => write!(f, "Continue"),
+            Stmt::Goto(_) => write!(f, "Goto"),
+            Stmt::Label(_, _) => write!(f, "Label")
         }
     }
 }

@@ -395,6 +395,13 @@ impl<'a> CodeGenerator<'a> {
                 }
                 println!("  jmp .L.continue.{}", self.contseq);
             }
+            Stmt::Goto(label_name) => {
+                println!("  jmp .L.label.{}.{}", self.funcname.borrow(), *label_name);
+            }
+            Stmt::Label(stmt, label_name) => {
+                println!(".L.label.{}.{}:", self.funcname.borrow(), *label_name);
+                self.gen_stmt(stmt)?;
+            }
         };
 
         Ok(())

@@ -138,61 +138,85 @@ impl<'a> Parser<'a> {
     //       | "{" stmt "}"
     //       | "break" ";"
     //       | "continue" ";"
+    //       | "goto" ident ";"
+    //       | ident ":" stmt
     //       | declaration
     //       | expr ";"
     fn stmt(&mut self) -> Result<Stmt, String> {
-        let tk = self.peekable.peek();
-        match tk.map(|t| t.token_type.tk_str()) {
-            Some(t) if t.as_str() == "return" => {
-            // Some(TokenType::Reserved { op }) if *op == "return" => {
-                self.peekable.next();
+        match self.peekable.peek() {
+            Some(tok) => {
+                match tok.token_type.tk_str().as_str() {
+                    "return" => {
+                        self.peekable.next();
 
-                let expr = self.expr()?;
-                self.expect_next_symbol(";")?;
+                        let expr = self.expr()?;
+                        self.expect_next_symbol(";")?;
 
-                Ok(Stmt::Return { val: expr })
-            }
-            Some(t) if t.as_str() == "{" => {
-                self.peekable.next();
-                let mut stmts: Vec<Stmt> = Vec::new();
+                        Ok(Stmt::Return { val: expr })
+                    }
+                    "{" => {
+                        self.peekable.next();
+                        let mut stmts: Vec<Stmt> = Vec::new();
 
-                let sc = self.enter_scope();
-                while let Err(_) = self.expect_next_symbol("}".to_string()) {
-                    let stmt = self.stmt()?;
-                    stmts.push(stmt);
+                        let sc = self.enter_scope();
+                        while let Err(_) = self.expect_next_symbol("}".to_string()) {
+                            let stmt = self.stmt()?;
+                            stmts.push(stmt);
+                        }
+
+                        self.leave_scope(sc);
+
+                        Ok(Stmt::Block { stmts })
+                    }
+                    "if" => {
+                        self.if_stmt()
+                    }
+                    "while" => {
+                        self.while_stmt()
+                    }
+                    "for" => {
+                        self.for_stmt()
+                    }
+                    "break" => {
+                        self.peekable.next();
+                        self.expect_next_symbol(";")?;
+                        return Ok(Stmt::Break)
+                    }
+                    "continue" => {
+                        self.peekable.next();
+                        self.expect_next_symbol(";")?;
+                        return Ok(Stmt::Continue)
+                    }
+                    "goto" => {
+                        self.peekable.next();
+                        let tok = self.expect_next_ident()?;
+                        let goto = Stmt::Goto(tok.token_type.tk_str());
+                        self.expect_next_symbol(";")?;
+
+                        Ok(goto)
+                    }
+                    _ => {
+                        let pos = self.peekable.current_position();
+                        if let Ok(tk) = self.expect_next_ident() {
+                            if let Ok(_) = self.expect_next_symbol(":") {
+                                let node = Stmt::Label(Box::new(self.stmt()?), tk.token_type.tk_str());
+                                return Ok(node)
+                            } else {
+                                let _ = self.peekable.back_to(pos);
+                            }
+                        }
+                        if self.is_typename() {
+                            return self.declaration()
+                        }
+                        let expr_stmt = self.expr_stmt();
+                        self.expect_next_symbol(";")?;
+
+                        expr_stmt
+                    }
                 }
-
-                self.leave_scope(sc);
-
-                Ok(Stmt::Block { stmts })
-            }
-            Some(t) if t.as_str() == "if" => {
-                self.if_stmt()
-            }
-            Some(t) if t.as_str() == "while" => {
-                self.while_stmt()
-            }
-            Some(t) if t.as_str() == "for" => {
-                self.for_stmt()
-            }
-            Some(t) if t.as_str() == "break" => {
-                self.peekable.next();
-                self.expect_next_symbol(";")?;
-                return Ok(Stmt::Break)
-            }
-            Some(t) if t.as_str() == "continue" => {
-                self.peekable.next();
-                self.expect_next_symbol(";")?;
-                return Ok(Stmt::Continue)
-            }
-            Some(_) if self.is_typename() => {
-                self.declaration()
             }
             _ => {
-                let expr_stmt = self.expr_stmt();
-                self.expect_next_symbol(";")?;
-
-                expr_stmt
+                Err("token not found".to_string())
             }
         }
     }

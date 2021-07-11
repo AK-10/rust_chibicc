@@ -7,7 +7,7 @@ use crate::token::token_type::*;
 use std::rc::Rc;
 
 // TODO: LexerErrorの定義
-const KEYWORDS: [&str; 18] = [
+const KEYWORDS: [&str; 19] = [
     "return",
     "if",
     "while",
@@ -25,7 +25,8 @@ const KEYWORDS: [&str; 18] = [
     "enum",
     "static",
     "break",
-    "continue"
+    "continue",
+    "goto"
 ];
 
 // multi-letter punctuator
@@ -114,7 +115,7 @@ impl<'a> Tokenizer {
                     tokens.push(self.new_token(token_type));
                 },
                 // symbol
-                '(' | ')' | ';' | '{' | '}' | '.' | ',' | '[' | ']' => {
+                '(' | ')' | ';' | '{' | '}' | '.' | ',' | '[' | ']' | ':' => {
                     self.increment_pos(1);
 
                     let sym = c.to_string();
